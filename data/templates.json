@@ -1,293 +1,364 @@
 {
   "generatedAt": "2026-08-07T00:00:00.000Z",
+  "schemaVersion": 5,
   "config": {
-    "width": 60,
-    "height": 120,
-    "zoneDepth": 16,
+    "width": 256,
+    "height": 256,
+    "zoneDepth": 32,
+    "scoreGateXMin": 32,
+    "scoreGateXMax": 224,
     "minColors": 2,
     "maxColors": 16,
     "searchLife": 20000,
-    "gameProjectileLife": 3600,
+    "gameProjectileLife": 6000,
     "attackCost": 5,
-    "attackLife": 3600,
+    "attackLife": 6000,
     "disruptCost": 3,
-    "disruptLife": 400,
-    "maxCells": 16
+    "disruptLife": 1000,
+    "maxCells": 16,
+    "templateCellRadius": 8
   },
   "attack": [
     {
       "id": "A1",
       "kind": "attack",
-      "rule": "RRLRRLLRLRL",
-      "colorCount": 11,
+      "rule": "LLLR",
+      "colorCount": 4,
       "cells": [
         [
-          16,
-          11,
+          -8,
+          -4,
+          1
+        ],
+        [
+          5,
+          5,
+          0
+        ],
+        [
+          8,
+          4,
+          0
+        ],
+        [
+          -3,
+          0,
           2
         ],
         [
-          41,
-          13,
-          0
+          4,
+          6,
+          1
+        ],
+        [
+          2,
+          4,
+          1
         ]
       ],
-      "antX": 16,
-      "antY": 12,
-      "antDir": 3,
-      "cost": 7,
-      "arrivalStep": 1659,
-      "robustness": 0.9894179894179894,
-      "costTier": 7,
-      "featureTier": 4,
+      "antY": 4,
+      "antDir": 1,
+      "cost": 11,
+      "arrivalStep": 5743,
+      "entryXAt0": 35,
+      "robustness": 0.9937900641025641,
+      "costTier": 11,
+      "featureTier": 0,
       "highway": {
         "trajectoryPeriodic": true,
         "fingerprintVerified": true,
-        "formationStep": 8,
-        "period": 18,
-        "driftX": -1,
-        "driftY": 1,
-        "speed": 0.07856742013183862,
-        "verifiedCycles": 1110
+        "formationStep": 91,
+        "period": 52,
+        "driftX": -2,
+        "driftY": 2,
+        "speed": 0.05439282932204212,
+        "verifiedCycles": 382
       }
     },
     {
       "id": "A2",
       "kind": "attack",
-      "rule": "RRLRRLLRLLLLLRRL",
-      "colorCount": 16,
+      "rule": "RRRL",
+      "colorCount": 4,
       "cells": [
         [
-          10,
-          3,
-          15
-        ],
-        [
-          45,
-          4,
-          7
-        ],
-        [
-          30,
-          13,
-          6
-        ],
-        [
-          50,
-          9,
-          6
-        ],
-        [
-          59,
-          8,
-          13
-        ],
-        [
-          22,
-          2,
-          13
-        ],
-        [
-          27,
-          5,
-          4
-        ],
-        [
-          54,
-          0,
-          4
-        ],
-        [
-          18,
+          -7,
           1,
-          10
-        ],
-        [
-          32,
-          3,
           0
         ],
         [
-          25,
+          -6,
+          -5,
+          3
+        ],
+        [
           2,
-          9
+          -6,
+          3
         ],
         [
-          44,
-          11,
-          14
+          0,
+          5,
+          1
         ],
         [
-          30,
-          6,
-          8
+          -1,
+          4,
+          1
         ],
         [
-          51,
-          2,
-          11
+          -5,
+          3,
+          1
         ],
         [
-          16,
-          10,
+          -7,
+          3,
           2
         ],
         [
-          43,
-          11,
-          5
+          4,
+          -4,
+          0
+        ],
+        [
+          5,
+          -6,
+          2
+        ],
+        [
+          1,
+          2,
+          1
         ]
       ],
-      "antX": 27,
-      "antY": 11,
-      "antDir": 3,
-      "cost": 21,
-      "arrivalStep": 1733,
-      "robustness": 0.9841269841269842,
-      "costTier": 21,
-      "featureTier": 5,
+      "antY": 26,
+      "antDir": 0,
+      "cost": 15,
+      "arrivalStep": 5096,
+      "entryXAt0": 64,
+      "robustness": 0.9952590811965812,
+      "costTier": 15,
+      "featureTier": 1,
       "highway": {
         "trajectoryPeriodic": true,
         "fingerprintVerified": true,
-        "formationStep": 145,
-        "period": 18,
-        "driftX": 1,
-        "driftY": 1,
-        "speed": 0.07856742013183862,
-        "verifiedCycles": 1103
+        "formationStep": 115,
+        "period": 52,
+        "driftX": -2,
+        "driftY": 2,
+        "speed": 0.05439282932204212,
+        "verifiedCycles": 382
       }
     },
     {
       "id": "A3",
       "kind": "attack",
-      "rule": "LLLLR",
-      "colorCount": 5,
+      "rule": "LLRLLRRR",
+      "colorCount": 8,
       "cells": [
         [
-          1,
-          6,
-          0
-        ],
-        [
-          20,
-          9,
-          0
-        ],
-        [
-          43,
-          1,
-          1
-        ],
-        [
-          13,
-          9,
-          0
-        ],
-        [
-          33,
-          8,
-          2
-        ],
-        [
-          11,
-          1,
-          2
-        ],
-        [
-          41,
-          6,
-          0
-        ],
-        [
-          39,
-          3,
-          0
-        ],
-        [
-          37,
           0,
-          1
+          1,
+          4
         ],
         [
-          26,
-          11,
-          1
-        ],
-        [
-          7,
-          0,
-          0
-        ],
-        [
-          9,
-          5,
-          3
-        ],
-        [
-          27,
-          6,
-          0
-        ],
-        [
-          45,
-          7,
-          3
-        ],
-        [
-          41,
-          11,
+          1,
+          1,
           2
+        ],
+        [
+          0,
+          2,
+          4
         ]
       ],
-      "antX": 8,
-      "antY": 4,
+      "antY": 29,
       "antDir": 3,
-      "cost": 20,
-      "arrivalStep": 3319,
-      "robustness": 0.9523809523809523,
-      "costTier": 20,
-      "featureTier": 3,
+      "cost": 8,
+      "arrivalStep": 3469,
+      "entryXAt0": 192,
+      "robustness": 0.9948918269230769,
+      "costTier": 8,
+      "featureTier": 4,
       "highway": {
         "trajectoryPeriodic": true,
         "fingerprintVerified": true,
-        "formationStep": 49,
-        "period": 34,
-        "driftX": -1,
+        "formationStep": 0,
+        "period": 18,
+        "driftX": 1,
         "driftY": 1,
-        "speed": 0.04159451654038515,
-        "verifiedCycles": 586
+        "speed": 0.07856742013183862,
+        "verifiedCycles": 1111
       }
     },
     {
       "id": "A4",
       "kind": "attack",
-      "rule": "RRRL",
-      "colorCount": 4,
+      "rule": "RRLRRLRLR",
+      "colorCount": 9,
       "cells": [
         [
-          12,
-          2,
+          1,
+          -2,
           1
         ],
         [
-          29,
-          0,
-          3
+          -2,
+          -1,
+          2
         ],
         [
-          13,
-          9,
-          3
+          0,
+          -1,
+          2
         ]
       ],
-      "antX": 45,
-      "antY": 7,
+      "antY": 31,
       "antDir": 0,
       "cost": 8,
-      "arrivalStep": 2498,
-      "robustness": 0.9841269841269842,
+      "arrivalStep": 3546,
+      "entryXAt0": 63,
+      "robustness": 0.9954260149572649,
       "costTier": 8,
       "featureTier": 1,
+      "highway": {
+        "trajectoryPeriodic": true,
+        "fingerprintVerified": true,
+        "formationStep": 77,
+        "period": 18,
+        "driftX": -1,
+        "driftY": 1,
+        "speed": 0.07856742013183862,
+        "verifiedCycles": 1106
+      }
+    },
+    {
+      "id": "A5",
+      "kind": "attack",
+      "rule": "LLLR",
+      "colorCount": 4,
+      "cells": [
+        [
+          -8,
+          7,
+          0
+        ],
+        [
+          3,
+          -5,
+          1
+        ],
+        [
+          -5,
+          -5,
+          1
+        ],
+        [
+          2,
+          7,
+          0
+        ],
+        [
+          1,
+          -1,
+          2
+        ],
+        [
+          -3,
+          5,
+          1
+        ],
+        [
+          5,
+          0,
+          1
+        ],
+        [
+          -7,
+          -5,
+          1
+        ]
+      ],
+      "antY": 6,
+      "antDir": 2,
+      "cost": 13,
+      "arrivalStep": 5672,
+      "entryXAt0": 218,
+      "robustness": 0.9976963141025641,
+      "costTier": 13,
+      "featureTier": 5,
+      "highway": {
+        "trajectoryPeriodic": true,
+        "fingerprintVerified": true,
+        "formationStep": 17,
+        "period": 52,
+        "driftX": 2,
+        "driftY": 2,
+        "speed": 0.05439282932204212,
+        "verifiedCycles": 384
+      }
+    },
+    {
+      "id": "A6",
+      "kind": "attack",
+      "rule": "LLLR",
+      "colorCount": 4,
+      "cells": [
+        [
+          2,
+          -2,
+          0
+        ],
+        [
+          6,
+          -7,
+          0
+        ],
+        [
+          -8,
+          -3,
+          0
+        ],
+        [
+          3,
+          -4,
+          0
+        ],
+        [
+          4,
+          -7,
+          0
+        ],
+        [
+          3,
+          -6,
+          0
+        ],
+        [
+          5,
+          -6,
+          0
+        ],
+        [
+          1,
+          -7,
+          2
+        ],
+        [
+          -6,
+          -4,
+          0
+        ]
+      ],
+      "antY": 28,
+      "antDir": 3,
+      "cost": 14,
+      "arrivalStep": 5163,
+      "entryXAt0": 197,
+      "robustness": 0.9962940705128205,
+      "costTier": 14,
+      "featureTier": 4,
       "highway": {
         "trajectoryPeriodic": true,
         "fingerprintVerified": true,
@@ -300,368 +371,171 @@
       }
     },
     {
-      "id": "A5",
-      "kind": "attack",
-      "rule": "LLRLLRLRLRLLLLL",
-      "colorCount": 15,
-      "cells": [
-        [
-          13,
-          11,
-          13
-        ],
-        [
-          58,
-          10,
-          14
-        ],
-        [
-          47,
-          12,
-          5
-        ],
-        [
-          7,
-          9,
-          0
-        ],
-        [
-          51,
-          15,
-          9
-        ],
-        [
-          16,
-          7,
-          4
-        ]
-      ],
-      "antX": 57,
-      "antY": 13,
-      "antDir": 2,
-      "cost": 11,
-      "arrivalStep": 1722,
-      "robustness": 0.9788359788359788,
-      "costTier": 11,
-      "featureTier": 3,
-      "highway": {
-        "trajectoryPeriodic": true,
-        "fingerprintVerified": true,
-        "formationStep": 134,
-        "period": 18,
-        "driftX": -1,
-        "driftY": 1,
-        "speed": 0.07856742013183862,
-        "verifiedCycles": 1103
-      }
-    },
-    {
-      "id": "A6",
-      "kind": "attack",
-      "rule": "RRLRRLLRRLLRRR",
-      "colorCount": 14,
-      "cells": [
-        [
-          57,
-          9,
-          0
-        ],
-        [
-          40,
-          14,
-          12
-        ],
-        [
-          27,
-          14,
-          7
-        ],
-        [
-          29,
-          9,
-          1
-        ],
-        [
-          19,
-          3,
-          7
-        ],
-        [
-          55,
-          13,
-          0
-        ],
-        [
-          39,
-          9,
-          4
-        ],
-        [
-          42,
-          6,
-          0
-        ],
-        [
-          14,
-          10,
-          5
-        ]
-      ],
-      "antX": 11,
-      "antY": 11,
-      "antDir": 3,
-      "cost": 14,
-      "arrivalStep": 2041,
-      "robustness": 0.9788359788359788,
-      "costTier": 14,
-      "featureTier": 4,
-      "highway": {
-        "trajectoryPeriodic": true,
-        "fingerprintVerified": true,
-        "formationStep": 427,
-        "period": 18,
-        "driftX": 1,
-        "driftY": 1,
-        "speed": 0.07856742013183862,
-        "verifiedCycles": 1087
-      }
-    },
-    {
       "id": "A7",
       "kind": "attack",
-      "rule": "RRRRL",
-      "colorCount": 5,
+      "rule": "RRRL",
+      "colorCount": 4,
       "cells": [
         [
           4,
-          3,
+          -5,
           1
         ],
         [
-          57,
-          14,
+          -1,
+          -4,
           1
         ],
         [
-          20,
-          12,
-          1
-        ],
-        [
-          44,
+          -1,
           6,
+          0
+        ],
+        [
+          6,
+          -7,
           1
         ],
         [
-          44,
+          -7,
+          -7,
+          0
+        ],
+        [
+          -5,
           2,
-          1
-        ],
-        [
-          49,
-          11,
           2
         ],
         [
-          18,
-          7,
-          0
+          0,
+          0,
+          1
         ],
         [
-          40,
-          6,
-          0
+          0,
+          -5,
+          2
+        ],
+        [
+          3,
+          -2,
+          1
+        ],
+        [
+          1,
+          4,
+          2
+        ],
+        [
+          5,
+          5,
+          2
+        ],
+        [
+          -5,
+          -4,
+          1
         ]
       ],
-      "antX": 45,
-      "antY": 7,
-      "antDir": 2,
-      "cost": 13,
-      "arrivalStep": 3302,
-      "robustness": 0.9841269841269842,
-      "costTier": 13,
+      "antY": 24,
+      "antDir": 0,
+      "cost": 17,
+      "arrivalStep": 5184,
+      "entryXAt0": 58,
+      "robustness": 0.9964610042735043,
+      "costTier": 17,
       "featureTier": 1,
       "highway": {
         "trajectoryPeriodic": true,
         "fingerprintVerified": true,
-        "formationStep": 100,
-        "period": 68,
-        "driftX": 2,
+        "formationStep": 19,
+        "period": 52,
+        "driftX": -2,
         "driftY": 2,
-        "speed": 0.04159451654038515,
-        "verifiedCycles": 292
+        "speed": 0.05439282932204212,
+        "verifiedCycles": 384
       }
     },
     {
       "id": "A8",
       "kind": "attack",
-      "rule": "LLR",
-      "colorCount": 3,
+      "rule": "RRRLRRRLLRLL",
+      "colorCount": 12,
       "cells": [
         [
-          34,
-          2,
-          0
-        ],
-        [
-          20,
-          2,
-          1
-        ],
-        [
-          23,
-          11,
-          2
-        ],
-        [
-          17,
+          -1,
           0,
-          2
+          3
         ],
         [
-          26,
-          13,
-          0
+          -3,
+          1,
+          3
         ],
         [
-          44,
-          9,
-          0
-        ],
-        [
-          38,
-          14,
+          -1,
+          1,
           1
-        ],
-        [
-          20,
-          8,
-          1
-        ],
-        [
-          25,
-          12,
-          2
-        ],
-        [
-          50,
-          12,
-          1
-        ],
-        [
-          54,
-          11,
-          0
-        ],
-        [
-          15,
-          7,
-          2
-        ],
-        [
-          19,
-          12,
-          2
-        ],
-        [
-          44,
-          14,
-          0
         ]
       ],
-      "antX": 21,
-      "antY": 14,
-      "antDir": 3,
-      "cost": 19,
-      "arrivalStep": 2223,
-      "robustness": 0.9788359788359788,
-      "costTier": 19,
-      "featureTier": 5,
+      "antY": 28,
+      "antDir": 2,
+      "cost": 8,
+      "arrivalStep": 5056,
+      "entryXAt0": 194,
+      "robustness": 0.9938568376068376,
+      "costTier": 8,
+      "featureTier": 4,
       "highway": {
         "trajectoryPeriodic": true,
         "fingerprintVerified": true,
-        "formationStep": 741,
-        "period": 18,
-        "driftX": -1,
-        "driftY": 1,
-        "speed": 0.07856742013183862,
-        "verifiedCycles": 1069
+        "formationStep": 8,
+        "period": 52,
+        "driftX": 2,
+        "driftY": 2,
+        "speed": 0.05439282932204212,
+        "verifiedCycles": 384
       }
     },
     {
       "id": "A9",
       "kind": "attack",
-      "rule": "RRRLRRRLRRRLRLRL",
-      "colorCount": 16,
+      "rule": "RRLRRLLLR",
+      "colorCount": 9,
       "cells": [
         [
-          59,
-          12,
-          1
-        ],
-        [
-          30,
-          0,
-          2
-        ],
-        [
-          29,
-          6,
-          2
-        ],
-        [
-          45,
-          7,
-          11
-        ],
-        [
-          3,
-          4,
-          7
-        ],
-        [
-          36,
-          14,
-          1
-        ],
-        [
-          20,
+          -1,
           1,
           2
         ],
         [
-          27,
-          13,
-          15
+          0,
+          1,
+          4
         ],
         [
-          42,
-          3,
-          11
-        ],
-        [
-          42,
-          8,
-          1
+          0,
+          2,
+          4
         ]
       ],
-      "antX": 25,
-      "antY": 6,
-      "antDir": 3,
-      "cost": 15,
-      "arrivalStep": 3143,
-      "robustness": 0.9894179894179894,
-      "costTier": 15,
-      "featureTier": 4,
+      "antY": 29,
+      "antDir": 1,
+      "cost": 8,
+      "arrivalStep": 3469,
+      "entryXAt0": 64,
+      "robustness": 0.9957932692307693,
+      "costTier": 8,
+      "featureTier": 1,
       "highway": {
         "trajectoryPeriodic": true,
         "fingerprintVerified": true,
-        "formationStep": 659,
-        "period": 52,
-        "driftX": -2,
-        "driftY": 2,
-        "speed": 0.05439282932204212,
-        "verifiedCycles": 371
+        "formationStep": 0,
+        "period": 18,
+        "driftX": -1,
+        "driftY": 1,
+        "speed": 0.07856742013183862,
+        "verifiedCycles": 1111
       }
     }
   ],
@@ -669,981 +543,4339 @@
     {
       "id": "D1",
       "kind": "disrupt",
-      "rule": "LLRLLRLRLRLLLLL",
-      "colorCount": 15,
+      "rule": "RRLRRLLLR",
+      "colorCount": 9,
       "cells": [
         [
-          13,
-          11,
-          13
+          -2,
+          1,
+          2
         ],
         [
-          58,
-          10,
-          14
-        ],
-        [
-          47,
-          12,
-          5
-        ],
-        [
-          7,
-          9,
-          0
-        ],
-        [
-          51,
-          15,
-          9
-        ],
-        [
-          16,
-          7,
+          0,
+          1,
           4
+        ],
+        [
+          0,
+          2,
+          2
+        ],
+        [
+          -6,
+          -8,
+          7
+        ],
+        [
+          -2,
+          -8,
+          2
         ]
       ],
-      "antX": 58,
-      "antY": 13,
-      "antDir": 2,
-      "cost": 9,
-      "reachRows": 18,
-      "endDirection": 2,
+      "antY": 29,
+      "antDir": 1,
+      "cost": 8,
+      "reachRows": 56,
+      "endDirection": 1,
       "coverage": 1,
-      "costTier": 9,
-      "featureTier": 4
+      "costTier": 8,
+      "featureTier": 5
     },
     {
       "id": "D2",
       "kind": "disrupt",
-      "rule": "LLLR",
-      "colorCount": 4,
+      "rule": "RRLRRLLRR",
+      "colorCount": 9,
       "cells": [
         [
-          8,
-          13,
+          -1,
+          1,
           2
         ],
         [
-          26,
+          1,
+          1,
+          4
+        ],
+        [
+          -1,
           2,
           2
-        ],
-        [
-          11,
-          0,
-          0
-        ],
-        [
-          58,
-          0,
-          3
-        ],
-        [
-          52,
-          3,
-          0
-        ],
-        [
-          14,
-          11,
-          0
-        ],
-        [
-          14,
-          12,
-          3
-        ],
-        [
-          50,
-          3,
-          0
-        ],
-        [
-          29,
-          7,
-          1
-        ],
-        [
-          25,
-          1,
-          0
-        ],
-        [
-          27,
-          13,
-          0
         ]
       ],
-      "antX": 50,
-      "antY": 14,
-      "antDir": 0,
-      "cost": 14,
-      "reachRows": 16,
-      "endDirection": 2,
+      "antY": 29,
+      "antDir": 1,
+      "cost": 6,
+      "reachRows": 50,
+      "endDirection": 1,
       "coverage": 1,
-      "costTier": 14,
-      "featureTier": 3
+      "costTier": 6,
+      "featureTier": 4
     },
     {
       "id": "D3",
       "kind": "disrupt",
-      "rule": "RRLRRLLRRLRLLRRL",
-      "colorCount": 16,
+      "rule": "RL",
+      "colorCount": 2,
       "cells": [
         [
-          10,
-          3,
-          15
+          -1,
+          -1,
+          1
         ],
         [
-          45,
-          4,
-          7
-        ],
-        [
-          30,
-          13,
-          6
-        ],
-        [
-          50,
-          9,
-          6
-        ],
-        [
-          59,
-          8,
-          13
-        ],
-        [
-          22,
-          2,
-          13
-        ],
-        [
-          27,
-          5,
-          4
-        ],
-        [
-          54,
           0,
-          4
-        ],
-        [
-          18,
           1,
-          10
+          1
         ],
         [
-          32,
+          2,
+          2,
+          1
+        ],
+        [
+          -2,
           3,
+          1
+        ],
+        [
+          -1,
+          3,
+          1
+        ],
+        [
+          3,
+          3,
+          1
+        ],
+        [
+          -2,
+          4,
+          1
+        ],
+        [
+          1,
+          4,
           0
         ],
         [
-          25,
           2,
-          9
-        ],
-        [
-          44,
-          11,
-          14
-        ],
-        [
-          30,
-          6,
-          8
-        ],
-        [
-          51,
-          2,
-          11
-        ],
-        [
-          16,
-          10,
-          2
-        ],
-        [
-          43,
-          11,
-          5
+          4,
+          1
         ]
       ],
-      "antX": 30,
-      "antY": 12,
-      "antDir": 2,
-      "cost": 19,
-      "reachRows": 24,
-      "endDirection": 2,
-      "coverage": 1,
-      "costTier": 19,
-      "featureTier": 5
+      "antY": 27,
+      "antDir": 1,
+      "cost": 12,
+      "reachRows": 0,
+      "endDirection": 3,
+      "coverage": 0.7777777777777778,
+      "costTier": 12,
+      "featureTier": 0
     },
     {
       "id": "D4",
       "kind": "disrupt",
-      "rule": "RLRLRLRRRLRR",
-      "colorCount": 12,
+      "rule": "RRL",
+      "colorCount": 3,
       "cells": [
         [
-          39,
-          12,
-          3
+          5,
+          8,
+          1
         ],
         [
-          35,
+          -5,
+          7,
+          2
+        ],
+        [
+          3,
+          8,
+          2
+        ],
+        [
+          7,
+          3,
+          0
+        ],
+        [
+          6,
           0,
-          6
+          0
+        ],
+        [
+          -6,
+          7,
+          1
+        ],
+        [
+          -5,
+          2,
+          2
+        ],
+        [
+          2,
+          2,
+          2
+        ],
+        [
+          5,
+          3,
+          0
+        ],
+        [
+          3,
+          1,
+          0
+        ],
+        [
+          1,
+          1,
+          0
         ]
       ],
-      "antX": 42,
-      "antY": 15,
-      "antDir": 1,
-      "cost": 5,
-      "reachRows": 8,
-      "endDirection": 3,
+      "antY": 1,
+      "antDir": 0,
+      "cost": 14,
+      "reachRows": 56,
+      "endDirection": 2,
       "coverage": 1,
-      "costTier": 5,
-      "featureTier": 1
+      "costTier": 14,
+      "featureTier": 5
     },
     {
       "id": "D5",
       "kind": "disrupt",
-      "rule": "LLR",
-      "colorCount": 3,
+      "rule": "RRLRRLLLR",
+      "colorCount": 9,
       "cells": [
         [
-          55,
-          2,
-          1
-        ],
-        [
-          12,
-          14,
+          -1,
+          1,
           2
         ],
         [
-          52,
+          0,
+          1,
+          4
+        ],
+        [
+          0,
           2,
-          1
-        ],
-        [
-          39,
-          8,
-          0
-        ],
-        [
-          12,
-          7,
-          0
-        ],
-        [
-          21,
-          3,
-          1
-        ],
-        [
-          20,
-          12,
-          1
+          4
         ]
       ],
-      "antX": 12,
-      "antY": 15,
+      "antY": 29,
       "antDir": 1,
-      "cost": 10,
-      "reachRows": 22,
+      "cost": 6,
+      "reachRows": 56,
       "endDirection": 1,
       "coverage": 1,
-      "costTier": 10,
+      "costTier": 6,
       "featureTier": 5
     },
     {
       "id": "D6",
       "kind": "disrupt",
-      "rule": "RRLRRLLRRLLLLRLL",
-      "colorCount": 16,
+      "rule": "RRRLLLRRLRRLRLR",
+      "colorCount": 15,
       "cells": [
         [
-          10,
-          3,
-          15
-        ],
-        [
-          45,
-          4,
-          7
-        ],
-        [
-          31,
-          13,
-          6
-        ],
-        [
-          51,
-          9,
-          6
-        ],
-        [
-          59,
-          8,
-          13
-        ],
-        [
-          22,
-          2,
-          13
-        ],
-        [
-          27,
-          5,
-          4
-        ],
-        [
-          54,
-          0,
-          1
-        ],
-        [
-          18,
+          -3,
           1,
           10
         ],
         [
-          32,
-          3,
-          0
+          -2,
+          1,
+          7
         ],
         [
-          25,
+          -1,
+          1,
+          5
+        ],
+        [
+          0,
+          1,
+          3
+        ],
+        [
+          -3,
           2,
-          9
+          6
         ],
         [
-          44,
-          11,
-          14
-        ],
-        [
-          30,
-          6,
-          8
-        ],
-        [
-          51,
+          -2,
           2,
-          11
+          4
         ],
         [
-          16,
-          10,
+          -1,
+          2,
           2
         ],
         [
-          43,
-          11,
-          5
+          -3,
+          3,
+          1
+        ],
+        [
+          -2,
+          3,
+          1
         ]
       ],
-      "antX": 30,
-      "antY": 10,
+      "antY": 28,
       "antDir": 3,
-      "cost": 19,
-      "reachRows": 22,
-      "endDirection": 3,
+      "cost": 12,
+      "reachRows": 18,
+      "endDirection": 1,
       "coverage": 1,
-      "costTier": 19,
-      "featureTier": 5
+      "costTier": 12,
+      "featureTier": 1
     },
     {
       "id": "D7",
       "kind": "disrupt",
-      "rule": "RRLRRLRRRLLLLRRL",
-      "colorCount": 16,
+      "rule": "LLLLLLLLRRR",
+      "colorCount": 11,
       "cells": [
         [
-          10,
-          3,
-          15
-        ],
-        [
-          45,
-          4,
-          7
-        ],
-        [
-          30,
-          13,
-          6
-        ],
-        [
-          50,
-          9,
-          6
-        ],
-        [
-          59,
-          8,
-          13
-        ],
-        [
-          22,
-          2,
-          13
-        ],
-        [
-          27,
-          5,
+          -4,
+          -2,
           1
         ],
         [
-          54,
-          0,
-          4
-        ],
-        [
-          18,
-          1,
-          10
-        ],
-        [
-          32,
-          3,
-          0
-        ],
-        [
-          25,
-          2,
+          -3,
+          -1,
           9
         ],
         [
-          44,
-          11,
-          14
+          -2,
+          0,
+          7
         ],
         [
-          30,
-          6,
-          8
-        ],
-        [
-          51,
-          2,
-          11
-        ],
-        [
-          16,
-          10,
-          2
-        ],
-        [
-          43,
-          11,
-          5
+          -1,
+          0,
+          7
         ]
       ],
-      "antX": 30,
-      "antY": 12,
-      "antDir": 2,
-      "cost": 19,
-      "reachRows": 8,
-      "endDirection": 0,
+      "antY": 31,
+      "antDir": 3,
+      "cost": 7,
+      "reachRows": 10,
+      "endDirection": 3,
       "coverage": 1,
-      "costTier": 19,
-      "featureTier": 1
+      "costTier": 7,
+      "featureTier": 0
     },
     {
       "id": "D8",
       "kind": "disrupt",
-      "rule": "LLRLLRLRLRLLLLL",
-      "colorCount": 15,
+      "rule": "LRLRLRLLLLRLRLLR",
+      "colorCount": 16,
       "cells": [
         [
-          13,
-          11,
-          13
+          1,
+          -5,
+          15
         ],
         [
-          58,
-          10,
-          14
+          3,
+          -2,
+          15
         ],
         [
-          47,
-          12,
-          5
+          5,
+          -3,
+          8
         ],
         [
-          7,
-          8,
-          0
-        ],
-        [
-          51,
-          15,
+          -4,
+          -8,
           9
         ],
         [
-          16,
-          7,
+          -1,
+          -7,
+          8
+        ],
+        [
+          1,
+          5,
           4
+        ],
+        [
+          3,
+          0,
+          13
+        ],
+        [
+          -5,
+          -4,
+          0
+        ],
+        [
+          -8,
+          2,
+          10
+        ],
+        [
+          6,
+          -1,
+          8
+        ],
+        [
+          4,
+          -3,
+          13
+        ],
+        [
+          3,
+          5,
+          4
+        ],
+        [
+          -2,
+          7,
+          12
+        ],
+        [
+          4,
+          0,
+          3
+        ],
+        [
+          0,
+          8,
+          2
         ]
       ],
-      "antX": 59,
-      "antY": 13,
+      "antY": 23,
       "antDir": 3,
-      "cost": 9,
-      "reachRows": 18,
-      "endDirection": 1,
-      "coverage": 1,
-      "costTier": 9,
-      "featureTier": 4
+      "cost": 18,
+      "reachRows": 10,
+      "endDirection": 3,
+      "coverage": 0.5555555555555556,
+      "costTier": 18,
+      "featureTier": 0
     },
     {
       "id": "D9",
       "kind": "disrupt",
-      "rule": "LLRLLRLRLRLLLLR",
-      "colorCount": 15,
+      "rule": "LLLLLLLRRR",
+      "colorCount": 10,
       "cells": [
         [
-          13,
-          11,
-          13
+          -1,
+          -2,
+          1
         ],
         [
-          59,
-          10,
-          14
+          -1,
+          -1,
+          8
         ],
         [
-          47,
-          12,
-          5
+          0,
+          -1,
+          6
         ],
         [
-          51,
-          15,
+          -2,
+          0,
+          7
+        ],
+        [
+          -1,
+          0,
+          7
+        ],
+        [
+          1,
+          0,
           9
         ],
         [
-          16,
-          7,
-          4
+          5,
+          -3,
+          8
         ]
       ],
-      "antX": 58,
-      "antY": 13,
-      "antDir": 2,
-      "cost": 8,
-      "reachRows": 16,
-      "endDirection": 0,
-      "coverage": 1,
-      "costTier": 8,
-      "featureTier": 3
+      "antY": 31,
+      "antDir": 3,
+      "cost": 10,
+      "reachRows": 14,
+      "endDirection": 3,
+      "coverage": 0.8888888888888888,
+      "costTier": 10,
+      "featureTier": 1
     }
   ],
   "identifyTable": {
-    "16,12,3": "A1",
-    "27,11,3": "A2",
-    "8,4,3": "A3",
-    "45,7,0": "A4",
-    "57,13,2": "A5",
-    "11,11,3": "A6",
-    "45,7,2": "A7",
-    "21,14,3": "A8",
-    "25,6,3": "A9"
+    "4,1": "A1",
+    "26,0": "A2",
+    "29,3": "A3",
+    "31,0": "A4",
+    "6,2": "A5",
+    "28,3": "A6",
+    "24,0": "A7",
+    "28,2": "A8",
+    "29,1": "A9"
   },
   "counterTable": {
     "A1": [
       {
+        "disruptId": "D1",
+        "deltaX": 31,
+        "fireAtStep": 3750,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 31,
+        "fireAtStep": 4125,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 31,
+        "fireAtStep": 4500,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 33,
+        "fireAtStep": 3375,
+        "successRate": 0.23076923076923078
+      },
+      {
         "disruptId": "D2",
-        "fireAtStep": 1350,
-        "successRate": 0.047619047619047616
+        "deltaX": 88,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 58,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 104,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 120,
+        "fireAtStep": 3750,
+        "successRate": 0.07692307692307693
       },
       {
         "disruptId": "D4",
-        "fireAtStep": 1350,
-        "successRate": 0.047619047619047616
+        "deltaX": 10,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 10,
+        "fireAtStep": 4500,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 12,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 12,
+        "fireAtStep": 4500,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 84,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 102,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 118,
+        "fireAtStep": 3750,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 54,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 56,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 57,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 58,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 62,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 56,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 57,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 58,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 60,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 28,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 29,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 30,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 32,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
       }
     ],
     "A2": [
       {
         "disruptId": "D1",
-        "fireAtStep": 1200,
-        "successRate": 0.09523809523809523
+        "deltaX": 65,
+        "fireAtStep": 3000,
+        "successRate": 0.3076923076923077
       },
       {
         "disruptId": "D1",
-        "fireAtStep": 1500,
-        "successRate": 0.09523809523809523
+        "deltaX": 65,
+        "fireAtStep": 3375,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 65,
+        "fireAtStep": 3750,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 65,
+        "fireAtStep": 4125,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 64,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 92,
+        "fireAtStep": 3750,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 122,
+        "fireAtStep": 3375,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 139,
+        "fireAtStep": 3375,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 61,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 61,
+        "fireAtStep": 4500,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 64,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 64,
+        "fireAtStep": 4500,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 33,
+        "fireAtStep": 3750,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 33,
+        "fireAtStep": 4125,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 33,
+        "fireAtStep": 4500,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 35,
+        "fireAtStep": 3750,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 69,
+        "fireAtStep": 4125,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 88,
+        "fireAtStep": 3750,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 105,
+        "fireAtStep": 3750,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 125,
+        "fireAtStep": 3375,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 87,
+        "fireAtStep": 3750,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 87,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 72,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 75,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 62,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 79,
+        "fireAtStep": 4125,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 62,
+        "fireAtStep": 4500,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 63,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D8",
+        "deltaX": 49,
+        "fireAtStep": 4125,
+        "successRate": 0.07692307692307693
       },
       {
         "disruptId": "D9",
-        "fireAtStep": 1350,
-        "successRate": 0.047619047619047616
+        "deltaX": 61,
+        "fireAtStep": 3750,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 61,
+        "fireAtStep": 4125,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 61,
+        "fireAtStep": 4500,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 62,
+        "fireAtStep": 3750,
+        "successRate": 0.15384615384615385
       }
     ],
     "A3": [
       {
-        "disruptId": "D2",
-        "fireAtStep": 2550,
-        "successRate": 0.09523809523809523
+        "disruptId": "D1",
+        "deltaX": 123,
+        "fireAtStep": 1875,
+        "successRate": 0.23076923076923078
       },
       {
-        "disruptId": "D2",
-        "fireAtStep": 2700,
-        "successRate": 0.09523809523809523
+        "disruptId": "D1",
+        "deltaX": 107,
+        "fireAtStep": 1875,
+        "successRate": 0.15384615384615385
       },
       {
-        "disruptId": "D3",
+        "disruptId": "D1",
+        "deltaX": 153,
         "fireAtStep": 2250,
-        "successRate": 0.23809523809523808
+        "successRate": 0.15384615384615385
       },
       {
-        "disruptId": "D3",
-        "fireAtStep": 2400,
-        "successRate": 0.23809523809523808
+        "disruptId": "D1",
+        "deltaX": 83,
+        "fireAtStep": 1500,
+        "successRate": 0.07692307692307693
       },
       {
-        "disruptId": "D3",
-        "fireAtStep": 2550,
-        "successRate": 0.23809523809523808
+        "disruptId": "D2",
+        "deltaX": 197,
+        "fireAtStep": 1875,
+        "successRate": 0.23076923076923078
       },
       {
-        "disruptId": "D3",
-        "fireAtStep": 2700,
-        "successRate": 0.23809523809523808
+        "disruptId": "D2",
+        "deltaX": 197,
+        "fireAtStep": 2625,
+        "successRate": 0.23076923076923078
       },
       {
-        "disruptId": "D3",
-        "fireAtStep": 2850,
-        "successRate": 0.23809523809523808
-      },
-      {
-        "disruptId": "D6",
-        "fireAtStep": 2700,
-        "successRate": 0.09523809523809523
-      },
-      {
-        "disruptId": "D6",
+        "disruptId": "D2",
+        "deltaX": 197,
         "fireAtStep": 3000,
-        "successRate": 0.09523809523809523
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 199,
+        "fireAtStep": 1875,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 187,
+        "fireAtStep": 2625,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 187,
+        "fireAtStep": 3000,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 188,
+        "fireAtStep": 2625,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 188,
+        "fireAtStep": 3000,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 129,
+        "fireAtStep": 2250,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 145,
+        "fireAtStep": 2250,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 130,
+        "fireAtStep": 2250,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 143,
+        "fireAtStep": 2250,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 193,
+        "fireAtStep": 1500,
+        "successRate": 0.38461538461538464
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 193,
+        "fireAtStep": 1875,
+        "successRate": 0.38461538461538464
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 193,
+        "fireAtStep": 2250,
+        "successRate": 0.38461538461538464
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 193,
+        "fireAtStep": 2625,
+        "successRate": 0.38461538461538464
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 195,
+        "fireAtStep": 2250,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 195,
+        "fireAtStep": 2625,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 195,
+        "fireAtStep": 3000,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 195,
+        "fireAtStep": 3375,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 190,
+        "fireAtStep": 2625,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 190,
+        "fireAtStep": 3000,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 190,
+        "fireAtStep": 3375,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 191,
+        "fireAtStep": 2625,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D8",
+        "deltaX": 179,
+        "fireAtStep": 2625,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D8",
+        "deltaX": 181,
+        "fireAtStep": 2625,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 190,
+        "fireAtStep": 3000,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 166,
+        "fireAtStep": 2250,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 190,
+        "fireAtStep": 3375,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 167,
+        "fireAtStep": 2250,
+        "successRate": 0.07692307692307693
       }
     ],
     "A4": [
       {
+        "disruptId": "D1",
+        "deltaX": 65,
+        "fireAtStep": 1875,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 65,
+        "fireAtStep": 2250,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 65,
+        "fireAtStep": 2625,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 65,
+        "fireAtStep": 3000,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 109,
+        "fireAtStep": 2250,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 69,
+        "fireAtStep": 3375,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 85,
+        "fireAtStep": 2625,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 125,
+        "fireAtStep": 2250,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 64,
+        "fireAtStep": 2625,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 64,
+        "fireAtStep": 3000,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 64,
+        "fireAtStep": 3375,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 60,
+        "fireAtStep": 2625,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 40,
+        "fireAtStep": 2250,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 40,
+        "fireAtStep": 2625,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 32,
+        "fireAtStep": 2625,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 36,
+        "fireAtStep": 2250,
+        "successRate": 0.07692307692307693
+      },
+      {
         "disruptId": "D5",
-        "fireAtStep": 2400,
-        "successRate": 0.047619047619047616
+        "deltaX": 71,
+        "fireAtStep": 3375,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 91,
+        "fireAtStep": 3000,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 107,
+        "fireAtStep": 2250,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 123,
+        "fireAtStep": 2250,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 65,
+        "fireAtStep": 3000,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 82,
+        "fireAtStep": 2625,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 67,
+        "fireAtStep": 2625,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 68,
+        "fireAtStep": 3375,
+        "successRate": 0.07692307692307693
       },
       {
         "disruptId": "D7",
-        "fireAtStep": 2100,
-        "successRate": 0.047619047619047616
+        "deltaX": 61,
+        "fireAtStep": 2625,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 78,
+        "fireAtStep": 2625,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 61,
+        "fireAtStep": 3000,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 61,
+        "fireAtStep": 3375,
+        "successRate": 0.23076923076923078
       },
       {
         "disruptId": "D8",
-        "fireAtStep": 1950,
-        "successRate": 0.047619047619047616
+        "deltaX": 51,
+        "fireAtStep": 2625,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D8",
+        "deltaX": 52,
+        "fireAtStep": 2625,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 60,
+        "fireAtStep": 2625,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 60,
+        "fireAtStep": 3000,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 62,
+        "fireAtStep": 2625,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 62,
+        "fireAtStep": 3000,
+        "successRate": 0.15384615384615385
       }
     ],
     "A5": [
       {
         "disruptId": "D1",
-        "fireAtStep": 1200,
-        "successRate": 0.047619047619047616
+        "deltaX": 122,
+        "fireAtStep": 3750,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 144,
+        "fireAtStep": 3750,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 162,
+        "fireAtStep": 4125,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 194,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 225,
+        "fireAtStep": 3750,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 225,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 223,
+        "fireAtStep": 3750,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 227,
+        "fireAtStep": 3750,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 151,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 169,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 151,
+        "fireAtStep": 4500,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 146,
+        "fireAtStep": 4125,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 220,
+        "fireAtStep": 3375,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 220,
+        "fireAtStep": 3750,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 222,
+        "fireAtStep": 3375,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 222,
+        "fireAtStep": 3750,
+        "successRate": 0.15384615384615385
       },
       {
         "disruptId": "D6",
-        "fireAtStep": 1200,
-        "successRate": 0.09523809523809523
+        "deltaX": 217,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
       },
       {
         "disruptId": "D6",
-        "fireAtStep": 1350,
-        "successRate": 0.09523809523809523
+        "deltaX": 218,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 220,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 221,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 219,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 220,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 224,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
       },
       {
         "disruptId": "D9",
-        "fireAtStep": 1200,
-        "successRate": 0.047619047619047616
+        "deltaX": 192,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 193,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 200,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 204,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
       }
     ],
     "A6": [
       {
+        "disruptId": "D1",
+        "deltaX": 105,
+        "fireAtStep": 3000,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 135,
+        "fireAtStep": 3375,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 151,
+        "fireAtStep": 4125,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 170,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
         "disruptId": "D2",
-        "fireAtStep": 1650,
-        "successRate": 0.047619047619047616
+        "deltaX": 206,
+        "fireAtStep": 3000,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 206,
+        "fireAtStep": 4500,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 207,
+        "fireAtStep": 3375,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 207,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
       },
       {
         "disruptId": "D3",
-        "fireAtStep": 1500,
-        "successRate": 0.047619047619047616
+        "deltaX": 192,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 192,
+        "fireAtStep": 4500,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 193,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 193,
+        "fireAtStep": 4500,
+        "successRate": 0.15384615384615385
       },
       {
         "disruptId": "D4",
-        "fireAtStep": 1950,
-        "successRate": 0.047619047619047616
+        "deltaX": 132,
+        "fireAtStep": 3750,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 148,
+        "fireAtStep": 4125,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 164,
+        "fireAtStep": 4125,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 134,
+        "fireAtStep": 3750,
+        "successRate": 0.07692307692307693
       },
       {
         "disruptId": "D5",
-        "fireAtStep": 1350,
-        "successRate": 0.047619047619047616
+        "deltaX": 204,
+        "fireAtStep": 3000,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 204,
+        "fireAtStep": 3750,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 204,
+        "fireAtStep": 4125,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 204,
+        "fireAtStep": 4500,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 199,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 199,
+        "fireAtStep": 4500,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 200,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 200,
+        "fireAtStep": 4500,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 199,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 199,
+        "fireAtStep": 4500,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 203,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 203,
+        "fireAtStep": 4500,
+        "successRate": 0.15384615384615385
       }
     ],
     "A7": [
       {
+        "disruptId": "D1",
+        "deltaX": 59,
+        "fireAtStep": 3375,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 59,
+        "fireAtStep": 4125,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 59,
+        "fireAtStep": 4500,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 55,
+        "fireAtStep": 3750,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 124,
+        "fireAtStep": 3375,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 71,
+        "fireAtStep": 4125,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 88,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 105,
+        "fireAtStep": 3750,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 58,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 58,
+        "fireAtStep": 4500,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 59,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 59,
+        "fireAtStep": 4500,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 27,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 27,
+        "fireAtStep": 4500,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 33,
+        "fireAtStep": 3750,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 33,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 67,
+        "fireAtStep": 4125,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 88,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 105,
+        "fireAtStep": 3750,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 122,
+        "fireAtStep": 3375,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 73,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 73,
+        "fireAtStep": 4500,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 64,
+        "fireAtStep": 4125,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 72,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
         "disruptId": "D7",
-        "fireAtStep": 2700,
-        "successRate": 0.047619047619047616
+        "deltaX": 56,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 74,
+        "fireAtStep": 4125,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 57,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 58,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
       },
       {
         "disruptId": "D8",
-        "fireAtStep": 2700,
-        "successRate": 0.09523809523809523
+        "deltaX": 46,
+        "fireAtStep": 4125,
+        "successRate": 0.07692307692307693
       },
       {
-        "disruptId": "D8",
-        "fireAtStep": 2850,
-        "successRate": 0.09523809523809523
+        "disruptId": "D9",
+        "deltaX": 52,
+        "fireAtStep": 4125,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 53,
+        "fireAtStep": 4125,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 55,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 57,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
       }
     ],
     "A8": [
       {
         "disruptId": "D1",
-        "fireAtStep": 1800,
-        "successRate": 0.09523809523809523
+        "deltaX": 167,
+        "fireAtStep": 3750,
+        "successRate": 0.23076923076923078
       },
       {
         "disruptId": "D1",
-        "fireAtStep": 1950,
-        "successRate": 0.09523809523809523
+        "deltaX": 133,
+        "fireAtStep": 3375,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 150,
+        "fireAtStep": 3750,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 185,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 197,
+        "fireAtStep": 3000,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 197,
+        "fireAtStep": 3375,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 197,
+        "fireAtStep": 3750,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 197,
+        "fireAtStep": 4500,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 186,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 186,
+        "fireAtStep": 4500,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 188,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 188,
+        "fireAtStep": 4500,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 119,
+        "fireAtStep": 3750,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 137,
+        "fireAtStep": 4125,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 166,
+        "fireAtStep": 4125,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 127,
+        "fireAtStep": 3750,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 195,
+        "fireAtStep": 3000,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 195,
+        "fireAtStep": 3375,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 195,
+        "fireAtStep": 4125,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 195,
+        "fireAtStep": 4500,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 192,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 192,
+        "fireAtStep": 4500,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 193,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 193,
+        "fireAtStep": 4500,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 193,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 193,
+        "fireAtStep": 4500,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 195,
+        "fireAtStep": 4125,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 195,
+        "fireAtStep": 4500,
+        "successRate": 0.15384615384615385
       },
       {
         "disruptId": "D9",
-        "fireAtStep": 1800,
-        "successRate": 0.09523809523809523
+        "deltaX": 164,
+        "fireAtStep": 3750,
+        "successRate": 0.07692307692307693
       },
       {
         "disruptId": "D9",
-        "fireAtStep": 1950,
-        "successRate": 0.09523809523809523
+        "deltaX": 183,
+        "fireAtStep": 4500,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 166,
+        "fireAtStep": 3750,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 168,
+        "fireAtStep": 3750,
+        "successRate": 0.07692307692307693
       }
     ],
     "A9": [
       {
+        "disruptId": "D1",
+        "deltaX": 64,
+        "fireAtStep": 1500,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 64,
+        "fireAtStep": 1875,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 64,
+        "fireAtStep": 3375,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 58,
+        "fireAtStep": 1875,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 71,
+        "fireAtStep": 3000,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 127,
+        "fireAtStep": 2250,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 152,
+        "fireAtStep": 1875,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 75,
+        "fireAtStep": 3000,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 63,
+        "fireAtStep": 2625,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 63,
+        "fireAtStep": 3000,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 63,
+        "fireAtStep": 3375,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 58,
+        "fireAtStep": 2625,
+        "successRate": 0.15384615384615385
+      },
+      {
         "disruptId": "D4",
-        "fireAtStep": 2850,
-        "successRate": 0.047619047619047616
+        "deltaX": 35,
+        "fireAtStep": 2250,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 35,
+        "fireAtStep": 2625,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 37,
+        "fireAtStep": 2250,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 37,
+        "fireAtStep": 2625,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 67,
+        "fireAtStep": 3000,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 83,
+        "fireAtStep": 3000,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 128,
+        "fireAtStep": 1875,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D5",
+        "deltaX": 154,
+        "fireAtStep": 1875,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 62,
+        "fireAtStep": 2625,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 78,
+        "fireAtStep": 2625,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 95,
+        "fireAtStep": 2250,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 65,
+        "fireAtStep": 3375,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 62,
+        "fireAtStep": 2625,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 78,
+        "fireAtStep": 2625,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 62,
+        "fireAtStep": 3000,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 62,
+        "fireAtStep": 3375,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D8",
+        "deltaX": 53,
+        "fireAtStep": 2625,
+        "successRate": 0.07692307692307693
       },
       {
         "disruptId": "D9",
-        "fireAtStep": 2700,
-        "successRate": 0.047619047619047616
+        "deltaX": 61,
+        "fireAtStep": 2250,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 61,
+        "fireAtStep": 2625,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 61,
+        "fireAtStep": 3000,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D9",
+        "deltaX": 63,
+        "fireAtStep": 2250,
+        "successRate": 0.23076923076923078
       }
     ]
   },
   "escortTable": {
     "A1": {
+      "D1": [
+        {
+          "interceptDeltaX": 31,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 31,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 31,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 33,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        }
+      ],
       "D2": [
         {
-          "escortId": "D5",
+          "interceptDeltaX": 88,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 58,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 104,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 120,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
           "fireAtStep": 0
         }
       ],
       "D4": [
         {
-          "escortId": "D8",
-          "fireAtStep": 450
+          "interceptDeltaX": 10,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 10,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 12,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 12,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        }
+      ],
+      "D5": [
+        {
+          "interceptDeltaX": 84,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 102,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 118,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 54,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        }
+      ],
+      "D6": [
+        {
+          "interceptDeltaX": 56,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 57,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 58,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 62,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        }
+      ],
+      "D7": [
+        {
+          "interceptDeltaX": 56,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 57,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 58,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 60,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        }
+      ],
+      "D9": [
+        {
+          "interceptDeltaX": 28,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 29,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 30,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 32,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 224,
+          "fireAtStep": 0
         }
       ]
     },
     "A2": {
       "D1": [
         {
-          "escortId": "D2",
+          "interceptDeltaX": 65,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
           "fireAtStep": 0
         },
         {
-          "escortId": "D2",
+          "interceptDeltaX": 65,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 65,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 65,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
           "fireAtStep": 0
         }
       ],
-      "D9": [
-        {
-          "escortId": "D2",
-          "fireAtStep": 0
-        }
-      ]
-    },
-    "A3": {
       "D2": [
         {
-          "escortId": "D1",
+          "interceptDeltaX": 64,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
           "fireAtStep": 0
         },
         {
-          "escortId": "D1",
+          "interceptDeltaX": 92,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 122,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 139,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
           "fireAtStep": 0
         }
       ],
       "D3": [
         {
-          "escortId": "D1",
+          "interceptDeltaX": 61,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 61,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 64,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
           "fireAtStep": 0
         },
         {
-          "escortId": "D1",
+          "interceptDeltaX": 64,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        }
+      ],
+      "D4": [
+        {
+          "interceptDeltaX": 33,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
           "fireAtStep": 0
         },
         {
-          "escortId": "D1",
+          "interceptDeltaX": 33,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
           "fireAtStep": 0
         },
         {
-          "escortId": "D1",
+          "interceptDeltaX": 33,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
           "fireAtStep": 0
         },
         {
-          "escortId": "D1",
+          "interceptDeltaX": 35,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        }
+      ],
+      "D5": [
+        {
+          "interceptDeltaX": 69,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 88,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 105,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 125,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
           "fireAtStep": 0
         }
       ],
       "D6": [
         {
-          "escortId": "D1",
+          "interceptDeltaX": 87,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
           "fireAtStep": 0
         },
         {
-          "escortId": "D1",
+          "interceptDeltaX": 87,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
           "fireAtStep": 0
-        }
-      ]
-    },
-    "A4": {
-      "D5": [
+        },
         {
-          "escortId": "D1",
+          "interceptDeltaX": 72,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 75,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
           "fireAtStep": 0
         }
       ],
       "D7": [
         {
-          "escortId": "D1",
+          "interceptDeltaX": 62,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
           "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 79,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 62,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 63,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
         }
       ],
       "D8": [
         {
-          "escortId": "D1",
+          "interceptDeltaX": 49,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
           "fireAtStep": 0
+        }
+      ],
+      "D9": [
+        {
+          "interceptDeltaX": 61,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 61,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 61,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 62,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        }
+      ]
+    },
+    "A3": {
+      "D1": [
+        {
+          "interceptDeltaX": 123,
+          "interceptFireAtStep": 1875,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 107,
+          "interceptFireAtStep": 1875,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 153,
+          "interceptFireAtStep": 2250,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 83,
+          "interceptFireAtStep": 1500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        }
+      ],
+      "D2": [
+        {
+          "interceptDeltaX": 197,
+          "interceptFireAtStep": 1875,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 197,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 197,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 199,
+          "interceptFireAtStep": 1875,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        }
+      ],
+      "D3": [
+        {
+          "interceptDeltaX": 187,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 187,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 188,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 188,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        }
+      ],
+      "D4": [
+        {
+          "interceptDeltaX": 129,
+          "interceptFireAtStep": 2250,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 145,
+          "interceptFireAtStep": 2250,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 130,
+          "interceptFireAtStep": 2250,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 143,
+          "interceptFireAtStep": 2250,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        }
+      ],
+      "D5": [
+        {
+          "interceptDeltaX": 193,
+          "interceptFireAtStep": 1500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 193,
+          "interceptFireAtStep": 1875,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 193,
+          "interceptFireAtStep": 2250,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 193,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        }
+      ],
+      "D6": [
+        {
+          "interceptDeltaX": 195,
+          "interceptFireAtStep": 2250,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 195,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 195,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 195,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        }
+      ],
+      "D7": [
+        {
+          "interceptDeltaX": 190,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 190,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 190,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 191,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        }
+      ],
+      "D8": [
+        {
+          "interceptDeltaX": 179,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 181,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        }
+      ],
+      "D9": [
+        {
+          "interceptDeltaX": 190,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 166,
+          "interceptFireAtStep": 2250,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 190,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        },
+        {
+          "interceptDeltaX": 167,
+          "interceptFireAtStep": 2250,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 16,
+          "fireAtStep": 750
+        }
+      ]
+    },
+    "A4": {
+      "D1": [
+        {
+          "interceptDeltaX": 65,
+          "interceptFireAtStep": 1875,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 65,
+          "interceptFireAtStep": 2250,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 65,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 65,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        }
+      ],
+      "D2": [
+        {
+          "interceptDeltaX": 109,
+          "interceptFireAtStep": 2250,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 69,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 85,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 125,
+          "interceptFireAtStep": 2250,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        }
+      ],
+      "D3": [
+        {
+          "interceptDeltaX": 64,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 64,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 64,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 60,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        }
+      ],
+      "D4": [
+        {
+          "interceptDeltaX": 40,
+          "interceptFireAtStep": 2250,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 40,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 32,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 36,
+          "interceptFireAtStep": 2250,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        }
+      ],
+      "D5": [
+        {
+          "interceptDeltaX": 71,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 91,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 107,
+          "interceptFireAtStep": 2250,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 123,
+          "interceptFireAtStep": 2250,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        }
+      ],
+      "D6": [
+        {
+          "interceptDeltaX": 65,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 82,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 67,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 68,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        }
+      ],
+      "D7": [
+        {
+          "interceptDeltaX": 61,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 78,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 61,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 61,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        }
+      ],
+      "D8": [
+        {
+          "interceptDeltaX": 51,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 52,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        }
+      ],
+      "D9": [
+        {
+          "interceptDeltaX": 60,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 60,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 62,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 62,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
         }
       ]
     },
     "A5": {
       "D1": [
         {
-          "escortId": "D1",
-          "fireAtStep": 150
-        }
-      ],
-      "D6": [
-        {
-          "escortId": "D1",
-          "fireAtStep": 150
+          "interceptDeltaX": 122,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 1875
         },
         {
-          "escortId": "D1",
-          "fireAtStep": 750
+          "interceptDeltaX": 144,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 1875
+        },
+        {
+          "interceptDeltaX": 162,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 1875
+        },
+        {
+          "interceptDeltaX": 194,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 1875
         }
       ],
-      "D9": [
-        {
-          "escortId": "D1",
-          "fireAtStep": 150
-        }
-      ]
-    },
-    "A6": {
       "D2": [
         {
-          "escortId": "D1",
-          "fireAtStep": 150
-        }
-      ],
-      "D3": [
+          "interceptDeltaX": 225,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 1875
+        },
         {
-          "escortId": "D2",
-          "fireAtStep": 0
+          "interceptDeltaX": 225,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 1875
+        },
+        {
+          "interceptDeltaX": 223,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 1875
+        },
+        {
+          "interceptDeltaX": 227,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 1875
         }
       ],
       "D4": [
         {
-          "escortId": "D1",
-          "fireAtStep": 150
+          "interceptDeltaX": 151,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 1875
+        },
+        {
+          "interceptDeltaX": 169,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 1875
+        },
+        {
+          "interceptDeltaX": 151,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 1875
+        },
+        {
+          "interceptDeltaX": 146,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 1875
         }
       ],
       "D5": [
         {
-          "escortId": "D2",
-          "fireAtStep": 0
+          "interceptDeltaX": 220,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 1875
+        },
+        {
+          "interceptDeltaX": 220,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 1875
+        },
+        {
+          "interceptDeltaX": 222,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 1875
+        },
+        {
+          "interceptDeltaX": 222,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 1875
+        }
+      ],
+      "D6": [
+        {
+          "interceptDeltaX": 217,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 1875
+        },
+        {
+          "interceptDeltaX": 218,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 3750
+        },
+        {
+          "interceptDeltaX": 220,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 3750
+        },
+        {
+          "interceptDeltaX": 221,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 1875
+        }
+      ],
+      "D7": [
+        {
+          "interceptDeltaX": 219,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 1875
+        },
+        {
+          "interceptDeltaX": 220,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 1875
+        },
+        {
+          "interceptDeltaX": 224,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 1875
+        }
+      ],
+      "D9": [
+        {
+          "interceptDeltaX": 192,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 3750
+        },
+        {
+          "interceptDeltaX": 193,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 3750
+        },
+        {
+          "interceptDeltaX": 200,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 1875
+        },
+        {
+          "interceptDeltaX": 204,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 32,
+          "fireAtStep": 1875
+        }
+      ]
+    },
+    "A6": {
+      "D1": [
+        {
+          "interceptDeltaX": 105,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 135,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 151,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 170,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        }
+      ],
+      "D2": [
+        {
+          "interceptDeltaX": 206,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 206,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 207,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 207,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        }
+      ],
+      "D3": [
+        {
+          "interceptDeltaX": 192,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 192,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 193,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 193,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        }
+      ],
+      "D4": [
+        {
+          "interceptDeltaX": 132,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 148,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 164,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 134,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        }
+      ],
+      "D5": [
+        {
+          "interceptDeltaX": 204,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 204,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 204,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 204,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        }
+      ],
+      "D6": [
+        {
+          "interceptDeltaX": 199,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 199,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 200,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 200,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        }
+      ],
+      "D7": [
+        {
+          "interceptDeltaX": 199,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 199,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 203,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 203,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 375
         }
       ]
     },
     "A7": {
+      "D1": [
+        {
+          "interceptDeltaX": 59,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 59,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 208,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 59,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 208,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 55,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        }
+      ],
+      "D2": [
+        {
+          "interceptDeltaX": 124,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 71,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 88,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 105,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        }
+      ],
+      "D3": [
+        {
+          "interceptDeltaX": 58,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 58,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 59,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 59,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        }
+      ],
+      "D4": [
+        {
+          "interceptDeltaX": 27,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 27,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 33,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 33,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        }
+      ],
+      "D5": [
+        {
+          "interceptDeltaX": 67,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 88,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 105,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 122,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        }
+      ],
+      "D6": [
+        {
+          "interceptDeltaX": 73,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 73,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 64,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 72,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        }
+      ],
       "D7": [
         {
-          "escortId": "D2",
-          "fireAtStep": 0
+          "interceptDeltaX": 56,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 74,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 57,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 58,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
         }
       ],
       "D8": [
         {
-          "escortId": "D2",
-          "fireAtStep": 0
+          "interceptDeltaX": 46,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        }
+      ],
+      "D9": [
+        {
+          "interceptDeltaX": 52,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
         },
         {
-          "escortId": "D2",
-          "fireAtStep": 0
+          "interceptDeltaX": 53,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 55,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
+        },
+        {
+          "interceptDeltaX": 57,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 375
         }
       ]
     },
     "A8": {
       "D1": [
         {
-          "escortId": "D5",
-          "fireAtStep": 300
+          "interceptDeltaX": 167,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
         },
         {
-          "escortId": "D5",
-          "fireAtStep": 300
+          "interceptDeltaX": 133,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 150,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 185,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
         }
       ],
-      "D9": [
+      "D2": [
         {
-          "escortId": "D5",
-          "fireAtStep": 300
+          "interceptDeltaX": 197,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
         },
         {
-          "escortId": "D5",
-          "fireAtStep": 300
+          "interceptDeltaX": 197,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 197,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 197,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
         }
-      ]
-    },
-    "A9": {
+      ],
+      "D3": [
+        {
+          "interceptDeltaX": 186,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 186,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 188,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 188,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        }
+      ],
       "D4": [
         {
-          "escortId": "D3",
+          "interceptDeltaX": 119,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 137,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 166,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 127,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        }
+      ],
+      "D5": [
+        {
+          "interceptDeltaX": 195,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 195,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 195,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 195,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        }
+      ],
+      "D6": [
+        {
+          "interceptDeltaX": 192,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 192,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 193,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 193,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        }
+      ],
+      "D7": [
+        {
+          "interceptDeltaX": 193,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 193,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 195,
+          "interceptFireAtStep": 4125,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 195,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
           "fireAtStep": 0
         }
       ],
       "D9": [
         {
-          "escortId": "D2",
-          "fireAtStep": 450
+          "interceptDeltaX": 164,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 183,
+          "interceptFireAtStep": 4500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 166,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 168,
+          "interceptFireAtStep": 3750,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        }
+      ]
+    },
+    "A9": {
+      "D1": [
+        {
+          "interceptDeltaX": 64,
+          "interceptFireAtStep": 1500,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 64,
+          "interceptFireAtStep": 1875,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 64,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 58,
+          "interceptFireAtStep": 1875,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 0
+        }
+      ],
+      "D2": [
+        {
+          "interceptDeltaX": 71,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 127,
+          "interceptFireAtStep": 2250,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 152,
+          "interceptFireAtStep": 1875,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 75,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        }
+      ],
+      "D3": [
+        {
+          "interceptDeltaX": 63,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 63,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 63,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 58,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 0
+        }
+      ],
+      "D4": [
+        {
+          "interceptDeltaX": 35,
+          "interceptFireAtStep": 2250,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 35,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 37,
+          "interceptFireAtStep": 2250,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 37,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 0
+        }
+      ],
+      "D5": [
+        {
+          "interceptDeltaX": 67,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 83,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 128,
+          "interceptFireAtStep": 1875,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 154,
+          "interceptFireAtStep": 1875,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 0
+        }
+      ],
+      "D6": [
+        {
+          "interceptDeltaX": 62,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 78,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 95,
+          "interceptFireAtStep": 2250,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 65,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        }
+      ],
+      "D7": [
+        {
+          "interceptDeltaX": 62,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 78,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 62,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 62,
+          "interceptFireAtStep": 3375,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 160,
+          "fireAtStep": 0
+        }
+      ],
+      "D8": [
+        {
+          "interceptDeltaX": 53,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        }
+      ],
+      "D9": [
+        {
+          "interceptDeltaX": 61,
+          "interceptFireAtStep": 2250,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 61,
+          "interceptFireAtStep": 2625,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 61,
+          "interceptFireAtStep": 3000,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 63,
+          "interceptFireAtStep": 2250,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 144,
+          "fireAtStep": 0
         }
       ]
     }
