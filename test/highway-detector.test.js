@@ -249,7 +249,13 @@ test('2段構えが意味を持つことの確認: 軌跡は周期的だが近�
   let found = false;
   for (let i = 0; i < 3000 && !found; i++) {
     const genome = createRandomGenome(() => rng.next());
-    const tpl = { cells: toTemplateCells(genome), antX: genome.antX, antY: genome.antY, antDir: genome.antDir, rule: genome.rule };
+    // ⚠️ v5: genome は antX を持たない。実体化は正準の発射列(antX=0)で行う
+    // (左右トーラスなので x 平行移動は力学の厳密な対称性。evaluate-projectile.js の
+    // CANONICAL_ANT_X と同じ考え方)。
+    const tpl = E.instantiateTemplate(
+      { cells: toTemplateCells(genome), antY: genome.antY, antDir: genome.antDir, rule: genome.rule },
+      0,
+    );
     const r = E.simulateSearch(tpl, { life: C.SEARCH_LIFE, trackPath: true });
     const path = toUnwrappedSearchPathLocal(r.path);
     const candidate = detectHighwayFromPath(path);

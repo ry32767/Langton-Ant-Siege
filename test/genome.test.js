@@ -6,10 +6,12 @@ import {
   validateGenome,
   cloneGenome,
   genomeKey,
+  identityKey,
   toTemplateCells,
   costOfGenome,
   canonicalRule,
 } from '../src/search/genome.js';
+import { ZONE_DEPTH } from '../src/config.js';
 
 // engine.js に依存しない、テスト専用の決定論的 xorshift32 RNG。
 function makeRng(seed) {
@@ -57,7 +59,7 @@ test('genomeKey は同じ内容なら同じキー、違えば違うキーを返�
   assert.equal(genomeKey(g), genomeKey(clone));
 
   const different = cloneGenome(g);
-  different.antX = (different.antX + 1) % 60;
+  different.antY = (different.antY + 1) % ZONE_DEPTH;
   assert.notEqual(genomeKey(g), genomeKey(different));
 });
 
@@ -79,14 +81,14 @@ test('genomeKey は cells の並び順に依存しない(座標でソートさ�
   assert.equal(genomeKey(g), genomeKey(reordered));
 });
 
-test('toTemplateCells は [x,y,state] の3要素配列の配列を返す', () => {
+test('toTemplateCells は [dx,dy,state] の3要素配列の配列を返す', () => {
   const rng = makeRng(4);
   const g = createRandomGenome(rng);
   const tpl = toTemplateCells(g);
   assert.equal(tpl.length, g.cells.length);
   for (let i = 0; i < tpl.length; i++) {
     assert.equal(tpl[i].length, 3);
-    assert.deepEqual(tpl[i], [g.cells[i].x, g.cells[i].y, g.cells[i].state]);
+    assert.deepEqual(tpl[i], [g.cells[i].dx, g.cells[i].dy, g.cells[i].state]);
   }
 });
 
@@ -112,10 +114,9 @@ test('costOfGenome は baseCost + cells.length で、ルール長は無関係', 
 test('validateGenome は不変条件違反を個別に検出する', () => {
   const base = {
     rule: 'RL',
-    antX: 0,
     antY: 0,
     antDir: 0,
-    cells: [{ x: 0, y: 0, state: 0 }],
+    cells: [{ dx: 0, dy: 0, state: 0 }],
   };
   assert.deepEqual(validateGenome(base), []);
 
@@ -123,19 +124,73 @@ test('validateGenome は不変条件違反を個別に検出する', () => {
   assert.ok(validateGenome({ ...base, rule: 'X' + 'R'.repeat(15) }).length > 0); // 不正な記号
   assert.ok(validateGenome({ ...base, cells: [] }).length > 0); // セル0個
   assert.ok(
-    validateGenome({ ...base, cells: [{ x: 0, y: 0, state: 5 }] }).length > 0, // state >= colorCount
+    validateGenome({ ...base, cells: [{ dx: 0, dy: 0, state: 5 }] }).length > 0, // state >= colorCount
   );
-  assert.ok(validateGenome({ ...base, antX: -1 }).length > 0);
-  assert.ok(validateGenome({ ...base, antY: 16 }).length > 0);
+  assert.ok(validateGenome({ ...base, antY: ZONE_DEPTH }).length > 0); // 配置帯の外
   assert.ok(validateGenome({ ...base, antDir: 4 }).length > 0);
   assert.ok(
     validateGenome({
       ...base,
       cells: [
-        { x: 1, y: 1, state: 0 },
-        { x: 1, y: 1, state: 1 },
+        { dx: 1, dy: 1, state: 0 },
+        { dx: 1, dy: 1, state: 1 },
       ],
     }).length > 0, // 座標重複
   );
   assert.ok(validateGenome({ ...base, rule: 'LLRLLR' }).length > 0); // 原始形でない(LLRの繰り返し)
+});
+
+test('validateGenome は antX の混入を検出する', () => {
+  const base = {
+    rule: 'RL',
+    antY: 0,
+    antDir: 0,
+    cells: [{ dx: 0, dy: 0, state: 0 }],
+  };
+  assert.deepEqual(validateGenome(base), []);
+  assert.ok(validateGenome({ ...base, antX: 0 }).length > 0); // genome は antX を持ってはいけない
+});
+
+test('validateGenome は antY + dy の配置帯はみ出しを検出する', () => {
+  const base = {
+    rule: 'RL',
+    antY: 0,
+    antDir: 0,
+    cells: [{ dx: 0, dy: -1, state: 0 }], // antY(0) + dy(-1) = -1 は配置帯の外
+  };
+  const errors = validateGenome(base);
+  assert.ok(errors.length > 0);
+  assert.ok(errors.some((e) => e.includes('配置帯の外')));
+
+  // 境界: antY + dy がちょうど ZONE_DEPTH に達する場合も外
+  const outAtTop = {
+    rule: 'RL',
+    antY: ZONE_DEPTH - 1,
+    antDir: 0,
+    cells: [{ dx: 0, dy: 1, state: 0 }], // (ZONE_DEPTH-1) + 1 = ZONE_DEPTH は範囲外
+  };
+  assert.ok(validateGenome(outAtTop).some((e) => e.includes('配置帯の外')));
+});
+
+test('identityKey は "antY,antDir" を返し、antY か antDir が違えば違うキーになる', () => {
+  const rng = makeRng(5);
+  const g = createRandomGenome(rng);
+  assert.equal(identityKey(g), `${g.antY},${g.antDir}`);
+
+  const diffAntY = cloneGenome(g);
+  diffAntY.antY = (diffAntY.antY + 1) % ZONE_DEPTH;
+  assert.notEqual(identityKey(g), identityKey(diffAntY));
+
+  const diffAntDir = cloneGenome(g);
+  diffAntDir.antDir = (diffAntDir.antDir + 1) % 4;
+  assert.notEqual(identityKey(g), identityKey(diffAntDir));
+});
+
+test('createRandomGenome が生成する genome は必ず validateGenome を通る(シードを変えて200個)', () => {
+  for (let seed = 1; seed <= 200; seed++) {
+    const rng = makeRng(seed * 7919 + 1);
+    const g = createRandomGenome(rng);
+    const errors = validateGenome(g);
+    assert.deepEqual(errors, [], `seed=${seed} で違反: ${errors.join(' / ')}`);
+  }
 });

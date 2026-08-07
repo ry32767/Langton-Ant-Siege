@@ -56,7 +56,7 @@
       <div class="match-layout">
         <div class="board-column">
           <div class="battle-area">
-            <canvas id="board" role="img" aria-label="盤面(60列×120行、上が自陣、下が敵陣)"></canvas>
+            <canvas id="board" tabindex="0" role="img" aria-label="盤面(256列×256行、上が自陣、下が敵陣、中央192列が得点ゲート・左右32列ずつは壁)。テンプレート選択中はクリックまたは矢印キー(Shiftで16列)で発射列を選べます"></canvas>
             <div id="result-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="result-title">
               <div class="overlay-panel">
                 <h2 id="result-title">-</h2>
@@ -79,6 +79,11 @@
             <button data-tab="disrupt" class="tab" role="tab" aria-selected="false">妨害</button>
           </div>
           <div id="template-list" class="template-list" role="tabpanel"></div>
+          <div class="launch-panel" id="launch-panel">
+            <div class="hud-row">発射列 x=<span id="launch-x" class="num">-</span></div>
+            <div class="hud-row">予測到達列 x=<span id="launch-entry" class="num">-</span></div>
+            <p id="launch-gate-warning" class="fire-reason" role="status" aria-live="polite"></p>
+          </div>
           <div class="fire-row">
             <button id="btn-fire" class="btn btn-primary" disabled>発射</button>
             <span id="fire-reason" class="fire-reason" role="status" aria-live="polite"></span>

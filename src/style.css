@@ -340,6 +340,11 @@ body {
   aspect-ratio: var(--board-aspect);
 }
 
+/* テンプレート選択中(発射列を選べる状態)はクリック操作を示すカーソルにする */
+#board.launch-selectable {
+  cursor: crosshair;
+}
+
 @media (min-width: 900px) {
   .match-layout {
     flex-direction: row;
@@ -555,6 +560,16 @@ body {
   color: var(--sumi-soft);
   font-size: var(--fs-sm);
   text-align: center;
+}
+
+.launch-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-2);
+  background-color: var(--paper);
+  border: var(--border-fine);
+  border-radius: var(--radius);
 }
 
 .fire-row {

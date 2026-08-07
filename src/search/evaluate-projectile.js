@@ -18,7 +18,7 @@
 //     最終テンプレート選抜(9×9)のゲートに使う。options.strict===true のときだけ実行する。
 
 import * as C from '../config.js';
-import { simulateSolo, simulateSearch } from '../engine.js';
+import { simulateSolo, simulateSearch, instantiateTemplate } from '../engine.js';
 import { toTemplateCells, costOfGenome } from './genome.js';
 import { detectHighwayFromPath, directionBin, verifyHighwayStrict } from './highway-detector.js';
 
@@ -55,15 +55,27 @@ function dirFromDelta(dx, dy) {
   return null;
 }
 
-/** genome を simulateSolo に渡せる template 形へ変換する。 */
+/**
+ * genome を simulateSolo / simulateSearch に渡せる template 形へ変換する。
+ *
+ * ⚠️ v5: genome は antX を持たない(発射列は発射時に選ぶ自由度)。評価は
+ * **正準の発射列 antX=0** で行う。左右がトーラスなので x 方向の平行移動は力学の
+ * 厳密な対称性で、どの列で評価しても周期・並進・形成時間・到達ステップ数は同じになる。
+ * 変わるのは到達 x だけなので、それは `game.entryXAt0`(antX=0 のときの到達列)として
+ * 記録し、実プレイでは `antX + entryXAt0 (mod WIDTH)` が実際の到達列になる。
+ */
+export const CANONICAL_ANT_X = 0;
+
 function toTemplate(genome) {
-  return {
-    cells: toTemplateCells(genome),
-    antX: genome.antX,
-    antY: genome.antY,
-    antDir: genome.antDir,
-    rule: genome.rule,
-  };
+  return instantiateTemplate(
+    {
+      cells: toTemplateCells(genome),
+      antY: genome.antY,
+      antDir: genome.antDir,
+      rule: genome.rule,
+    },
+    CANONICAL_ANT_X,
+  );
 }
 
 /** speedBin: 0.0..1.0 を C.ARCHIVE1.speedBins 個に等分する(超過分は最終ビンに丸める)。 */
@@ -140,14 +152,29 @@ export function evaluateProjectile(genome, options = {}) {
         verifiedCycles: null,
       };
 
-  // ---- ゲーム評価: 実ゲーム条件(60x120・左右ラップ・上下場外・SCORE_LINE_Yで得点) ----
-  // simulateSolo 自体が既にこの規則を実装しているので、そのまま呼ぶだけでよい。
-  const gameLife = options.gameLife ?? C.ATTACK_LIFE;
+  // ---- ゲーム評価: 実ゲーム条件(256x256・左右ラップ・上下場外・SCORE_LINE_Yで到達) ----
+  //
+  // ⚠️ v5: 寿命は ATTACK_LIFE ではなく **GAME_LIFE_SEARCH_CAP** で走らせ、実際に
+  // 敵陣へ到達したステップ数(arrivalStep)を記録する。こうしておくと ATTACK_LIFE を
+  // 後から変えても探索をやり直さずに再射影できる(arrivalStep <= 新しい寿命 か
+  // どうかを見るだけでよい。config.js の GAME_LIFE_SEARCH_CAP のコメント参照)。
+  //
+  // ⚠️ 到達判定は `reached`(敵陣に入ったか)であって `scored`(得点ゲートに入ったか)
+  // ではない。発射列 antX は発射時に自由に選べ、左右がトーラスなので到達 x を
+  // ゲート内に持ってくる antX は必ず存在する。つまりゲートはテンプレートの実力を
+  // 左右せず、実プレイで「どの列から撃つか」を縛るだけ(engine.js の simulateSolo 参照)。
+  const gameLife = options.gameLife ?? C.GAME_LIFE_SEARCH_CAP;
   const gameRun = simulateSolo(template, { life: gameLife });
+  const arrivalStep = gameRun.reached ? gameRun.steps : null;
   const game = {
-    scored: gameRun.scored,
+    reached: gameRun.reached,
+    // arrivalStep: 敵陣に到達したステップ数。未到達なら null。
+    arrivalStep,
     steps: gameRun.steps,
-    entryX: gameRun.scored ? gameRun.endX : null,
+    // entryXAt0: 正準発射列(antX=0)で撃ったときの到達列。実プレイでの到達列は
+    // (antX + entryXAt0) mod WIDTH になる。
+    entryXAt0: gameRun.reached ? gameRun.endX : null,
+    endY: gameRun.endY,
   };
 
   // ---- descriptor(MAP-Elites 探索中の評価。trajectoryPeriodic を使う) ----
@@ -165,7 +192,10 @@ export function evaluateProjectile(genome, options = {}) {
     ? Math.abs(highway.driftY) / Math.sqrt(highway.driftX * highway.driftX + highway.driftY * highway.driftY)
     : 0;
   // usability: ゲーム寿命内で得られる変位。開始位置から到達した y までの距離を、
-  // 得点ラインまでの必要距離で正規化する(得点すれば1.0に張り付く)。
+  // 得点ラインまでの必要距離で正規化する(到達すれば1.0に張り付く)。
+  // ⚠️ 分子は ATTACK_LIFE ではなく GAME_LIFE_SEARCH_CAP まで走らせた結果なので、
+  // ATTACK_LIFE を後から下げると quality が過大評価のまま残る。最終選抜は
+  // arrivalStep <= ATTACK_LIFE で別途ふるいにかけるので、ここでは緩いままでよい。
   const neededDistance = C.SCORE_LINE_Y - genome.antY;
   const usabilityNorm = neededDistance > 0 ? Math.max(0, Math.min(1, (gameRun.endY - genome.antY) / neededDistance)) : 0;
   // formationPenalty: formationStep の長さのペナルティ。未検出は最大ペナルティにする。
@@ -183,10 +213,31 @@ export function evaluateProjectile(genome, options = {}) {
   // ---- viable(§13 のゲーム射影。⚠️ 差分仕様 §13/§28 からの意図的な変更) ----
   // 差分仕様は driftX===0 && driftY>0 を条件に含めるが、実測(検出ハイウェイ7,680件)で
   // driftX===0 は1件のみ、しかもゲーム寿命の2.7倍かかり到達不能だった。盤面は左右
-  // ラップがあるため斜めハイウェイでも敵陣に到達できる(ランダム genome の1.81%が
-  // 実際に得点する)。driftX/driftY は descriptor.direction として記録するだけにし、
-  // viable の判定条件には入れない。
-  const viable = highway.trajectoryPeriodic && game.scored && genome.cells.length >= C.MIN_TEMPLATE_CELLS;
+  // ラップがあるため斜めハイウェイでも敵陣に到達できる。driftX/driftY は
+  // descriptor.direction として記録するだけにし、viable の判定条件には入れない。
+  //
+  // ⚠️ v5: 「寿命内に届くか」は options.attackLife(既定 C.ATTACK_LIFE)との比較で決める。
+  // シミュレーション自体は GAME_LIFE_SEARCH_CAP まで走らせてあるので、この閾値を
+  // 変えるだけで別の寿命に対する viable を再計算できる(再シミュレーション不要)。
+  const attackLife = options.attackLife ?? C.ATTACK_LIFE;
+  const viable =
+    highway.trajectoryPeriodic &&
+    game.reached &&
+    game.arrivalStep <= attackLife &&
+    genome.cells.length >= C.MIN_TEMPLATE_CELLS;
 
   return { highway, game, descriptor, quality, viable };
+}
+
+/**
+ * 既に評価済みの結果(evaluateProjectile の戻り値)を、別の ATTACK_LIFE で再射影する。
+ * 再シミュレーションを行わないので、寿命の掃引(scripts/tune-attack-life.mjs)が安い。
+ */
+export function isViableAtLife(result, attackLife) {
+  return (
+    result.highway.trajectoryPeriodic === true &&
+    result.game.reached === true &&
+    result.game.arrivalStep != null &&
+    result.game.arrivalStep <= attackLife
+  );
 }

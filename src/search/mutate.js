@@ -1,16 +1,20 @@
 // genome の突然変異オペレータ。純粋なデータ操作のみ(engine.js は import しない)。
 // 数値定数は src/config.js から取り、直書きしない(AGENTS.md「コーディング規約」)。
+//
+// ⚠️ v5: genome から antX(発射列)が消え、cells が **アリからの相対 (dx, dy)** に
+// なったのに合わせて、antX 系のオペレータを削除し、セル系のオペレータを近傍
+// (TEMPLATE_CELL_RADIUS)と配置帯(ZONE_DEPTH)の両方でクランプするように変えた。
 
 import {
   MIN_COLORS,
   MAX_COLORS,
   MAX_CELLS,
   MIN_TEMPLATE_CELLS,
-  WIDTH,
   ZONE_DEPTH,
+  TEMPLATE_CELL_RADIUS,
   MUTATION_COUNT_WEIGHTS,
 } from '../config.js';
-import { cloneGenome, canonicalRule } from './genome.js';
+import { cloneGenome, canonicalRule, isCellDyInZone } from './genome.js';
 
 /** rng の [0,n) 整数を返す(n は正整数)。 */
 function randInt(rng, n) {
@@ -54,9 +58,9 @@ function applyCanonicalRule(g, candidateRule) {
   if (lenChanged) rewrapCellStates(g);
 }
 
-/** (x,y) が cells 内のいずれかと重複するか。 */
-function collides(cells, x, y, ignoreIndex = -1) {
-  return cells.some((c, i) => i !== ignoreIndex && c.x === x && c.y === y);
+/** (dx,dy) が cells 内のいずれかと重複するか。 */
+function collides(cells, dx, dy, ignoreIndex = -1) {
+  return cells.some((c, i) => i !== ignoreIndex && c.dx === dx && c.dy === dy);
 }
 
 // ---- 個々の変異オペレータ ---------------------------------------------------
@@ -82,16 +86,17 @@ function opRuleDelete(g, rng) {
 }
 
 function opCellAdd(g, rng) {
-  // 配置帯(WIDTH*ZONE_DEPTH=960マス)はセル数上限(16)より十分広いので、
-  // 少ない試行回数でほぼ確実に空きマスが見つかる。見つからなければ何もしない(no-op)。
+  // アリ近傍((2R+1)^2 マス)は MAX_CELLS(16)より十分広いので、少ない試行回数で
+  // ほぼ確実に空きが見つかる。見つからなければ何もしない(no-op)。
+  const R = TEMPLATE_CELL_RADIUS;
   const MAX_ATTEMPTS = 50;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const x = randInt(rng, WIDTH);
-    const y = randInt(rng, ZONE_DEPTH);
-    if (!collides(g.cells, x, y)) {
-      g.cells.push({ x, y, state: randInt(rng, g.rule.length) });
-      return;
-    }
+    const dx = randInt(rng, 2 * R + 1) - R;
+    const dy = randInt(rng, 2 * R + 1) - R;
+    if (!isCellDyInZone(g.antY, dy)) continue; // 配置帯からはみ出す
+    if (collides(g.cells, dx, dy)) continue;
+    g.cells.push({ dx, dy, state: randInt(rng, g.rule.length) });
+    return;
   }
 }
 
@@ -101,19 +106,21 @@ function opCellDelete(g, rng) {
 }
 
 function opCellMove(g, rng) {
-  // 配置帯の中へ1マスずらす移動(reject 方式)。境界は配置帯にクランプし、
-  // 移動先が既存の別セルと重複する場合はこの変異を no-op として reject する。
+  // 1マスずらす移動(reject 方式)。近傍半径にクランプし、配置帯を出る移動と
+  // 座標が重複する移動はこの変異を no-op として reject する。
+  const R = TEMPLATE_CELL_RADIUS;
   const i = randInt(rng, g.cells.length);
   const cell = g.cells[i];
-  const axis = randInt(rng, 2); // 0:x, 1:y
+  const axis = randInt(rng, 2); // 0:dx, 1:dy
   const delta = rng() < 0.5 ? -1 : 1;
-  let nx = cell.x;
-  let ny = cell.y;
-  if (axis === 0) nx = Math.max(0, Math.min(WIDTH - 1, cell.x + delta));
-  else ny = Math.max(0, Math.min(ZONE_DEPTH - 1, cell.y + delta));
-  if (collides(g.cells, nx, ny, i)) return; // reject: 座標重複になるので何もしない
-  cell.x = nx;
-  cell.y = ny;
+  let ndx = cell.dx;
+  let ndy = cell.dy;
+  if (axis === 0) ndx = Math.max(-R, Math.min(R, cell.dx + delta));
+  else ndy = Math.max(-R, Math.min(R, cell.dy + delta));
+  if (!isCellDyInZone(g.antY, ndy)) return; // reject: 配置帯を出る
+  if (collides(g.cells, ndx, ndy, i)) return; // reject: 座標重複になる
+  cell.dx = ndx;
+  cell.dy = ndy;
 }
 
 function opCellState(g, rng) {
@@ -121,20 +128,26 @@ function opCellState(g, rng) {
   g.cells[i].state = randInt(rng, g.rule.length);
 }
 
-// アリの X は盤面全体(WIDTH)をトーラスとして扱うため mod で常に有効域に収まる。
-// Y は配置帯(ZONE_DEPTH)の境界を越えられないので clamp する(reject にすると
-// 境界上のアリが Y 方向にだけ変異できなくなり退化するため clamp を選んだ)。
-function opAntXPlus(g) {
-  g.antX = (g.antX + 1) % WIDTH;
-}
-function opAntXMinus(g) {
-  g.antX = (g.antX - 1 + WIDTH) % WIDTH;
+/**
+ * アリの行を1つ動かす。
+ * ⚠️ cells は相対座標なので、アリが動くと配置マスも一緒に動く。動かした先で
+ * 配置マスが配置帯からはみ出す場合は reject(no-op)にする。
+ * clamp ではなく reject にしているのは、clamp だと「はみ出したセルだけ潰れる」ような
+ * 中途半端な状態を作ってしまい、平行移動という意味が壊れるため。
+ */
+function moveAntY(g, delta) {
+  const ny = g.antY + delta;
+  if (ny < 0 || ny >= ZONE_DEPTH) return;
+  for (const cell of g.cells) {
+    if (!isCellDyInZone(ny, cell.dy)) return; // reject
+  }
+  g.antY = ny;
 }
 function opAntYPlus(g) {
-  g.antY = Math.min(ZONE_DEPTH - 1, g.antY + 1);
+  moveAntY(g, +1);
 }
 function opAntYMinus(g) {
-  g.antY = Math.max(0, g.antY - 1);
+  moveAntY(g, -1);
 }
 function opAntDir(g, rng) {
   g.antDir = randInt(rng, 4);
@@ -142,7 +155,7 @@ function opAntDir(g, rng) {
 
 /** その時点の genome に対して適用可能なオペレータ名の一覧を返す。 */
 function applicableOperators(g) {
-  const ops = ['bitFlip', 'cellState', 'antXPlus', 'antXMinus', 'antYPlus', 'antYMinus', 'antDir'];
+  const ops = ['bitFlip', 'cellState', 'antYPlus', 'antYMinus', 'antDir'];
   if (g.rule.length < MAX_COLORS) ops.push('ruleInsert');
   if (g.rule.length > MIN_COLORS) ops.push('ruleDelete');
   if (g.cells.length < MAX_CELLS) ops.push('cellAdd');
@@ -159,8 +172,6 @@ const OPERATORS = Object.freeze({
   cellDelete: opCellDelete,
   cellMove: opCellMove,
   cellState: opCellState,
-  antXPlus: opAntXPlus,
-  antXMinus: opAntXMinus,
   antYPlus: opAntYPlus,
   antYMinus: opAntYMinus,
   antDir: opAntDir,
@@ -180,6 +191,7 @@ function applyOneMutation(g, rng) {
  */
 export function mutate(genome, rng) {
   const g = cloneGenome(genome);
+  g.origin = 'mutation';
   const count = pickMutationCount(rng);
   for (let i = 0; i < count; i++) applyOneMutation(g, rng);
   return g;

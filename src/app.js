@@ -12,6 +12,7 @@ import {
   getStats,
 } from './engine.js';
 import { createCpuAgent } from './cpu.js';
+import { instantiateTemplate, scoringLaunchColumns, launchColumnScores, wrapX } from './template.js';
 
 // ---------------------------------------------------------------------------
 // DOM 参照
@@ -50,6 +51,10 @@ const fireReasonEl = document.getElementById('fire-reason');
 const threatItemsEl = document.getElementById('threat-items');
 const threatDetailEl = document.getElementById('threat-detail');
 
+const launchXEl = document.getElementById('launch-x');
+const launchEntryEl = document.getElementById('launch-entry');
+const launchGateWarningEl = document.getElementById('launch-gate-warning');
+
 const resultOverlay = document.getElementById('result-overlay');
 const resultTitleEl = document.getElementById('result-title');
 const resultDetailEl = document.getElementById('result-detail');
@@ -59,16 +64,29 @@ const btnBackTitle = document.getElementById('btn-back-title');
 // ---------------------------------------------------------------------------
 // 盤面描画の定数(論理解像度。CSSの表示サイズとは別)
 // ---------------------------------------------------------------------------
-const CELL_PX = 8; // 1セルの描画サイズ。60x120 → 480x960 が論理解像度
+// v5 で 256×256 になった。CELL_PX はもはやセルの描画バッファサイズを決めない
+// (ImageData は常に C.WIDTH×C.HEIGHT の1セル=1ピクセルで作る。下記 drawBoard 参照)。
+// ここで決まるのは方眼線・アリ・ラベルを描く論理座標系の解像度だけ。
+// --board-max-h(78vh)から実表示は概ね 800〜900 CSSpx になるので、DPR2でも過大にならない
+// よう CELL_PX=4(論理解像度 1024×1024)にした。8のままだと 2048×2048 になり、
+// 罫線描画(drawGrid が最大 256*2 本の線分をパスに積む)のコストが不要に増える。
+const CELL_PX = 4; // 1セルの論理描画サイズ。256×256 → 1024×1024 が論理解像度
 const CANVAS_W = C.WIDTH * CELL_PX;
 const CANVAS_H = C.HEIGHT * CELL_PX;
 
 const battleArea = document.querySelector('.battle-area');
 let setupCanvasRaf = null;
+/** setupCanvas が最後に計算した論理→表示スケール。drawGrid の細線間引き判定に使う
+ *  (CELL_PX は定数なので単体では「実際に何ピクセルで表示されるか」が分からない)。 */
+let boardDisplayScale = 1;
 
 // 描画バッファは常に CANVAS_W x CANVAS_H(論理解像度)のまま固定し、描画コードは
 // 一切変えない。CSS(aspect-ratio)が決めた実際の表示サイズを読み、そのCSSピクセル数
 // ×DPRだけバッキングストアを持たせ、論理解像度→表示解像度のスケールを setTransform で1本にする。
+// v5 で aspect-ratio が 1:1 になったので、縦横どちらかだけ計算すれば揃うという前提が
+// 崩れる余地がある(丸め誤差・レイアウト都合で縦横比が完全一致しない場合)。
+// 縦横それぞれのスケールを検算し、小さい方(＝全体が収まる方)を採用して非一様な
+// 引き伸ばしを避ける(DESIGN.md 不変条件1: 盤面を引き伸ばさない)。
 function setupCanvas() {
   if (setupCanvasRaf) cancelAnimationFrame(setupCanvasRaf);
   setupCanvasRaf = requestAnimationFrame(() => {
@@ -80,7 +98,10 @@ function setupCanvas() {
     const backingH = Math.max(1, Math.round(rect.height * dpr));
     canvas.width = backingW;
     canvas.height = backingH;
-    const scale = backingW / CANVAS_W; // aspect-ratio が 1:2 固定なので backingH/CANVAS_H と一致する
+    const scaleX = backingW / CANVAS_W;
+    const scaleY = backingH / CANVAS_H;
+    const scale = Math.min(scaleX, scaleY); // 非一様スケールにしない(引き伸ばし禁止)
+    boardDisplayScale = scale;
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
   });
 }
@@ -136,24 +157,33 @@ let rafId = null;
 let lastTs = 0;
 let accMs = 0;
 const STEP_MS = 1000 / C.STEPS_PER_SECOND;
-const MAX_STEPS_PER_FRAME = 16; // 極端な遅延時のスパイラル防止
+/**
+ * 1フレームで消化してよい論理ステップ数の上限(極端な遅延時のスパイラル防止)。
+ * v5 で 120→300 step/s に上げたため固定値16は前提が崩れている(120step/sの
+ * 前提だと16は約133msぶんにしかならず、30fps(≒33ms/frame)でも1フレームで
+ * 追いつききれない)。「30fpsまで落ちても実時間に追従できる最低ステップ数」
+ * = ceil(STEPS_PER_SECOND / 30) を基準に、瞬間的な遅延吸収の余裕を持たせて2倍にする。
+ * これを超える遅延は loop() 側の delta>250ms クランプが意図的に「追いつかず遅れる」
+ * 側に倒す(スパイラル防止が優先、これはバグではない)。
+ */
+const MAX_STEPS_PER_FRAME = Math.ceil(C.STEPS_PER_SECOND / 30) * 2; // 300/s → 20
 
 let activeTab = 'attack';
 let selectedTemplateId = null; // プレイヤーが選択中のテンプレート
 let selectedThreatAntId = null; // 選択中の敵攻撃アリ(識別・カウンター表示用)
+/**
+ * プレイヤーが選択中の発射列(antX)。§v5 で発射列が可変になったため、テンプレート選択とは
+ * 別に保持する。テンプレートを新規選択するたびに `defaultAntXForTemplate` の値に戻す
+ * (タスク要件: 「テンプレートを切り替えたら初期値に戻す」)。
+ */
+let selectedAntX = 0;
+let pointerSelectingAntX = false; // 盤面をポインタでドラッグして発射列を選んでいる最中か
 
 // engine.js はセルの「最後に触れた陣営」を直接は保持していない(match.lastToucher は
-// アリの id)。盤面描画にはどちらの陣営が触れたかが必要なので、id → sideIndex の対応表を
-// app.js 側で保持する(最小寿命 DISRUPT_LIFE=400 step ≫ MAX_STEPS_PER_FRAME=16 なので、
-// 1フレームの間にアリが発生して消えて id が失われることはない)。
-/**
- * そのセルを最後に触れた陣営を返す。0=未接触 / 1=side1(藍) / 2=side2(朱)。
- * engine.js が board と同じ長さで `match.lastToucherSide` を保守しているので、それをそのまま読む。
- * 色相=陣営・濃度=状態 という2軸の描画のうち、色相側の入力になる(DESIGN.md 参照)。
- */
-function toucherSideAt(i) {
-  return match.lastToucherSide[i];
-}
+// アリの id)。engine.js は board と同じ長さで `match.lastToucherSide` を保守しており、
+// 盤面描画(drawBoard の fillBoardImageData)はそれをそのまま読む。
+// 0=未接触 / 1=side1(藍) / 2=side2(朱)。色相=陣営・濃度=状態 という2軸の描画のうち、
+// 色相側の入力になる(DESIGN.md 参照)。
 
 /** CPU の乱数は match.rng に委譲する(Match.seed の擬似乱数を使う規則)。match 生成前に
  *  エージェントを作る必要があるため、遅延束縛のラッパーを渡す。 */
@@ -174,6 +204,7 @@ function startMatch(selectedMode) {
   mode = selectedMode;
   selectedTemplateId = null;
   selectedThreatAntId = null;
+  selectedAntX = 0;
   activeTab = 'attack';
 
   const agents = mode === 'cvc' ? [makeCpuAgent(0), makeCpuAgent(1)] : [null, makeCpuAgent(1)];
@@ -212,7 +243,7 @@ function backToTitle() {
 }
 
 // ---------------------------------------------------------------------------
-// ゲームループ(論理は固定ステップ120/秒、描画はrAF。アキュムレータ方式)
+// ゲームループ(論理は固定ステップ C.STEPS_PER_SECOND/秒、描画はrAF。アキュムレータ方式)
 // ---------------------------------------------------------------------------
 function loop(ts) {
   if (!lastTs) lastTs = ts;
@@ -242,20 +273,29 @@ function loop(ts) {
 // ---------------------------------------------------------------------------
 // 発射アクションの組み立て
 // ---------------------------------------------------------------------------
-function templateAction(kind, tpl) {
-  return {
-    kind,
-    cells: tpl.cells,
-    antX: tpl.antX,
-    antY: tpl.antY,
-    antDir: tpl.antDir,
-    templateId: tpl.id,
-  };
+/** テンプレート(相対 cells)を発射列 antX で実体化し、engine が受け取れる action にする。
+ *  座標変換は自前で書かず、必ず template.js の instantiateTemplate を経由する。 */
+function templateAction(kind, tpl, antX) {
+  const inst = instantiateTemplate(tpl, antX);
+  return { ...inst, kind };
 }
 
 function findTemplate(kind, id) {
   const list = kind === 'attack' ? templatesData.attack : templatesData.disrupt;
   return (list ?? []).find((t) => t.id === id) ?? null;
+}
+
+/**
+ * テンプレートを新規選択したときの発射列の初期値。
+ * 「得点ゲートに届く区間の中央」(タスク要件)。届く区間が無い(entryXAt0 が無い)
+ * テンプレートは、フォールバックとしてテンプレート既定の antX(無ければ盤面中央)を使う。
+ */
+function defaultAntXForTemplate(tpl) {
+  const gate = scoringLaunchColumns(tpl);
+  if (gate.count > 0) {
+    return wrapX(gate.min + Math.floor(gate.count / 2));
+  }
+  return wrapX(tpl.antX ?? Math.floor(C.WIDTH / 2));
 }
 
 // ---------------------------------------------------------------------------
@@ -337,7 +377,12 @@ function renderTemplateList() {
 
     card.addEventListener('click', () => {
       if (!check.ok) return; // トークン不足などは選択不可
-      selectedTemplateId = selectedTemplateId === tpl.id ? null : tpl.id;
+      if (selectedTemplateId === tpl.id) {
+        selectedTemplateId = null;
+      } else {
+        selectedTemplateId = tpl.id;
+        selectedAntX = defaultAntXForTemplate(tpl); // 新規選択時は初期値(得点ゲート中央)に戻す
+      }
       renderTemplateList();
       updateFireButton();
     });
@@ -375,7 +420,7 @@ function currentSelectedAction() {
   if (!selectedTemplateId) return null;
   const tpl = findTemplate(activeTab, selectedTemplateId);
   if (!tpl) return null;
-  return templateAction(activeTab, tpl);
+  return templateAction(activeTab, tpl, selectedAntX);
 }
 
 function updateFireButton() {
@@ -399,6 +444,58 @@ btnFire.addEventListener('click', () => {
   selectedTemplateId = null;
   renderTemplateList();
   updateFireButton();
+});
+
+// ---------------------------------------------------------------------------
+// 発射列(antX)の選択 — 盤面クリック/ドラッグ、キーボード(←/→、Shiftで16列)
+// プレイヤー vs CPU で、テンプレートを選択している間だけ有効。
+// ---------------------------------------------------------------------------
+
+/** ポインタイベントの clientX を盤面の論理列(0..WIDTH-1)に変換する。
+ *  CSS 表示サイズ(getBoundingClientRect)基準で計算するので、DPR やレイアウトの
+ *  スケールに依存しない。 */
+function antXFromPointerEvent(ev) {
+  const rect = canvas.getBoundingClientRect();
+  const ratio = rect.width > 0 ? (ev.clientX - rect.left) / rect.width : 0;
+  return wrapX(Math.floor(ratio * C.WIDTH));
+}
+
+function canSelectLaunchColumn() {
+  return mode !== 'cvc' && !!selectedTemplateId && !!match && match.phase !== 'finished';
+}
+
+canvas.addEventListener('pointerdown', (ev) => {
+  if (!canSelectLaunchColumn()) return;
+  pointerSelectingAntX = true;
+  selectedAntX = antXFromPointerEvent(ev);
+  canvas.setPointerCapture(ev.pointerId);
+});
+canvas.addEventListener('pointermove', (ev) => {
+  if (!pointerSelectingAntX || !canSelectLaunchColumn()) return;
+  selectedAntX = antXFromPointerEvent(ev);
+});
+canvas.addEventListener('pointerup', (ev) => {
+  if (!pointerSelectingAntX) return;
+  pointerSelectingAntX = false;
+  if (canvas.hasPointerCapture(ev.pointerId)) canvas.releasePointerCapture(ev.pointerId);
+});
+canvas.addEventListener('pointercancel', () => {
+  pointerSelectingAntX = false;
+});
+
+// キーボード操作(アクセシビリティのため必須): 盤面か操作パネルにフォーカスがある状態で
+// ←/→ で1列、Shift+←/→ で16列。テンプレートカードや発射ボタンなど、操作パネル内の
+// どの要素にフォーカスがあっても効くよう controlPanel.contains で判定する。
+document.addEventListener('keydown', (ev) => {
+  if (!canSelectLaunchColumn()) return;
+  if (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight') return;
+  const focused = document.activeElement;
+  const focusInBoard = focused === canvas;
+  const focusInPanel = controlPanel.contains(focused);
+  if (!focusInBoard && !focusInPanel) return;
+  ev.preventDefault();
+  const step = ev.shiftKey ? 16 : 1;
+  selectedAntX = wrapX(selectedAntX + (ev.key === 'ArrowLeft' ? -step : step));
 });
 
 // ---------------------------------------------------------------------------
@@ -545,34 +642,132 @@ function inkAlphaForState(state) {
   return INK_ALPHA_MIN + (INK_ALPHA_MAX - INK_ALPHA_MIN) * t;
 }
 
+/**
+ * board のバイト値(0..255。有効な状態は 0..MAX_COLORS-1)→ アルファ(0..255整数)の
+ * 事前計算テーブル。毎フレーム65,536セル分 inkAlphaForState を呼ぶコストを避ける。
+ * 状態0(未初期化の Uint8ClampedArray は0埋め)は0のまま = 紙のまま透明で、
+ * 現行ロジック(状態0は描かない)と同じ結果になる。
+ */
+const INK_ALPHA_BYTE_TABLE = (() => {
+  const table = new Uint8ClampedArray(256);
+  for (let s = 1; s < 256; s++) table[s] = Math.round(inkAlphaForState(s) * 255);
+  return table;
+})();
+
+/** "r, g, b" 形式の CSS 変数値を数値配列にパースする。 */
+function parseRgbVar(str) {
+  return str.split(',').map((s) => Number(s.trim()));
+}
+const AI_RGB_BYTES = parseRgbVar(COLOR_AI_RGB);
+const SHU_RGB_BYTES = parseRgbVar(COLOR_SHU_RGB);
+
+// ---------------------------------------------------------------------------
+// 盤面セルのオフスクリーン ImageData(1セル=1ピクセル、C.WIDTH×C.HEIGHT固定)。
+// v5 で盤面が 256×256=65,536セルになり、毎フレーム per-cell fillRect すると
+// 破綻する(旧: 60×120=7,200セル)。等倍のピクセルバッファに書き込んで
+// putImageData → drawImage で拡大描画する方式に置き換える。
+// ---------------------------------------------------------------------------
+const boardImageCanvas = document.createElement('canvas');
+boardImageCanvas.width = C.WIDTH;
+boardImageCanvas.height = C.HEIGHT;
+const boardImageCtx = boardImageCanvas.getContext('2d', { willReadFrequently: false });
+const boardImageData = boardImageCtx.createImageData(C.WIDTH, C.HEIGHT);
+
+/** match.board / lastToucherSide をオフスクリーンの ImageData に書き込み putImageData する。
+ *  状態0のセルも含め全ピクセルを毎回書く(消えたインクを透明に戻すため)。 */
+function fillBoardImageData() {
+  const data = boardImageData.data;
+  const board = match.board;
+  const toucherSide = match.lastToucherSide;
+  for (let i = 0; i < C.CELL_COUNT; i++) {
+    const side = toucherSide[i]; // 0=未接触 / 1=side1 / 2=side2
+    const rgb = side === 2 ? SHU_RGB_BYTES : AI_RGB_BYTES; // 未接触(通常起こらない)は藍側に倒す
+    const o = i * 4;
+    data[o] = rgb[0];
+    data[o + 1] = rgb[1];
+    data[o + 2] = rgb[2];
+    data[o + 3] = INK_ALPHA_BYTE_TABLE[board[i]];
+  }
+  boardImageCtx.putImageData(boardImageData, 0, 0);
+}
+
 function drawGrid() {
-  // 方眼紙: 細線を1セルごと、太線を10セルごとに引く。まとめて1本のパスにして負荷を抑える。
-  ctx.lineWidth = 1;
-  ctx.strokeStyle = COLOR_RULE_FINE;
-  ctx.beginPath();
-  for (let x = 0; x <= C.WIDTH; x++) {
-    if (x % 10 === 0) continue; // 太線側で描く
-    ctx.moveTo(x * CELL_PX + 0.5, 0);
-    ctx.lineTo(x * CELL_PX + 0.5, CANVAS_H);
+  // 方眼紙: 細線を1セルごと、太線を16セルごとに引く。まとめて1本のパスにして負荷を抑える。
+  // 太線間隔16は 256÷16=16分割(v5: 旧10は256を割り切らないため16に変更。DESIGN.md 参照)。
+  const MAJOR_STEP = 16;
+  // 1セルの実表示ピクセル数が2px未満だと細線は潰れて見えない上に描画コストだけが残るので間引く。
+  // CELL_PX は論理座標系の定数でしかないので、setupCanvas が計算した実スケールと掛け合わせて判定する。
+  const cellDisplayPx = CELL_PX * boardDisplayScale;
+  if (cellDisplayPx >= 2) {
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = COLOR_RULE_FINE;
+    ctx.beginPath();
+    for (let x = 0; x <= C.WIDTH; x++) {
+      if (x % MAJOR_STEP === 0) continue; // 太線側で描く
+      ctx.moveTo(x * CELL_PX + 0.5, 0);
+      ctx.lineTo(x * CELL_PX + 0.5, CANVAS_H);
+    }
+    for (let y = 0; y <= C.HEIGHT; y++) {
+      if (y % MAJOR_STEP === 0) continue;
+      ctx.moveTo(0, y * CELL_PX + 0.5);
+      ctx.lineTo(CANVAS_W, y * CELL_PX + 0.5);
+    }
+    ctx.stroke();
   }
-  for (let y = 0; y <= C.HEIGHT; y++) {
-    if (y % 10 === 0) continue;
-    ctx.moveTo(0, y * CELL_PX + 0.5);
-    ctx.lineTo(CANVAS_W, y * CELL_PX + 0.5);
-  }
-  ctx.stroke();
 
   ctx.strokeStyle = COLOR_RULE_MAJOR;
   ctx.beginPath();
-  for (let x = 0; x <= C.WIDTH; x += 10) {
+  for (let x = 0; x <= C.WIDTH; x += MAJOR_STEP) {
     ctx.moveTo(x * CELL_PX + 0.5, 0);
     ctx.lineTo(x * CELL_PX + 0.5, CANVAS_H);
   }
-  for (let y = 0; y <= C.HEIGHT; y += 10) {
+  for (let y = 0; y <= C.HEIGHT; y += MAJOR_STEP) {
     ctx.moveTo(0, y * CELL_PX + 0.5);
     ctx.lineTo(CANVAS_W, y * CELL_PX + 0.5);
   }
   ctx.stroke();
+}
+
+/**
+ * 得点ゲート(§v5)の描画。C.isInScoreGate を列ごとに評価して壁区間を求める
+ * (定数を直接使わず関数を経由することで、ゲートの定義が唯一の場所に留まる)。
+ * ネオンやグローは使わず、方眼紙に馴染む「沈んだ面+境界の点線」で表現する。
+ *
+ * 塗りは盤面全高ではなく、両陣営の配置可能帯(y<ZONE_DEPTH と y>=SCORE_LINE_Y)だけに
+ * 限定する。ゲートが効くのは「敵陣に到達した瞬間」だけで、中間地帯やゲート外側の
+ * 配置可能帯そのものは通常どおり配置・発射に使える。全高を塗ると「この列は使えない」
+ * という誤読を招くため。
+ */
+function drawScoreGateWalls() {
+  ctx.save();
+  ctx.fillStyle = COLOR_RULE_MAJOR;
+  ctx.globalAlpha = 0.28;
+  let wallStart = null;
+  for (let x = 0; x <= C.WIDTH; x++) {
+    const isWall = x < C.WIDTH && !C.isInScoreGate(x);
+    if (isWall && wallStart === null) wallStart = x;
+    if (!isWall && wallStart !== null) {
+      const wx = wallStart * CELL_PX;
+      const ww = (x - wallStart) * CELL_PX;
+      ctx.fillRect(wx, 0, ww, C.ZONE_DEPTH * CELL_PX); // side1 配置帯側
+      ctx.fillRect(wx, C.SCORE_LINE_Y * CELL_PX, ww, C.ZONE_DEPTH * CELL_PX); // side2 配置帯側
+      wallStart = null;
+    }
+  }
+  ctx.restore();
+
+  // ゲートの境界(壁と可動域の切れ目)を太めの点線で示す
+  ctx.save();
+  ctx.strokeStyle = COLOR_RULE_MAJOR;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([CELL_PX * 2, CELL_PX]);
+  ctx.beginPath();
+  ctx.moveTo(C.SCORE_GATE_X_MIN * CELL_PX, 0);
+  ctx.lineTo(C.SCORE_GATE_X_MIN * CELL_PX, CANVAS_H);
+  ctx.moveTo(C.SCORE_GATE_X_MAX * CELL_PX, 0);
+  ctx.lineTo(C.SCORE_GATE_X_MAX * CELL_PX, CANVAS_H);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawBoard() {
@@ -586,6 +781,7 @@ function drawBoard() {
   ctx.fillStyle = COLOR_SHU_WASH;
   ctx.fillRect(0, C.SCORE_LINE_Y * CELL_PX, CANVAS_W, C.ZONE_DEPTH * CELL_PX);
 
+  drawScoreGateWalls();
   drawGrid();
 
   ctx.strokeStyle = COLOR_RULE_MAJOR;
@@ -597,18 +793,11 @@ function drawBoard() {
   ctx.lineTo(CANVAS_W, C.SCORE_LINE_Y * CELL_PX + 0.5);
   ctx.stroke();
 
-  // セル(状態0は紙のまま描かない)。色相=最後に触れた陣営、濃度=状態値(0..15)。
-  for (let y = 0; y < C.HEIGHT; y++) {
-    for (let x = 0; x < C.WIDTH; x++) {
-      const i = y * C.WIDTH + x;
-      const st = match.board[i];
-      if (st === 0) continue;
-      const side = toucherSideAt(i); // 0=未接触 / 1=side1 / 2=side2
-      const rgb = side === 2 ? COLOR_SHU_RGB : COLOR_AI_RGB; // 未接触(通常起こらない)は藍側に倒す
-      ctx.fillStyle = `rgba(${rgb}, ${inkAlphaForState(st)})`;
-      ctx.fillRect(x * CELL_PX, y * CELL_PX, CELL_PX, CELL_PX);
-    }
-  }
+  // セル。色相=最後に触れた陣営、濃度=状態値(0..15)。ImageData を等倍で作り拡大描画する
+  // (per-cell fillRect は 65,536セルで破綻するため v5 で置き換えた)。
+  fillBoardImageData();
+  ctx.imageSmoothingEnabled = false; // 拡大時に補間でぼやけさせない(方眼紙のくっきり感を保つ)
+  ctx.drawImage(boardImageCanvas, 0, 0, CANVAS_W, CANVAS_H);
 }
 
 /** 向き(0=up,1=right,2=down,3=left)から矢印用の角度(ラジアン、0=右向き基準)。 */
@@ -671,19 +860,46 @@ function drawAnts(view) {
 }
 
 /** 選択中テンプレートのプレビュー(配置マス・アリの位置と向きを半透明で重ねる)。
- *  プレイヤーは常に side1 なので配置マスは藍で表示する(攻撃/妨害の区別はアリの形で示す)。 */
+ *  プレイヤーは常に side1 なので配置マスは藍で表示する(攻撃/妨害の区別はアリの形で示す)。
+ *  cells は**アリからの相対座標**なので、選択中の発射列 antX で instantiateTemplate を
+ *  通してから絶対座標に変換する(v5 で antX が可変になったため、tpl.cells を直接
+ *  絶対座標として描くと誤描画する)。 */
 function drawPreview() {
   if (mode === 'cvc' || !selectedTemplateId) return;
   const tpl = findTemplate(activeTab, selectedTemplateId);
   if (!tpl) return;
+  const inst = instantiateTemplate(tpl, selectedAntX);
   ctx.save();
   ctx.fillStyle = `rgba(${COLOR_AI_RGB}, 0.45)`;
-  for (const cell of tpl.cells) {
+  for (const cell of inst.cells) {
     const [x, y] = cell; // cells は [x, y, state] の3要素(state はプレビューでは使わない)
     ctx.fillRect(x * CELL_PX, y * CELL_PX, CELL_PX, CELL_PX);
   }
   ctx.restore();
-  drawAnt(tpl.antX, tpl.antY, tpl.antDir, COLOR_AI, activeTab, 0.7);
+  drawAnt(inst.antX, inst.antY, inst.antDir, COLOR_AI, activeTab, 0.7);
+}
+
+/**
+ * 選択中の発射列を示す縦のガイド線。発射位置(antY)から進行方向(プレイヤーは常に
+ * side1=画面上なので、進行方向は常に y が増える向き)へ、盤面下端まで細い破線を引く。
+ * ネオン/グローは使わず、方眼紙に馴染む細線+破線で表現する(DESIGN.md)。
+ */
+function drawLaunchGuide() {
+  if (mode === 'cvc' || !selectedTemplateId) return;
+  const tpl = findTemplate(activeTab, selectedTemplateId);
+  if (!tpl) return;
+  const x = selectedAntX * CELL_PX + CELL_PX / 2;
+  const yStart = (tpl.antY ?? 0) * CELL_PX;
+  ctx.save();
+  ctx.strokeStyle = COLOR_AI;
+  ctx.globalAlpha = 0.5;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([CELL_PX * 2, CELL_PX * 2]);
+  ctx.beginPath();
+  ctx.moveTo(x, yStart);
+  ctx.lineTo(x, CANVAS_H);
+  ctx.stroke();
+  ctx.restore();
 }
 
 // テンプレート一覧・脅威パネルは状態が変わった時だけ再構築する。
@@ -704,11 +920,40 @@ function threatItemsSignature(view0) {
   return `${ids}|${selectedThreatAntId}`;
 }
 
+/**
+ * 発射列パネル(x=NNN・予測到達列・ゲート外警告)の更新。
+ * 発射すること自体は禁止しない(妨害目的で得点ゲート外を撃つ選択もありうるため)ので、
+ * ゲートを外れる場合も発射ボタンは無効化せず、警告テキストだけを出す。
+ */
+function updateLaunchPanel() {
+  canvas.classList.toggle('launch-selectable', mode !== 'cvc' && !!selectedTemplateId);
+  if (mode === 'cvc' || !selectedTemplateId) {
+    launchXEl.textContent = '-';
+    launchEntryEl.textContent = '-';
+    launchGateWarningEl.textContent = '';
+    return;
+  }
+  const tpl = findTemplate(activeTab, selectedTemplateId);
+  if (!tpl) {
+    launchXEl.textContent = '-';
+    launchEntryEl.textContent = '-';
+    launchGateWarningEl.textContent = '';
+    return;
+  }
+  launchXEl.textContent = String(selectedAntX);
+  launchEntryEl.textContent =
+    tpl.entryXAt0 != null ? String(wrapX(selectedAntX + tpl.entryXAt0)) : '-';
+  launchGateWarningEl.textContent = launchColumnScores(tpl, selectedAntX)
+    ? ''
+    : 'この列から撃つと得点ゲートを外れます';
+}
+
 function render() {
   const view0 = createSideView(match, PLAYER_SIDE);
   drawBoard();
   drawAnts(view0);
   drawPreview();
+  drawLaunchGuide();
   updateHud(view0);
   if (mode !== 'cvc') {
     const sig = templateListSignature();
@@ -717,6 +962,7 @@ function render() {
       renderTemplateList();
     }
     updateFireButton();
+    updateLaunchPanel();
     const threatSig = threatItemsSignature(view0);
     if (threatSig !== lastThreatItemsSig) {
       lastThreatItemsSig = threatSig;

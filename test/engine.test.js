@@ -165,22 +165,48 @@ test('左右はトーラス: x=60→x=0(WIDTH到達で回り込む)', () => {
   assert.equal(r.endY, 30);
 });
 
-test('上下は場外: y<0で消滅、y>=SCORE_LINE_Yで得点して消滅', () => {
+test('上下は場外: y<0で消滅、y>=SCORE_LINE_Yかつ得点ゲート内で得点して消滅', () => {
   // LEFT→右折→UP なので dir=LEFT で開始する。y=0からUPで1歩進むと y=-1
   const rDead = E.simulateSolo({ cells: [], antX: 10, antY: 0, antDir: C.DIR_LEFT, rule: 'R' }, { life: 5 });
   assert.equal(rDead.scored, false);
   assert.equal(rDead.steps, 1);
   assert.ok(rDead.endY < 0);
 
-  // RIGHT→右折→DOWN なので dir=RIGHT で開始する
+  // RIGHT→右折→DOWN なので dir=RIGHT で開始する。x は得点ゲートの中に取る。
+  const gateX = C.SCORE_GATE_X_MIN + 1;
   const rScore = E.simulateSolo(
-    { cells: [], antX: 10, antY: C.SCORE_LINE_Y - 1, antDir: C.DIR_RIGHT, rule: 'R' },
+    { cells: [], antX: gateX, antY: C.SCORE_LINE_Y - 1, antDir: C.DIR_RIGHT, rule: 'R' },
     { life: 5 },
   );
   assert.equal(rScore.scored, true);
   assert.equal(rScore.steps, 1);
   assert.equal(rScore.endY, C.SCORE_LINE_Y);
   assert.equal(rScore.entryY, C.SCORE_LINE_Y);
+});
+
+test('得点ゲートの外で敵陣に到達したアリは得点せずに消滅する(§v5)', () => {
+  // ゲートの左外側(x < SCORE_GATE_X_MIN)。到達自体はするが得点にならない。
+  const outsideLeft = E.simulateSolo(
+    { cells: [], antX: C.SCORE_GATE_X_MIN - 1, antY: C.SCORE_LINE_Y - 1, antDir: C.DIR_RIGHT, rule: 'R' },
+    { life: 5 },
+  );
+  assert.equal(outsideLeft.endY, C.SCORE_LINE_Y, '敵陣には到達している');
+  assert.equal(outsideLeft.scored, false, 'ゲート外なので得点しない');
+  assert.equal(outsideLeft.steps, 1, '得点しなくても到達した時点で消滅する');
+
+  // ゲートの右外側(x >= SCORE_GATE_X_MAX)。
+  const outsideRight = E.simulateSolo(
+    { cells: [], antX: C.SCORE_GATE_X_MAX, antY: C.SCORE_LINE_Y - 1, antDir: C.DIR_RIGHT, rule: 'R' },
+    { life: 5 },
+  );
+  assert.equal(outsideRight.endY, C.SCORE_LINE_Y);
+  assert.equal(outsideRight.scored, false);
+
+  // 境界: SCORE_GATE_X_MIN ちょうどは内側、SCORE_GATE_X_MAX ちょうどは外側
+  assert.equal(C.isInScoreGate(C.SCORE_GATE_X_MIN), true);
+  assert.equal(C.isInScoreGate(C.SCORE_GATE_X_MAX - 1), true);
+  assert.equal(C.isInScoreGate(C.SCORE_GATE_X_MAX), false);
+  assert.equal(C.isInScoreGate(C.SCORE_GATE_X_MIN - 1), false);
 });
 
 test('寿命を使い切ったアリは消滅し得点しない', () => {
@@ -342,6 +368,38 @@ test('クリーンアップ: 他のアリのlastToucherが付いたマスは消�
   assert.equal(match.board[cellIndex(5, 5)], 1);
 });
 
+test('クリーンアップの touched 最適化は全盤面走査と同値: 消滅後にそのアリのlastToucherが1マスも残らない(§v5)', () => {
+  // v5 で cleanupAnt の「全盤面(65,536マス)走査」を「そのアリが踏んだマスの列(ant.touched)
+  // 走査」に置き換えた。同値性の担保として、消滅後に **盤面全体を走査して**
+  // lastToucher === 消滅したアリのid のマスが1つも残っていないことを確認する。
+  // (踏んだマスの部分集合しか lastToucher を持ちえない、という前提が崩れたら落ちる)
+  const match = E.createMatch({ seed: 7 });
+  match.sides[0].tokens = 1000;
+  match.sides[1].tokens = 1000;
+
+  // 両陣営から複数匹飛ばして軌跡を交差させ、lastToucher の奪い合いを起こす。
+  const ids = [];
+  ids.push(E.fire(match, 0, { kind: 'attack', cells: [[100, 3]], antX: 100, antY: 4, antDir: C.DIR_DOWN, rule: 'RRL' }));
+  ids.push(E.fire(match, 0, { kind: 'attack', cells: [[101, 3]], antX: 101, antY: 4, antDir: C.DIR_RIGHT, rule: 'LLR' }));
+  ids.push(E.fire(match, 1, { kind: 'attack', cells: [[100, 3]], antX: 100, antY: 4, antDir: C.DIR_DOWN, rule: 'RRL' }));
+
+  for (const id of ids) {
+    for (const side of match.sides) {
+      const ant = side.ants.find((a) => a.id === id);
+      if (ant) ant.life = 600; // 交差するだけの距離を飛ばしてから一斉に消滅させる
+    }
+  }
+  for (let i = 0; i < 700; i++) E.stepMatch(match);
+
+  assert.equal(match.sides[0].ants.length + match.sides[1].ants.length, 0, '全アリが消滅しているはず');
+  for (let q = 0; q < match.lastToucher.length; q++) {
+    assert.ok(
+      !ids.includes(match.lastToucher[q]),
+      `消滅したアリ id=${match.lastToucher[q]} の lastToucher がマス ${q} に残っている`,
+    );
+  }
+});
+
 // ---------------------------------------------------------------------------
 // lastToucherSide(陣営の記録、UI描画用)
 // ---------------------------------------------------------------------------
@@ -487,14 +545,15 @@ test('ミラーリング: 同一テンプレートをside0/side1から撃つと�
 // ---------------------------------------------------------------------------
 
 test('妨害アリが敵のアリの軌道を変える(妨害なし/ありで結果が変わる)', () => {
-  // (実測)このattackはlife=2000なら妨害なしでハイウェイに乗って得点する(steps=1383)。
-  // 発射位置に妨害アリの配置マスを重ねると軌道が崩れ、寿命内に得点できなくなる。
-  const attack = { cells: [], antX: 30, antY: 30, antDir: C.DIR_RIGHT, kind: 'attack', rule: C.LEGACY_RULE };
-  const without = E.simulateVersus(attack, [], { life: 2000 });
+  // (実測・v5盤面)このattackはlife=4000なら妨害なしでハイウェイに乗って得点する
+  // (steps=3543、到達 x=161 で得点ゲート内)。発射位置に妨害アリの配置マスを重ねると
+  // 軌道が崩れ、寿命内に得点できなくなる。
+  const attack = { cells: [], antX: 100, antY: 30, antDir: C.DIR_RIGHT, kind: 'attack', rule: C.LEGACY_RULE };
+  const without = E.simulateVersus(attack, [], { life: 4000 });
 
-  const disruptor = { cells: [[30, 30]], antX: 0, antY: 0, antDir: C.DIR_UP, kind: 'disrupt', rule: C.LEGACY_RULE };
+  const disruptor = { cells: [[100, 30]], antX: 0, antY: 0, antDir: C.DIR_UP, kind: 'disrupt', rule: C.LEGACY_RULE };
   const withDisrupt = E.simulateVersus(attack, [{ template: disruptor, side: 0, fireAtStep: 0, kind: 'disrupt' }], {
-    life: 2000,
+    life: 4000,
   });
 
   assert.equal(without.scored, true);

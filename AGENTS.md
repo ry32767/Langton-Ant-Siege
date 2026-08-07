@@ -26,11 +26,20 @@
 ```bash
 npx serve .                                  # ローカルで動作確認(HTTPサーバー必須。file:// では動かない)
 node --test                                  # test/ の単体テスト(Node組み込みテストランナー)
-node scripts/generate-templates.mjs          # CPU/プレイヤー用テンプレートを再生成 → data/templates.json
+node scripts/generate-templates.mjs --quick  # テンプレート生成の通し確認(数分。本番設定ではない)
+node scripts/generate-templates.mjs --budget-min 180 --workers 22   # 本探索(実時間で打ち切る)
+node scripts/generate-templates.mjs --seed 1 --iterations 4200000   # 上の成果物を再現する(下記)
+node scripts/tune-attack-life.mjs            # 探索アーカイブから ATTACK_LIFE の候補を掃引して比較
+node scripts/generate-templates.mjs --resume-archive data/search-archive.json  # ①を省略して②〜⑤だけ再実行
 node scripts/train-policy.mjs                # CPU同士の自己対戦で方策を学習 → data/policy.json
 node scripts/simulate-matches.mjs --games 5000            # バランス検証(得点率・HW割合・盤面汚染度・先手勝率)
 node scripts/simulate-matches.mjs --games 100 --seed 1    # シード固定で再現性を確認(2回実行して出力一致)
 ```
+
+**探索の再現性について(v5)**: 探索は worker_threads で並列化してあるが、**乱数はメインスレッドだけが持ち、ワーカーは純粋関数**で、結果は完了順ではなく**投入した添字順**にアーカイブへ入る。バッチ幅もワーカー数から導出せず固定値にしてある。したがって `--seed` と `--iterations` が同じなら**ワーカー数を変えても成果物は一致する**。
+`--budget-min`(実時間で打ち切る)を使った場合だけはマシンの速さで反復回数が変わるので、実行後にログと `data/search-archive.json` の `reproduceCommand` に「その回の反復回数」が残る。再生成するときはそれを `--iterations` に渡す。
+
+**`ATTACK_LIFE` を変えるときに探索をやり直さない**: 段階①(ハイウェイ発見)は仮想盤面を `SEARCH_LIFE` まで走らせるので寿命に依存せず、ゲーム射影も `GAME_LIFE_SEARCH_CAP` で走らせて個体ごとの `arrivalStep` を記録している。つまり寿命を変えて必要なのは②以降だけ。`--resume-archive data/search-archive.json` で①を丸ごと省略して数分で作り直せる。**寿命を変えたら必ずこれで再生成すること**(古い寿命で選んだ9×9を残さない)。
 
 ## Verification Loop(検証ループ)
 **機能を実装したら、完了宣言の前に必ず回す。** 最重要の規約。
@@ -66,6 +75,9 @@ node scripts/simulate-matches.mjs --games 100 --seed 1    # シード固定で�
   - **`lastToucher` によるクリーンアップ** — 単純な一括クリアにすると他のアリの軌跡を壊す
   - **防御はブロックではなく妨害アリ** — 配置ブロックによる防御は実測で効果ゼロ
   - **テンプレートは妨害込みで共進化させて生成する** — 空盤面だけで評価すると「カウンターを持たない攻撃」が14秒で作れてしまう
+  - **候補プールを間引くときは必ずハイウェイ署名で層化する**(v5) — アーカイブの列挙順は「セルが最初に埋まった順」＝ありふれた署名順なので、素朴に先頭 N 件を取ると選抜プールが最頻署名で埋まる。選抜スコアが多様性を評価していても「プールに無いものは選べない」
+  - **得点ゲートはテンプレートの実力を左右しない**(v5) — 左右がトーラスなので到達列をゲート内に入れる発射列は必ず存在する。したがって探索の viable 判定は `scored`(ゲート適用後)ではなく `reached`(敵陣到達)で行う。ゲートが効くのは実プレイで「どの列から撃つか」を縛るところだけ
+  - **カウンター表は絶対座標ではなく `deltaX` の表**(v5) — 平行移動不変性(`test/evaluate-interaction.test.js`)がこの設計の根拠。「ゲートの外へずらした」を成功と数えると平行移動で無効になるカウンターを記録してしまうので、`evaluateInteraction` の判定は必ず敵陣到達で行う
 
 ## ドキュメント同期規約
 コードだけ進んで docs が古くなると土台が嘘になる。だから：

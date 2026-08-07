@@ -2,9 +2,11 @@
 
 背景は [../README.md](../README.md)、機能・受け入れ条件は [spec.md](spec.md)、全体構成は [architecture.md](architecture.md)。
 
-> v4(MAP-Elites 版)で盤面が90度回転し(60列×120行、攻撃軸が上下)、グローバル固定だった
-> ルール(`RRL`)が廃止されて **rule/colorCount がアリ(テンプレート)ごと**になった。
-> 数値は必ず [`src/config.js`](../src/config.js) の実際の値を参照すること。
+> v5(盤面拡大版)で盤面が 60×120 → **256×256(正方形)** に拡大し、配置可能帯の深さ(`ZONE_DEPTH`)が
+> 16→32、寿命が攻撃3,600→6,000(暫定)・妨害400→1,000になった。**発射列(`antX`)がテンプレートから
+> 消え、発射時にプレイヤー/CPU が自由に選ぶ値になった。** これに伴い配置マス(`cells`)は絶対座標では
+> なく**アリからの相対座標** `[dx, dy, state]` になり、`identifyTable` のキーも `"antX,antY,antDir"` から
+> `"antY,antDir"` に変わった。数値は必ず [`src/config.js`](../src/config.js) の実際の値を参照すること。
 
 ```mermaid
 erDiagram
@@ -14,8 +16,9 @@ erDiagram
     ANT ||--o{ PLACEDCELL : placed
     TEMPLATE ||--o{ TEMPLATECELL : contains
     MATCH {
-        int stepsPerSecond "既定120"
+        int stepsPerSecond "既定300"
         int timeLimitSec "既定240"
+        int totalSteps "= stepsPerSecond * timeLimitSec = 72000"
         int winScore "既定5"
         int elapsedStep
         string phase "playing または finished"
@@ -23,12 +26,14 @@ erDiagram
         int seed "擬似乱数シード"
     }
     BOARD {
-        int width "60(左右・トーラス軸)"
-        int height "120(上下・得点軸)"
-        int zoneDepth "16"
+        int width "256(左右・トーラス軸)"
+        int height "256(上下・得点軸)"
+        int zoneDepth "32"
         bool wrapHorizontal "true(左右はトーラス)"
         bool wrapVertical "false(上下は場外)"
-        int scoreLineY "104(= height - zoneDepth)"
+        int scoreLineY "224(= height - zoneDepth)"
+        int scoreGateXMin "32"
+        int scoreGateXMax "224(この値は含まない)"
     }
     SIDE {
         string id "side1 または side2"
@@ -49,17 +54,17 @@ erDiagram
         int x
         int y
         int direction "0=up 1=right 2=down 3=left"
-        int spawnX "発射時の位置(identifyTable の引き用)"
+        int spawnX "発射時の位置(identifyTable の引き用にはantYのみ使う。spawnXはプレビュー・描画用)"
         int spawnY "発射時の位置(identifyTable の引き用)"
         int spawnDir "発射時の向き(identifyTable の引き用)"
         int steps
-        int life "kind で決まる: attack=2400 / disrupt=400(rule/colorCountには依存しない)"
+        int life "kind で決まる: attack=6000(暫定) / disrupt=1000(rule/colorCountには依存しない)"
     }
     PLACEDCELL {
         int antId FK
         int x
         int y
-        int state "0..colorCount-1。配置時にそのマスへ書き込む状態"
+        int state "0..colorCount-1。配置時にそのマスへ書き込む状態(盤面上は絶対座標)"
     }
     TEMPLATE {
         string id
@@ -67,9 +72,12 @@ erDiagram
         string rule "'L'/'R' の文字列"
         int colorCount "rule.length"
         int cost
-        int arrivalStep "attack のみ。空盤面での到達ステップ"
+        int antY "発射行(0..ZONE_DEPTH-1)。antX は持たない(発射時に選ぶ)"
+        int antDir
+        int arrivalStep "attack のみ。GAME_LIFE_SEARCH_CAP以内で敵陣へ到達したステップ数"
+        int entryXAt0 "attack のみ。発射列antX=0で撃ったときの到達列。実際の到達列は(antX+entryXAt0)%WIDTH"
         float robustness "attack のみ: 妨害集に対する生存率"
-        int reachRows "disrupt のみ。縦方向の到達距離(旧 reachColumns)"
+        int reachRows "disrupt のみ。縦方向の到達距離"
         int endDirection "disrupt のみ"
         float coverage "disrupt のみ: 止められる攻撃の割合"
         int costTier
@@ -77,27 +85,29 @@ erDiagram
     }
     TEMPLATECELL {
         string templateId FK
-        int x
-        int y
+        int dx "アリからの相対x"
+        int dy "アリからの相対y"
         int state "0..colorCount-1"
     }
 ```
 
 | エンティティ | 主なフィールド | 補足 |
 |---|---|---|
-| Match(試合) | `stepsPerSecond`, `timeLimitSec`, `winScore`, `elapsedStep`, `phase`, `result`, `seed` | 先に `winScore` 到達で勝ち。240秒で得点比較、同点なら `draw` |
-| Board(盤面) | `width`(60), `height`(120), `zoneDepth`(16), `wrapHorizontal`(true), `wrapVertical`(false), `scoreLineY`(104) | side1 の配置可能帯は `y=0..15`、side2 は `y=104..119`。左右はトーラス、上下端でアリ消滅/得点 |
-| Side(陣営) | `id`, `controller`, `mirrored`, `score`, `tokens`, `tokenCap`, `maxFlying` | `tokens` は1秒ごとに+1(上限30)。アリ飛行中も蓄積。同時飛行は攻撃・妨害あわせて最大4匹 |
-| Ant(アリ) | `id`, `sideId`, `kind`, `rule`, `colorCount`, `templateId`, `x`, `y`, `direction`, `spawnX`, `spawnY`, `spawnDir`, `steps`, `life` | 現在位置 `x` / `y` / `direction` は毎ステップ動く。発射位置 `spawnX` / `spawnY` / `spawnDir` は発射時に保存され、`identifyTable` で攻撃ID を引くときに使う。`rule` / `colorCount` は発射時に固定され消滅まで変わらない。`kind` で寿命が決まる(attack=2400 / disrupt=400。ルールの長さでは変わらない)。`steps >= life` で消滅 |
-| PlacedCell(配置マス) | `antId`, `x`, `y`, `state` | **アリ単位**で持つ(陣営単位ではない)。そのアリの消滅時にクリーンアップ対象になる。`state` は `0 <= state < colorCount` |
-| Template(テンプレート) | `id`, `kind`, `rule`, `colorCount`, `cost`, `arrivalStep` / `robustness`(攻撃)、`reachRows` / `endDirection` / `coverage`(妨害), `costTier`, `featureTier` | 攻撃用と妨害用で特徴軸が異なる。`robustness` / `coverage` は共進化生成の結果 |
-| TemplateCell | `templateId`, `x`, `y`, `state` | 配置マスの座標と状態。アリの初期位置・向きは Template に `antX` / `antY` / `antDir` として持つ |
+| Match(試合) | `stepsPerSecond`, `timeLimitSec`, `totalSteps`, `winScore`, `elapsedStep`, `phase`, `result`, `seed` | 先に `winScore` 到達で勝ち。`totalSteps`(=72,000)経過で得点比較、同点なら `draw` |
+| Board(盤面) | `width`(256), `height`(256), `zoneDepth`(32), `wrapHorizontal`(true), `wrapVertical`(false), `scoreLineY`(224), `scoreGateXMin`(32), `scoreGateXMax`(224) | side1 の配置可能帯は `y=0..31`、side2 は `y=224..255`。左右はトーラス、上下端でアリ消滅/得点。得点ゲートは下記参照 |
+| Side(陣営) | `id`, `controller`, `mirrored`, `score`, `tokens`, `tokenCap`, `maxFlying` | `tokens` は1秒(=300ステップ)ごとに+1(上限30)。アリ飛行中も蓄積。同時飛行は攻撃・妨害あわせて最大4匹 |
+| Ant(アリ) | `id`, `sideId`, `kind`, `rule`, `colorCount`, `templateId`, `x`, `y`, `direction`, `spawnX`, `spawnY`, `spawnDir`, `steps`, `life` | 現在位置 `x` / `y` / `direction` は毎ステップ動く。発射位置 `spawnX` / `spawnY` / `spawnDir` は発射時に保存される。`identifyTable` を引くのに使うのは `spawnY`/`spawnDir` の組だけ(`spawnX` は発射時に選べる自由度なので識別には使わない)。`rule` / `colorCount` は発射時に固定され消滅まで変わらない。`kind` で寿命が決まる(attack=6000(暫定) / disrupt=1000。ルールの長さでは変わらない)。`steps >= life` で消滅。内部実装は `ant.touched`(踏んだマスの添字列)も持つが、これはクリーンアップ専用の実装詳細で試合の外部モデルには出さない(下記「盤面の内部表現」参照) |
+| PlacedCell(配置マス) | `antId`, `x`, `y`, `state` | **アリ単位**で持つ(陣営単位ではない)。盤面上は**絶対座標**(発射時に `src/template.js` の `instantiateTemplate` が相対テンプレートを絶対座標へ変換してから書き込む)。そのアリの消滅時にクリーンアップ対象になる。`state` は `0 <= state < colorCount` |
+| Template(テンプレート) | `id`, `kind`, `rule`, `colorCount`, `cost`, `antY`, `antDir`, `arrivalStep` / `entryXAt0` / `robustness`(攻撃)、`reachRows` / `endDirection` / `coverage`(妨害), `costTier`, `featureTier` | **`antX` を持たない**(発射列は発射時にプレイヤー/CPUが自由に選ぶ)。攻撃用と妨害用で特徴軸が異なる。`robustness` / `coverage` は共進化生成の結果 |
+| TemplateCell | `templateId`, `dx`, `dy`, `state` | 配置マスの**アリからの相対座標**と状態。アリの初期行・向きは Template に `antY` / `antDir` として持つ(`antX` は無い) |
 
 #### Ant の発射位置(`spawnX` / `spawnY` / `spawnDir`)
 
-`identifyTable` で敵の攻撃を識別するにはアリの発射位置・向きが必要だが、Ant の現在位置 `x` / `y` / `direction` は毎ステップ移動するため識別に使えない。アリは発射したステップ内で既に1歩進んでいるため、観測できる時点で発射位置とは異なる値になっているためである。
+`identifyTable` で敵の攻撃を識別するにはアリの発射行・向きが必要だが、Ant の現在位置 `x` / `y` / `direction` は毎ステップ移動するため識別に使えない。アリは発射したステップ内で既に1歩進んでいるため、観測できる時点で発射位置とは異なる値になっているためである。
 
-代わりに、発射時に `spawnX` / `spawnY` / `spawnDir` として発射した陣営自身のローカル座標での発射位置を保存し、これを `identifyTable["\${spawnX},\${spawnY},\${spawnDir}"]` で引く(`src/engine.js` の `fire()`)。
+代わりに、発射時に `spawnX` / `spawnY` / `spawnDir` として発射した陣営自身のローカル座標での発射位置を保存する(`src/engine.js` の `fire()`)。**v5 で `identifyTable` のキーは `"antY,antDir"` に変わった**(発射列 `antX` が可変になったため識別キーから外れた)ので、`identifyTable["\${spawnY},\${spawnDir}"]` を引く。`spawnX` は識別には使わないが、UI のプレビュー・敵弾の到達列予測(`entryXAt0` との合算)には使う。
+
+> ⚠️ `src/engine.js` の `fire()` / `createSideView` 周辺のコメントは、本稿執筆時点でもまだ旧仕様のまま `identifyTable("antX,antY,antDir")` と書かれている。**実際に書き出され・引かれるキーは `"antY,antDir"`** であり(`src/search/genome.js` の `identityKey`、`scripts/generate-templates.mjs` の `identifyTable[identityKey(a)] = a.id`)、本書はコードの実際の挙動を優先して記載している。コメントの追随は未対応([spec.md](spec.md) 未決定事項参照)。
 
 ## 盤面の内部表現
 
@@ -107,11 +117,21 @@ lastToucher     = new Int16Array(W * H);   // 最後にそのマスを踏んだ�
 lastToucherSide = new Uint8Array(W * H);   // 最後にそのマスへ触れた陣営。0=未接触 / 1=side1 / 2=side2
 ```
 
-セルはオブジェクト化しない。60×120 = 7,200セルなのでコピーも探索も安価。
+セルはオブジェクト化しない。256×256 = 65,536セル。
 
 `lastToucher` は `Int16Array`(最大32,767)。1試合の発射数は最大でも「毎秒+1 × 240秒 ÷ 最小コスト3」= 80発なので、id は溢れない。
 
 `lastToucherSide` は描画専用の追加フィールド(v4)。UI がセルの色相(陣営: 藍/朱)を決めるのに使い、`lastToucher` によるクリーンアップ判定のロジック自体には影響しない。
+
+### `ant.touched` によるクリーンアップの高速化(v5)
+
+盤面が 7,200 → 65,536 マスになったため、アリ消滅時の「`lastToucher` が自分と一致する全マスを探す」処理を**全盤面走査**のまま残すと、1試合あたり数十匹の消滅がボトルネックになる(5,000試合のバランス検証が現実的な時間で終わらない)。`src/engine.js` の `stepAnt` はアリが移動のたびに踏んだマスの添字を `ant.touched` 配列へ記録し、`cleanupAnt` は全盤面ではなく `ant.touched` だけを走査する。`lastToucher[q] === ant.id` になりうるマスは「そのアリが実際に踏んだマス」の部分集合でしかありえないため、この置き換えは**全盤面走査と同値**(`test/engine.test.js` に回帰テストあり: 消滅後に盤面全体を走査してそのアリの `lastToucher` が1マスも残らないことを確認する)。
+
+### オフライン用シミュレーション盤面の使い回し(v5)
+
+`simulateSolo` / `simulateVersus`(`src/engine.js`)、`simulateWithBoard`(`src/search/highway-fingerprint.js`)はいずれも、呼び出しのたびに `Uint8Array`/`Int16Array` を新規確保せず、**モジュールレベルのバッファを使い回す**。盤面が65,536マスになり、MAP-Elites の探索(数百万回)やカウンター行列の計算(数十万回)のたびに確保・`fill(-1)` していると、それだけで探索が破綻する見積もりになるため。触れたマスの添字だけを実行の最後に白紙へ戻すことでこれを避けている。
+
+> ⚠️ **再入不可**。同じバッファ集合を使う関数の実行中に、同じ関数を再帰的・並行に呼び出してはいけない。`simulateSolo` と `simulateVersus` は別のバッファ集合を持つので、片方の中からもう片方を呼ぶのは安全。並列化は `worker_threads`(ワーカーごとにモジュールインスタンスが独立)で行う(下記「探索の並列化」参照)。
 
 ### 異種ルールの衝突(共通ルール)
 
@@ -126,11 +146,22 @@ board[j] = (s + 1) % ant.colorCount;
 
 例: 16色アリが残した状態13のセルに3色アリが入ると `13 % 3 = 1` として解釈し、そのアリの規則に従って `(1 + 1) % 3 = 2` に書き換える。**この状態空間の圧縮自体を、異なる弾どうしのゲーム上の干渉として扱う**という設計判断であり、バグではない。
 
-### 発射時の書き込み
+### 発射時の書き込み(発射列 antX の実体化)
+
+**v5 で `template.cells` は絶対座標ではなく、アリからの相対座標 `[dx, dy, state]` になった。** 発射時に `src/template.js` の `instantiateTemplate(template, antX)` を通し、絶対座標の `action`(`cells: [[x,y,state], ...]`)へ変換してから盤面に書き込む。
 
 ```js
-// cellState(cell) は [x,y] を state=1、[x,y,state] を state=cell[2] とみなす(互換)
-for (const cell of template.cells) {
+// src/template.js の instantiateTemplate() より(要旨)
+function instantiateTemplate(template, antX) {
+  const ax = wrap(antX ?? template.antX ?? 0);   // 0..WIDTH-1 に正規化
+  const cells = template.cells.map(([dx, dy, state]) => [wrap(ax + dx), template.antY + dy, state]);
+  return { ...template, antX: ax, cells };
+}
+```
+
+```js
+// engine.js の fire() より(action は上で絶対座標化済み)
+for (const cell of action.cells) {
   const [x, y] = cell;
   const j = idx(x, toGlobalY(sideIndex, y)); // x は変換しない(左右は共有トーラス軸)。y だけ陣営ごとに鏡像
   board[j] = cellState(cell);       // ← セルごとに指定された状態で上書き。既存の非白セルにも無条件上書き
@@ -139,11 +170,13 @@ for (const cell of template.cells) {
 }
 ```
 
-`TemplateCell` は `[x, y, state]` の3要素(旧: `[x, y]` の2要素で状態は常に1)。`state` は `0 <= state < rule.length` を満たす必要がある。`src/engine.js` は互換のため、2要素の `[x, y]` も引き続き `state = 1` として受け付ける。
+`TemplateCell` は `[dx, dy, state]` の3要素(アリからの相対)。`state` は `0 <= state < rule.length` を満たす必要がある。`src/engine.js` は互換のため、2要素の `[dx, dy]` も引き続き `state = 1` として受け付ける。
+
+**なぜ `antX` が自由に選べるか**: 左右がトーラスなので、x方向の平行移動は力学の厳密な対称性である。同じテンプレートをどの列から撃っても軌道は平行移動するだけで、周期・並進・形成ステップは変わらない。一方 `antY` はテンプレート固有のまま変更できない(y方向の平行移動は得点ラインまでの距離を変え、寿命内に届くかどうかに影響するため)。
 
 ### クリーンアップ
 
-アリ `a` が消滅したとき、白(状態0)に戻すのは次の集合(挙動は v3 から不変)。
+アリ `a` が消滅したとき、白(状態0)に戻すのは次の集合(挙動は v3 から不変。走査方法だけ v5 で変わった。上の「`ant.touched` によるクリーンアップの高速化」参照)。
 
 ```
 { a.placedCells のうち lastToucher[i] が -1 または a.id のもの }
@@ -156,7 +189,11 @@ for (const cell of template.cells) {
 
 ## 座標系
 
-エンジンは **side1 のローカル座標**で動く。x(左右)は両陣営で共有するトーラス軸なので変換しない。y(上下)だけが陣営ごとに鏡像になる: `yGlobal = HEIGHT - 1 - yLocal`(`src/engine.js` の `toGlobalY` / `toLocalY`。自己逆変換なので式は同じ)。向きは **up ⇄ down** を入れ替える(`mirrorDir`)。left / right はそのまま。`Side.mirrored` でどちらかを保持する。
+エンジンは **side1 のローカル座標**で動く。x(左右)は両陣営で共有するトーラス軸なので変換しない。y(上下)だけが陣営ごとに鏡像になる: `yGlobal = HEIGHT - 1 - yLocal`(= `255 - yLocal`。`src/engine.js` の `toGlobalY` / `toLocalY`。自己逆変換なので式は同じ)。向きは **up ⇄ down** を入れ替える(`mirrorDir`)。left / right はそのまま。`Side.mirrored` でどちらかを保持する。
+
+## 得点ゲート
+
+x が `[SCORE_GATE_X_MIN, SCORE_GATE_X_MAX)` = `[32, 224)` の範囲かどうかを `src/config.js` の `isInScoreGate(x)` で判定する。engine の得点判定(`resolveAnt`)と UI の描画がこの1つの定義を共有する。x はグローバル座標のまま両陣営で共通に判定できる(x は陣営間で鏡像にならない。鏡像になるのは y だけ)。詳細な設計判断は [spec.md](spec.md) の「得点ゲート」を参照。
 
 ## 探索(MAP-Elites)の型
 
@@ -166,55 +203,62 @@ for (const cell of template.cells) {
 
 ```js
 genome = {
-  rule: 'LRLR...',      // 'L'/'R' のみからなる文字列。長さ = colorCount(2..16)
-  antX: 0,               // 配置帯(0<=antX<WIDTH)内のアリの初期位置
-  antY: 0,               // 配置帯(0<=antY<ZONE_DEPTH)内のアリの初期位置
+  rule: 'LRLR...',       // 'L'/'R' のみからなる**原始形**の文字列。長さ = colorCount(2..16)
+  antY: 0,                // 配置帯(0<=antY<ZONE_DEPTH)内のアリの初期行
   antDir: 0,              // 0|1|2|3
-  cells: [{ x, y, state }, ...], // 1..MAX_CELLS(16)個。座標は重複しない
+  cells: [{ dx, dy, state }, ...], // 1..MAX_CELLS(16)個。**アリからの相対座標**。座標は重複しない
+  origin: 'random',       // 'random' | 'mutation' | 'distilled'(探索アーカイブの分析用。任意)
+  parentGenomeId: null,   // distilled の親を辿るためのID(任意)
 };
 ```
 
+⚠️ **v5 の変更点: genome は `antX`(発射列)を持たない。** 左右がトーラスなので x方向の平行移動は力学の厳密な対称性であり、発射列は発射時にプレイヤー/CPUが選ぶ自由度になった(詳細は [spec.md](spec.md) 「発射列(antX)の可変化」)。これに伴い `cells` は絶対 x ではなく**アリ列からの相対 `dx`** で持つ。`dy` も同様にアリ行からの相対にしてある(Seed Distillation が生成する種が「アリ周囲の局所セル」なので、表現をそちらに合わせると変換が要らない)。
+
 不変条件(`validateGenome` が検査する。**エンジンの `canFire`/`fire` はこれを検査しない**、探索専用のチェックであることに注意):
 
-- `rule.length` は 2..16、`'L'/'R'` のみで構成される
-- `cells.length` は 1..16(`MIN_TEMPLATE_CELLS`..`MAX_CELLS`)。座標 `(x,y)` は重複禁止、`0<=x<WIDTH`・`0<=y<ZONE_DEPTH`
+- `rule.length` は 2..16、`'L'/'R'` のみで構成され、かつ**原始形(primitive root)である**こと(`LLRLLR` のように短い繰り返しになっているルールは不正。`canonicalRule` で正規化してから使う)
+- `antX` フィールドが存在してはいけない(genome は発射列を持たない。混入していたら設計上のバグ)
+- `cells.length` は 1..16(`MIN_TEMPLATE_CELLS`..`MAX_CELLS`)。座標 `(dx,dy)` は重複禁止
+- 各セルの `dx`/`dy` は **アリ近傍(チェビシェフ半径 `TEMPLATE_CELL_RADIUS`=8)の内側**、かつ `antY + dy` が配置帯(`0<=y<ZONE_DEPTH`)に収まること
 - 各セルの `state` は `0 <= state < rule.length`
-- `antX`/`antY` は配置帯の内側、`antDir` は 0..3
+- `antY` は配置帯の内側、`antDir` は 0..3
 
-`genome.js` はほかに `createRandomGenome(rng)`(不変条件を満たすランダム生成)、`cloneGenome`(深いコピー)、`genomeKey`(重複検出用の決定論的文字列キー)、`toTemplateCells(g)`(`cells` を `templates.json` 用の `[x,y,state]` 3要素配列へ変換)、`costOfGenome(g, baseCost)`(= `baseCost + cells.length`。ルール長にはコストを課さない)を提供する。
+`genome.js` はほかに `createRandomGenome(rng)`(不変条件を満たすランダム生成。セルはアリ近傍にのみ撒く)、`cloneGenome`(深いコピー)、`genomeKey`(重複検出用の決定論的文字列キー)、`identityKey(g)`(= `` `${g.antY},${g.antDir}` ``。`identifyTable` のキー生成に使う)、`toTemplateCells(g)`(`cells` を `templates.json` 用の `[dx,dy,state]` 3要素配列へ変換)、`costOfGenome(g, baseCost)`(= `baseCost + cells.length`。ルール長にはコストを課さない)、`canonicalRule(rule)`(ルール文字列を最小の繰り返し単位に還元する)を提供する。
 
-`mutate.js` の `mutate(genome, rng)` は `MUTATION_COUNT_WEIGHTS`(`[0.7, 0.2, 0.1]` = 1回/2回/3回)に従って変異を連鎖適用する。オペレータは `bitFlip`(rule の1文字反転)、`ruleInsert`/`ruleDelete`(rule の伸縮。長さ変更後は全セルの `state` を新しい `colorCount` で剰余に丸める)、`cellAdd`/`cellDelete`/`cellMove`/`cellState`、`antXPlus`/`antXMinus`/`antYPlus`/`antYMinus`/`antDir`。`rule.length` が境界(`MIN_COLORS`/`MAX_COLORS`)や `cells.length` が境界(`MIN_TEMPLATE_CELLS`/`MAX_CELLS`)にあるときは、その方向の伸縮オペレータを候補から外す。
+`mutate.js` の `mutate(genome, rng)` は `MUTATION_COUNT_WEIGHTS`(`[0.7, 0.2, 0.1]` = 1回/2回/3回)に従って変異を連鎖適用する。オペレータは `bitFlip`(rule の1文字反転。結果を原始形に正規化)、`ruleInsert`/`ruleDelete`(rule の伸縮。長さ変更後は全セルの `state` を新しい `colorCount` で剰余に丸める)、`cellAdd`/`cellDelete`/`cellMove`/`cellState`(いずれもアリ近傍半径・配置帯の両方でクランプ/reject)、`antYPlus`/`antYMinus`(アリの行を動かす。配置マスも一緒に動くので、動かした先で配置帯からはみ出すセルがあれば reject)/`antDir`。**v5 で `antX` 系のオペレータは削除された**(genome が `antX` を持たなくなったため)。`rule.length` が境界(`MIN_COLORS`/`MAX_COLORS`)や `cells.length` が境界(`MIN_TEMPLATE_CELLS`/`MAX_CELLS`)にあるときは、その方向の伸縮オペレータを候補から外す。
 
 ### MAP-Elites アーカイブ(汎用実装)
 
-`map-elites.js` の `createArchive({ dims })` は `dims: [{ name, bins }, ...]` を受け取り、内部表現は疎な `Map`(キーは各次元のビン値を連結した文字列)を持つ。`tryInsert(archive, { genome, descriptor, quality, meta })` は空セルなら常に挿入、埋まっているセルは `quality` が厳密に大きいときだけ置換する。`runMapElites({ archive, evaluate, rng, iterations, initialBatch, onProgress })` が「初期バッチをランダム生成 → 反復ごとに親をサンプリングして変異・評価・挿入」というループ本体。`evaluate` が `descriptor` を返さない個体は挿入せずスキップする。
+`map-elites.js` の `createArchive({ dims })` は `dims: [{ name, bins }, ...]` を受け取り、内部表現は疎な `Map`(キーは各次元のビン値を連結した文字列)を持つ。`tryInsert(archive, { genome, descriptor, quality, meta })` は空セルなら常に挿入、埋まっているセルは `quality` が厳密に大きいときだけ置換する。`runMapElites({ archive, evaluate, rng, iterations, initialBatch, onProgress })` が「初期バッチをランダム生成 → 反復ごとに親をサンプリングして変異・評価・挿入」というループ本体。`evaluate` が `descriptor` を返さない個体は挿入せずスキップする。`archiveStats`/`archiveEntries`/`toJSON`/`fromJSON` で統計取得・列挙・シリアライズができる。
 
-> ⚠️ `createArchive`/`tryInsert`/`runMapElites` を実際に呼び出すコードは、本稿執筆時点では `test/map-elites.test.js` にしかない。以下のアーカイブ次元定義(`src/config.js` の `ARCHIVE1`/`ARCHIVE2`)は**型として存在するが、生成パイプラインに配線されていない**(`scripts/generate-templates.mjs` はこれらを import していない。[architecture.md](architecture.md) 参照)。
+> `scripts/generate-templates.mjs` は `createArchive`/`tryInsert`/`sampleParent`/`archiveEntries`/`archiveStats`/`toJSON` を実際に呼び出す(v5 で配線済み。旧版は未配線だったが解消した)。ただし `runMapElites` 自体は使わず、`worker_threads` によるバッチ並列評価のため独自のループ(初期バッチ生成 → ワーカーへ一括投入 → 添字順に挿入、を繰り返す)を書いている。
 
-`src/config.js` に定義されている記述子ビン:
+`src/config.js` に定義されている記述子ビン(実際に `scripts/generate-templates.mjs` が使っている値):
 
 | アーカイブ(用途) | 次元 | 実際の値(`src/config.js`) |
 |---|---|---|
 | 第1アーカイブ(ハイウェイ発見) | `direction` | `ARCHIVE1.directions` = 8方向(`N,NE,E,SE,S,SW,W,NW`) |
-| | `speed` | `ARCHIVE1.speedBins` = 10(0.0..1.0 を10等分) |
-| | `formationTime` | `ARCHIVE1.formationBins` = `[64,128,256,512,1024,2048,4096,SEARCH_LIFE(20000)]` の8段階(対数的な区切り) |
-| 第2アーカイブ(ゲーム候補) | `entryPositionTier` | `ARCHIVE2.entryPositionBins` = 6(敵陣へ侵入した **x座標**のビン。旧仕様は y だったが、盤面回転に伴い x に変更) |
-| | `robustnessTier` | `ARCHIVE2.robustnessBins` = `[0.5, 1.0]`(v4.1 で `[0.2,0.4,0.6,0.8,1.0]` から削減。実測で robustness の値はほぼ最上位ビンに張り付き軸として機能していなかったため、後述の `speedClassTier` を追加した分のセル数増加を相殺する目的で粗くした) |
-| | `speedClassTier` | `ARCHIVE2.speedClassBins` = `[0.035, 0.047, 1.0]`(v4.1 で追加。ハイウェイ署名から実効的な縦方向速度 `v_y = |driftY| / period` を出し、境界値でビン分けする3段階。archive2Attack の記述子は `(entryPositionTier, robustnessTier, speedClassTier)` = 6×2×3 = 36セルになった) |
-| 妨害アーカイブ | `reach` | `ARCHIVE2.reachBins` = 6(縦方向の到達距離。旧 `reachColumns` → `reachRows`) |
+| | `speedBin` | `ARCHIVE1.speedBins` = 10(0.0..1.0 を10等分) |
+| | `formationBin` | `ARCHIVE1.formationBins` = `[64,128,256,512,1024,2048,4096,SEARCH_LIFE(20000)]` の8段階(対数的な区切り) |
+| | `cost` | `MAX_CELLS + ATTACK_COST + 1` = 22 段階(v5 で追加。コスト値をそのままビン番号として使う) |
+| 第2アーカイブ(攻撃) | `entryPositionTier` | `ARCHIVE2.entryPositionBins` = 6(敵陣へ侵入した **x座標**を `WIDTH/6` 幅で等分するビン) |
+| | `robustnessTier` | `ARCHIVE2.robustnessBins` = `[0.5, 1.0]` |
+| | `speedClassTier` | `ARCHIVE2.speedClassBins` = `[0.04, 0.048, 1.0]`(ハイウェイ署名から実効的な縦方向速度 `v_y = |driftY| / period` を出し、境界値でビン分けする3段階) |
+| 第2アーカイブ(妨害) | `reachTier` | `ARCHIVE2.reachBins` = 6(縦方向の到達距離 `reachRows` を `ARCHIVE2.reachScale/6` 幅で等分するビン) |
+| | `endDirTier` | `C.DIRS.length` = 4(妨害が寿命を使い切った時点の向き) |
 
-`ARCHIVE1_QUALITY`(`stability`/`verticality`/`usability`/`formationPenalty`、いずれも重み1.0)は quality(挿入時の優劣比較に使うスカラー)の配分であり、記述子の次元ではない。
+> ⚠️ 妨害アーカイブの次元名は攻撃アーカイブと異なる独立した2軸(`reachTier`×`endDirTier`)であり、`ARCHIVE2` オブジェクトの `reachBins`/`reachScale` フィールドを間借りしている(独立した第3のアーカイブ設定オブジェクトが無い)。
 
-> ⚠️ **本稿がここで説明できるのは `src/config.js` にある値まで**。作業指示にある「第1アーカイブに `cost` 次元」「第2アーカイブに `costTier` 次元」は `ARCHIVE1`/`ARCHIVE2` のどちらにも対応する項目が無く、実装からは確認できなかった(cost はコストの小さい値域(6..21等)をそのまま tier として使う可能性はあるが、それを裏付けるコードが見つからなかった)。妨害アーカイブが `ARCHIVE2` オブジェクトの `reachBins` を間借りしている(独立した第3のアーカイブ設定オブジェクトが無い)点も、config.js の実際の構造として明記しておく。
->
-> ⚠️ **`entryPositionTier`(x座標)を生成するコードも未確認。** `src/engine.js` の `simulateSolo()` は戻り値に `entryY`(得点時の `ant.y`)という**y座標**のフィールドしか持たない。x座標ベースの進入位置記述子は作業指示(本タスクの発注者からの指示)に基づく記載であり、`docs/spec.md`(441行目時点)は「敵陣への進入位置(**y座標帯**)」のままで、本書の記述と食い違っている。盤面が90度回転した以上 x 座標を使うのが整合的だが、この食い違いは `docs/spec.md` 側で解消が必要(本エージェントは `docs/spec.md` を編集する権限が無い)。
+`ARCHIVE1_QUALITY`(`stability`/`verticality`/`usability`/`formationPenalty`、いずれも重み1.0)は quality(挿入時の優劣比較に使うスカラー)の配分であり、記述子の次元ではない。計算式は `src/search/evaluate-projectile.js` の `evaluateProjectile` を参照。
 
-### ハイウェイ検出
+### ハイウェイ検出(2段構え。v5 で正式に2ファイルへ分割)
 
-検出ロジックは **`src/search/highway-detector.js`** にある(独立ファイルとして存在する)。ハイウェイ判定は2段構え(docs/spec.md 第8章「`highway.detected` を単一の boolean にしない」の決定に基づく。**軌跡の周期性はハイウェイの十分条件ではない**——位置と向きが周期的でも、周囲のセル状態が同じ構造を再生産しているとは限らないため):
+判定は2段構え([spec.md](spec.md) 「ハイウェイ検出の2段構え」の決定に基づく。**軌跡の周期性はハイウェイの十分条件ではない**——位置と向きが周期的でも、周囲のセル状態が同じ構造を再生産しているとは限らないため):
 
-1. **高速フィルタ = `detectHighwayFromPath(path, options)`**: 軌跡(位置+向き)だけを見る安価な周期性検出。`{ period, driftX, driftY, formationStep, verifiedCycles, speed }` を返す(見つからなければ `null`)。MAP-Elites が数百万 genome を評価するため、全候補にこれだけを適用する。
-2. **厳密確認 = `verifyHighwayStrict(genome, candidate, options)`**: アリ座標を原点とした近傍セルの正規化 fingerprint が、確認済み窓のさらに先(`formationStep + verifiedCycles*period` 以降)で `HIGHWAY_MIN_CYCLES` 周期分一致することを、盤面込みで再シミュレーションして確認する高コストな検証。`true`/`false` を返す。高速フィルタで採用された候補にだけ適用する。
+1. **高速フィルタ = `src/search/highway-trajectory.js` の `detectHighwayFromPath(path, options)`**: 軌跡(位置+向き)だけを見る安価な周期性検出。`{ period, driftX, driftY, formationStep, verifiedCycles, speed }` を返す(見つからなければ `null`)。MAP-Elites が数百万 genome を評価するため、全候補にこれだけを適用する。同ファイルの `directionBin(driftX, driftY)` が並進を8方向(`ARCHIVE1.directions`)に離散化する。
+2. **厳密確認 = `src/search/highway-fingerprint.js` の `verifyHighwayStrict(genome, candidate, options)`**: アリ座標を原点とした近傍セルの正規化 fingerprint が、確認済み窓のさらに先で `HIGHWAY_MIN_CYCLES` 周期分一致することを、盤面込みで再シミュレーションして確認する高コストな検証。`true`/`false` を返す。高速フィルタで採用された候補にだけ適用する。この検証専用に engine.js の CA 1ステップ処理(`stepAnt` 相当)を最小限だけ複製している(`simulateWithBoard`。意図的な例外。それ以外の場所は必ず `engine.js` の関数を使う)。
+
+**`src/search/highway-detector.js` は上記2モジュールを再エクスポートするだけのファサード**であり、既存の import 元(`test/highway-detector.test.js`、`src/search/evaluate-projectile.js`)を壊さないために残っている。実体は無い。
 
 `src/search/evaluate-projectile.js` の `evaluateProjectile(genome, options)` がこの2段を `highway` オブジェクトの2つの boolean フィールドに落とし込む:
 
@@ -233,7 +277,7 @@ highway: {
 }
 ```
 
-**使い分けは固定**(タスク仕様。混同すると高速フィルタの近似が最終選抜まで素通りしてしまう):
+**使い分けは固定**(混同すると高速フィルタの近似が最終選抜まで素通りしてしまう):
 
 | 場面 | 使う値 |
 |---|---|
@@ -242,29 +286,136 @@ highway: {
 
 `src/config.js` の `HIGHWAY_MIN_CYCLES`(5)・`HIGHWAY_MAX_PERIOD`(2000)は `detectHighwayFromPath`/`verifyHighwayStrict` の既定パラメータとして実際に参照されている。
 
+`evaluateProjectile` はさらに `game`(実ゲーム条件での評価)を返す:
+
+```ts
+game: {
+  reached: boolean,       // 敵陣(SCORE_LINE_Y以上)に到達したか(得点ゲートは見ない)
+  arrivalStep: number|null, // 到達したステップ数。GAME_LIFE_SEARCH_CAP(=12,000)を寿命として評価する
+  steps: number,
+  entryXAt0: number|null, // antX=0で撃ったときの到達列。実プレイの到達列は (antX+entryXAt0) mod WIDTH
+  endY: number,
+}
+```
+
+`viable`(genome がゲーム候補として成立するか)の判定は `highway.trajectoryPeriodic && game.reached && game.arrivalStep <= attackLife && cells.length >= MIN_TEMPLATE_CELLS`。`options.attackLife`(既定 `C.ATTACK_LIFE`)を変えるだけで、**再シミュレーションなしに**別の寿命に対する viable 判定ができる(`isViableAtLife(result, attackLife)`)。これが `ATTACK_LIFE` を「本探索の後から決める」ことを可能にしている構造([spec.md](spec.md) 未決定事項参照)。
+
+### Seed Distillation(v5 で追加)
+
+`src/search/seed-distillation.js` / `src/search/seed-compression.js`。目的は「発見しやすいが形成が遅いハイウェイ」から「ゲームで即座に使える初期配置」を逆抽出すること。
+
+パイプライン(`distillSeed(genome, highway, options)`):
+
+1. **formation snapshot**(`captureFormationSnapshot`): ハイウェイ形成直後(`formationStep` + 周期の整数倍。候補は `[0,1,2,4]` 周期後)の局所盤面をアリ位置基準で切り出す。crop 半径は `[2,3,4,6,8,12,16]` を段階的に試す
+2. **replay 検証**(`replaySeed`): 切り出した種セルだけから走らせ直し、元のハイウェイと同じ `period`/`driftX`/`driftY` を `HIGHWAY_MIN_CYCLES` 周期以上再現するか確認する。再現しなければその crop 半径・snapshot 位置を棄却する
+3. **セル圧縮**(`compressSeed`): 再現できた種を、アリから遠い順に貪欲削除する。削除後も replay 検証が通る場合だけ確定する(同距離のセルは `(dx,dy)` の辞書順で決定論的に処理する。乱数は使わない)
+4. **ゲーム採用可否**(`gameUsability`): 圧縮後のセル集合が `cells.length <= MAX_CELLS`・`|dx|,|dy| <= TEMPLATE_CELL_RADIUS`・dy の広がりが `ZONE_DEPTH` に収まる `antY` が存在すること、を満たせば `gameUsable: true` として `antY`(最も深い位置)を決める
+
+戻り値の形:
+
+```ts
+{
+  attempted: boolean, success: boolean, gameUsable: boolean,
+  genome: Genome | null,          // gameUsable のときだけ非null。origin:'distilled'
+  cropRadius: number | null, snapshotStep: number | null,
+  sourceFormationStep: number, distilledFormationStep: number | null,
+  sourceCellCount: number, distilledCellCount: number | null,
+  reason: string | null,
+}
+```
+
+蒸留 genome は**特別扱いせず**、通常の個体として同じ第1アーカイブへ再投入する(`scripts/generate-templates.mjs`)。
+
+### data/search-report.json(v5で追加)
+
+`src/search/search-report.js` の `buildSearchReport(individuals, options)` が組み立てる、探索結果の統計レポート。ファイル形式:
+
+```json
+{
+  "generatedAt": "2026-08-08T00:00:00.000Z",
+  "seed": 1,
+  "sampledRecords": 120000,
+  "sampleStride": 8,
+  "report": {
+    "totalEvaluations": 5000000,
+    "trajectoryPeriodicCount": 812345,
+    "fingerprintVerifiedCount": 210,
+    "highwayVectorHistogram": { "1,1": 302011, "2,2": 88012 },
+    "slopeHistogram": { "vertical": 0, "nearVertical": 1200, "shallow": 30211, "steep": 5011, "diagonal": 775923, "lateral": 0 },
+    "ruleLengthBySlope": { "diagonal": { "median": 3, "min": 2, "max": 16, "count": 775923 } },
+    "periodBySlope": { "...": "同形式" },
+    "formationBySlope": { "...": "同形式" },
+    "gameViabilityBySlope": { "diagonal": { "viable": 4211, "total": 775923, "rate": 0.0054 } },
+    "distillationAttemptCount": 40211,
+    "distillationSuccessCount": 12044,
+    "distillationSuccessRate": 0.2996,
+    "medianOriginalFormationStep": 412,
+    "medianDistilledFormationStep": 6,
+    "medianFormationReduction": 402,
+    "medianOriginalCellCount": 220,
+    "medianDistilledCellCount": 9,
+    "gameViableBeforeDistillation": 4211,
+    "gameViableAfterDistillation": 5893,
+    "distillationViabilityGain": 1682
+  }
+}
+```
+
+`SLOPE_BINS`(= `['vertical','nearVertical','shallow','steep','diagonal','lateral']`)は並進 `(driftX, driftY)` を傾き比 `|dx|/|dy|` で分類したビン(`slopeBinOf`)。`sampledRecords`/`sampleStride` は数千万件を保持できないための系統サンプリング(`createReportSampler`。上限に達したら stride を2倍にして間引く)の記録。`formatSearchReport(report)` が同じ内容を日本語のテキストへ整形する(`console.error` に出す用。ファイルには出さない)。
+
+> ⚠️ 上のJSONは**形式を示す例**であり実在の生成結果ではない。
+
 ### data/search-archive.json
 
-MAP-Elites 探索アーカイブのデバッグ・再現性確保用ダンプ。`map-elites.js` の `toJSON`/`fromJSON` がシリアライズ形式を提供する(`{ dims, cells: [[key, individual], ...] }`)。**ブラウザのゲームはこのファイルを読み込まない**(実行時が読むのは `data/templates.json` と `data/policy.json` のみ)。本稿執筆時点で `data/search-archive.json` はまだ生成されていない(`data/` には `templates.json` と `policy.json` のみ存在する)。
+MAP-Elites 探索アーカイブのデバッグ・再現性確保用ダンプ。`scripts/generate-templates.mjs` の `main()` が実際に書き出す(v5 で配線済み。旧版は未生成だったが解消した)。ファイル形式:
+
+```json
+{
+  "seed": 1,
+  "quick": false,
+  "workers": 6,
+  "budgetMin": 180,
+  "rounds": 4,
+  "evaluations": 5000000,
+  "generatedAt": "2026-08-08T00:00:00.000Z",
+  "selectionOk": true,
+  "distillStats": { "attempted": 40211, "success": 12044, "gameUsable": 9012, "reinserted": 8877 },
+  "archive1": { "dims": [ { "name": "direction", "bins": 8 } ], "cells": [ ["key", { "genome": {}, "descriptor": {}, "quality": 1.2, "meta": {} }] ] },
+  "archive2Attack": { "dims": "...", "cells": "..." },
+  "archive2Disrupt": { "dims": "...", "cells": "..." }
+}
+```
+
+各 `cells` の要素は `[key, individual]` で、`individual = { genome, descriptor, quality, meta }`。`archive1` の `meta` は `{ highway, game, viable, distillation }` の形(`meta.game.arrivalStep` が `scripts/tune-attack-life.mjs` の掃引対象。**この形は tune-attack-life.mjs が直接読むので変更する場合は両方直すこと**)。**ブラウザのゲームはこのファイルを読み込まない**(実行時が読むのは `data/templates.json` と `data/policy.json` のみ)。
+
+> ⚠️ 上のJSONは**形式を示す例**であり実在の生成結果ではない。
 
 ## data/templates.json
 
 ```json
 {
-  "generatedAt": "2026-08-06T00:00:00Z",
-  "config": { "width": 60, "height": 120, "zoneDepth": 16,
-              "minColors": 2, "maxColors": 16,
-              "searchLife": 20000, "gameProjectileLife": 2400,
-              "attackCost": 5, "attackLife": 2400,
-              "disruptCost": 3, "disruptLife": 400, "maxCells": 16 },
+  "generatedAt": "2026-08-08T00:00:00.000Z",
+  "schemaVersion": 5,
+  "config": {
+    "width": 256, "height": 256, "zoneDepth": 32,
+    "scoreGateXMin": 32, "scoreGateXMax": 224,
+    "minColors": 2, "maxColors": 16,
+    "searchLife": 20000, "gameProjectileLife": 6000,
+    "attackCost": 5, "attackLife": 6000,
+    "disruptCost": 3, "disruptLife": 1000,
+    "maxCells": 16, "templateCellRadius": 8
+  },
   "attack": [
     {
       "id": "A1",
+      "kind": "attack",
       "rule": "RLLRRLR",
       "colorCount": 7,
-      "cells": [[12, 4, 3], [13, 4, 6]],
-      "antX": 12, "antY": 5, "antDir": 2,
+      "cells": [[-2, 4, 3], [-1, 4, 6]],
+      "antY": 5, "antDir": 2,
       "cost": 8,
-      "arrivalStep": 1743,
+      "arrivalStep": 5312,
+      "entryXAt0": 173,
       "robustness": 0.990,
       "costTier": 8,
       "featureTier": 3,
@@ -274,10 +425,11 @@ MAP-Elites 探索アーカイブのデバッグ・再現性確保用ダンプ。
   "disrupt": [
     {
       "id": "D5",
+      "kind": "disrupt",
       "rule": "RLLR",
       "colorCount": 4,
-      "cells": [[6, 10, 1], [6, 11, 2]],
-      "antX": 5, "antY": 11, "antDir": 1,
+      "cells": [[1, 10, 1], [1, 11, 2]],
+      "antY": 11, "antDir": 1,
       "cost": 5,
       "reachRows": 20,
       "endDirection": 1,
@@ -285,63 +437,57 @@ MAP-Elites 探索アーカイブのデバッグ・再現性確保用ダンプ。
       "costTier": 5,
       "featureTier": 2
     }
-  ]
-}
-```
-
-座標・向きはすべて **side1 ローカル座標**。side2 が使うときにミラーリング変換をかける。
-
-> `gameProjectileLife` は `attackLife` と同じ値(2,400)のエイリアス(`src/config.js` の `ATTACK_LIFE` コメント「§7 の GAME_PROJECTILE_LIFE」を参照)。探索(ハイウェイ発見用の `SEARCH_LIFE`)とゲーム内寿命(`gameProjectileLife`=`attackLife`)を区別するために2つの名前を持つ想定。
-
-> ⚠️ 上の2件は**形式を示す例**であり、実在の生成結果ではない。値の整合は生成スクリプトが保証する想定だが、本稿執筆時点で**リポジトリにコミットされている `data/templates.json` は旧スキーマ(v3.1)のまま**である: `config.width=120`, `config.height=60`, `config.rule="RRL"` で、`attack`/`disrupt` の各要素に `rule`/`colorCount`/`highway` フィールドは無い(`cells` も2要素の `[x,y]`)。新スキーマへの移行はテンプレート再生成([architecture.md](architecture.md))を待つ。
-
-`robustness`(攻撃) = 「同梱の妨害テンプレート集 × 発射タイミング」の総当たりのうち、**止められなかった割合**。1.0 に近いほど強い。生成時に **1.0 未満であること**を保証する(1.0 = カウンター無し = 勝ち確定になるため)。
-
-`coverage`(妨害) = 同梱の攻撃テンプレート集のうち、**その妨害が止められる割合**。
-
-| 種類 | 特徴軸1 | 特徴軸2 |
-|---|---|---|
-| 攻撃 (`attack`) | `costTier` = cost の値(6..21程度の段階) | `featureTier` = **敵陣への進入位置(x座標)のビン**(0..5 の6段階。旧仕様は y 座標だったが盤面回転に伴い x に変更) |
-| 妨害 (`disrupt`) | `costTier` = cost の値(4..19程度の段階) | `featureTier` = 縦方向の到達距離(`reachRows`)のビン(0..5 の6段階) × 到達時の向き |
-
-> ⚠️ 攻撃の特徴軸に**到達時間は使わない**。実測(v3.1)では得点できる攻撃の到達時間がすべて 13.3〜15.4秒 に収まり、差がつかなかった(ハイウェイの速度が一定なので当然)。代わりに**敵陣への進入位置**を使う。どの妨害が届くかを決めるので実質的な意味がある。
-
-## 事前計算テーブル(`data/templates.json` に同梱)
-
-9種ずつしか無いので、全ペアの勝敗を事前に総当たりで計算して持てる。CPU と UI の両方が参照する。
-
-```json
-{
-  "identifyTable": { "12,5,2": "A1", "3,50,0": "A2" },
+  ],
+  "identifyTable": { "5,2": "A1", "11,1": "A2" },
   "counterTable": {
-    "A1": [ { "disruptId": "D4", "fireAtStep": 600, "successRate": 1.0 },
-            { "disruptId": "D5", "fireAtStep": 450, "successRate": 1.0 },
-            { "disruptId": "D3", "fireAtStep": 900, "successRate": 0.1 } ]
+    "A1": [ { "disruptId": "D5", "deltaX": 12, "fireAtStep": 750, "successRate": 0.30 } ]
   },
   "escortTable": {
-    "A1": { "D4": [ { "escortId": "D2", "fireAtStep": 300 } ],
-            "D5": [ { "escortId": "D7", "fireAtStep": 520 } ] }
+    "A1": { "D5": [ { "interceptDeltaX": 12, "interceptFireAtStep": 750, "escortDisruptId": "D2", "escortDeltaX": 4, "fireAtStep": 300 } ] }
   }
 }
 ```
 
+座標(`cells`)はすべて**アリからの相対座標**、`antY`/`antDir` は **side1 ローカル座標**。`antX` はテンプレートに存在しない(発射時にプレイヤー/CPUが選ぶ)。side2 が使うときは `antY`/`cells[].dy` にミラーリング変換をかける。
+
+> `gameProjectileLife` は `attackLife` と同じ値のエイリアス(探索(ハイウェイ発見用の `searchLife`)とゲーム内寿命(`gameProjectileLife`=`attackLife`)を区別するために2つの名前を持つ想定)。
+>
+> ⚠️ 上のJSONは**形式を示す例**であり実在の生成結果ではない。値の整合は生成スクリプトが保証する。本稿執筆時点でリポジトリにコミットされている `data/templates.json` は**旧スキーマ(v3.1、`config.width=120`等)のまま**であり、テンプレート再生成([architecture.md](architecture.md))を待つ状態にある。参照コードとして見るべきは `scripts/generate-templates.mjs` の `templatesOutput` 組み立て箇所である。
+
+`robustness`(攻撃) = 「同梱の妨害テンプレート集 × 全deltaX × 全発射タイミング」の総当たりのうち、**止められなかった割合**(= `1 - counterDensity`)。1.0 に近いほど強い。生成時に **1.0 未満であること**を保証する(1.0 = カウンター無し = 勝ち確定になるため)。
+
+`coverage`(妨害) = 同梱の攻撃テンプレート集のうち、**その妨害が(いずれかのdeltaX・タイミングで)止められる割合**。
+
+| 種類 | 特徴軸1 | 特徴軸2 |
+|---|---|---|
+| 攻撃 (`attack`) | `costTier` = cost の値(6..21程度の段階) | `featureTier` = **敵陣への進入位置(x座標)のビン**(0..5 の6段階) |
+| 妨害 (`disrupt`) | `costTier` = cost の値(4..19程度の段階) | `featureTier` = 縦方向の到達距離(`reachRows`)のビン(0..5 の6段階) |
+
+> ⚠️ 攻撃の特徴軸に**到達時間は使わない**(v3.1の実測。詳細は [spec.md](spec.md) 参照)。代わりに**敵陣への進入位置**を使う。どの妨害が届くかを決めるので実質的な意味がある。
+
+## 事前計算テーブル(`data/templates.json` に同梱)
+
+9種ずつしか無いので、全ペアの勝敗を事前に総当たりで計算して持てる。CPU と UI の両方が参照する。上の `data/templates.json` のサンプルを参照。
+
 | テーブル | キー | 値 |
 |---|---|---|
-| `identifyTable` | `"antX,antY,antDir"`(発射位置・向き。side1ローカル座標) | 攻撃ID。**9種は発射位置・向きがすべて異なる**ので1ステップで一意に決まる(選抜基準の必須項目) |
-| `counterTable` | 攻撃ID | その攻撃を止められる `{妨害ID, 発射ステップ, 成功率}` の一覧 |
-| `escortTable` | 攻撃ID → 迎撃妨害ID | その迎撃を無効化できる `{護衛妨害ID, 発射ステップ}` の一覧 |
+| `identifyTable` | `"antY,antDir"`(発射行・向き。side1ローカル座標。**v5でキーが変わった**) | 攻撃ID。**9種は `antY`・向きがすべて異なる**ので1ステップで一意に決まる(選抜基準の必須項目) |
+| `counterTable` | 攻撃ID | その攻撃を止められる `{disruptId, deltaX, fireAtStep, successRate}` の一覧 |
+| `escortTable` | 攻撃ID → 迎撃妨害ID | その迎撃を無効化できる `{interceptDeltaX, interceptFireAtStep, escortDisruptId, escortDeltaX, fireAtStep}` の一覧 |
 
-`successRate` は「その妨害を撃ったとき、記録した発射ステップの前後で止められる割合」。1.0 に近いほどタイミングがシビアでない。
+`deltaX` は「妨害の発射列 − 攻撃の発射列」を `WIDTH` で割った余り(v5で追加)。攻撃は常に `antX=0` で評価されているので、実プレイでは「攻撃を撃った列 + deltaX (mod WIDTH)」が妨害/護衛の発射列になる。
 
-> **`fireAtStep` は「止めたい攻撃アリが発射されたステップ」からの相対ステップ**(試合の絶対ステップではない)。生成時の候補は `[0, 150, 300, 450, 600, 750, 900, 1050, 1200, 1350]` の10通り(`src/config.js` の `FIRE_TIMINGS`)。CPU は敵の攻撃を識別したステップを起点に `敵の発射ステップ + fireAtStep` で撃つ。
+`successRate` は「その `(disruptId, deltaX)` を撃ったとき、`FIRE_TIMINGS` の各タイミングのうち止められた割合」。1.0 に近いほどタイミングがシビアでない。
+
+> **`fireAtStep` は「止めたい攻撃アリが発射されたステップ」からの相対ステップ**(試合の絶対ステップではない)。生成時の候補は `src/config.js` の `FIRE_TIMINGS`(`ATTACK_LIFE` から導出される。定数リテラルで固定されていない。詳細は [spec.md](spec.md) 参照)。CPU は敵の攻撃を識別したステップを起点に `敵の発射ステップ + fireAtStep` で撃つ。
 >
-> `escortTable` の `fireAtStep` も同じく「**自分の**攻撃アリが発射されたステップ」からの相対。
+> `escortTable` の `fireAtStep` も同じく「**自分の**攻撃アリが発射されたステップ」からの相対。`interceptDeltaX`/`interceptFireAtStep` は「その護衛が対応する迎撃」がどの deltaX・タイミングで来た場合かを表す。
 
 ## data/policy.json
 
 ```json
 {
-  "trainedAt": "2026-08-06T00:00:00Z",
+  "trainedAt": "2026-08-08T00:00:00Z",
   "method": "CEM",
   "generations": 40,
   "matches": 96000,
@@ -365,7 +511,7 @@ MAP-Elites 探索アーカイブのデバッグ・再現性確保用ダンプ。
 | `attackPref[9]` | 攻撃テンプレート9種(`TEMPLATE_COUNT_ATTACK`)の選好重み(softmaxで選択)。相手の防御傾向への適応がここに現れる |
 | `winRateVsRandom` | 学習の効果を示す記録値。再学習したら更新する |
 
-学習は CEM法(交差エントロピー法)による自己対戦。パラメータは13個。実測(v3.1) 362試合/秒 で、集団60 × 各40試合 × 40世代 = **約4分**。
+学習は CEM法(交差エントロピー法)による自己対戦。パラメータは13個。実測(v3.1) 362試合/秒 で、集団60 × 各40試合 × 40世代 = **約4分**(v5盤面での再計測は未実施)。CPU の意思決定周期は `DECISION_INTERVAL_STEPS`(=`STEPS_PER_SECOND`=300)ステップに1回(v4までは120)。
 
 > ⚠️ 上の値は**形式を示す例**であり実在の学習結果ではない。`node scripts/train-policy.mjs` を実行して実際の値で上書きすること。
 >

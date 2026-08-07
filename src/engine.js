@@ -35,6 +35,8 @@ function stepAnt(board, lastToucher, lastToucherSide, ant) {
   board[j] = (s + 1) % ant.colorCount;
   lastToucher[j] = ant.id;
   lastToucherSide[j] = ant.sideIndex + 1;
+  // 踏んだマスを記録する(cleanupAnt が全盤面を走査しないため。下の cleanupAnt のコメント参照)。
+  ant.touched.push(j);
   const d = C.DIRS[ant.dir];
   ant.x = (ant.x + d[0] + C.WIDTH) % C.WIDTH; // 左右はトーラス
   ant.y = ant.y + d[1]; // 上下はラップしない(素の加算)
@@ -44,6 +46,14 @@ function stepAnt(board, lastToucher, lastToucherSide, ant) {
 /**
  * アリ消滅時のクリーンアップ。
  * { 配置マスのうち lastToucher が -1 か自分 } ∪ { lastToucher が自分と一致する全マス } を白に戻す。
+ *
+ * ⚠️ v5 の性能修正: 後半の集合はもともと `for (q = 0; q < board.length; q++)` の全盤面走査だった。
+ * 盤面が 7,200 → 65,536 マスになり、1試合で数十匹が消滅するのでここが支配的コストになる
+ * (5,000試合のバランス検証が現実的な時間で終わらない)。
+ * `lastToucher[q] === ant.id` になりうるマスは **そのアリが実際に踏んだマスの部分集合**でしか
+ * ありえないので、`ant.touched`(stepAnt が記録する踏んだマスの列)だけを見れば結果は同値になる。
+ * 同一マスを複数回踏んでいると `touched` に重複が入るが、1回目で白に戻したあと
+ * `lastToucher` が -1 になるため2回目以降は条件に合わず、二重処理にはならない。
  */
 function cleanupAnt(board, lastToucher, lastToucherSide, ant) {
   for (const cell of ant.cells) {
@@ -55,7 +65,8 @@ function cleanupAnt(board, lastToucher, lastToucherSide, ant) {
       lastToucherSide[q] = 0;
     }
   }
-  for (let q = 0; q < board.length; q++) {
+  for (let i = 0; i < ant.touched.length; i++) {
+    const q = ant.touched[i];
     if (lastToucher[q] === ant.id) {
       board[q] = 0;
       lastToucher[q] = -1;
@@ -64,12 +75,19 @@ function cleanupAnt(board, lastToucher, lastToucherSide, ant) {
   }
 }
 
-/** 前進後の判定。dead / scored を返す(盤面操作はしない)。判定は前進後、この順。 */
+/**
+ * 前進後の判定。dead / scored を返す(盤面操作はしない)。判定は前進後、この順。
+ *
+ * ⚠️ v5: 敵陣(y >= SCORE_LINE_Y)に到達しても、そのときの x が **得点ゲート**の外なら
+ * 得点にならずに消滅する(config.js の SCORE_GATE_WIDTH のコメント参照)。
+ * ゲートは盤面中央に左右対称に取ってあるので、x はグローバル座標のまま両陣営で共通に判定できる
+ * (x は陣営で鏡像にならない。鏡像になるのは y だけ)。
+ */
 function resolveAnt(ant) {
-  if (ant.y < 0) return { dead: true, scored: false };
-  if (ant.y >= C.SCORE_LINE_Y) return { dead: true, scored: true };
-  if (ant.steps >= ant.life) return { dead: true, scored: false };
-  return { dead: false, scored: false };
+  if (ant.y < 0) return { dead: true, scored: false, reached: false };
+  if (ant.y >= C.SCORE_LINE_Y) return { dead: true, scored: C.isInScoreGate(ant.x), reached: true };
+  if (ant.steps >= ant.life) return { dead: true, scored: false, reached: false };
+  return { dead: false, scored: false, reached: false };
 }
 
 // ---------------------------------------------------------------------------
@@ -123,17 +141,64 @@ export function mirrorDir(sideIndex, dir) {
 }
 
 // ---------------------------------------------------------------------------
+// オフライン用シミュレーションの盤面バッファ
+//
+// ⚠️ v5: 盤面が 65,536 マスになったため、1回の評価ごとに Uint8Array/Int16Array を
+// 確保して `fill(-1)` すると、確保とゼロ埋めだけで探索(数百万回)・カウンター行列計算
+// (数十万回)が破綻する。触れたマスの添字を控えておき、実行の最後にそこだけ戻すことで
+// バッファを使い回す(simulateSearch と同じ考え方)。
+//
+// ⚠️ **再入不可**。同じバッファ集合を使う関数の実行中に、同じ関数を再帰的・並行に
+// 呼び出してはいけない。simulateSolo と simulateVersus は別のバッファ集合を持たせて
+// あるので、片方の中からもう片方を呼ぶのは安全(実際そういう呼び方はしていない)。
+// 並列化は worker_threads(ワーカーごとにモジュールが別インスタンスになる)で行う。
+// ---------------------------------------------------------------------------
+
+function createGameBuffers() {
+  return {
+    board: new Uint8Array(C.CELL_COUNT),
+    lastToucher: new Int16Array(C.CELL_COUNT).fill(-1),
+    lastToucherSide: new Uint8Array(C.CELL_COUNT),
+  };
+}
+
+let _soloBuffers = null;
+let _versusBuffers = null;
+
+/** 指定した添字だけを白紙に戻す(バッファ使い回しのためのリセット)。 */
+function resetIndices(buffers, indices) {
+  const { board, lastToucher, lastToucherSide } = buffers;
+  for (let i = 0; i < indices.length; i++) {
+    const q = indices[i];
+    board[q] = 0;
+    lastToucher[q] = -1;
+    lastToucherSide[q] = 0;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// テンプレートの実体化(発射列 antX の可変化。§v5)
+//
+// 実体は src/template.js にある。src/cpu.js は engine.js を import できない
+// (AGENTS.md「Do NOT」)ため、座標変換だけを別モジュールに切り出して共有している。
+// engine.js からは後方互換のために再エクスポートする。
+// ---------------------------------------------------------------------------
+export { instantiateTemplate } from './template.js';
+
+// ---------------------------------------------------------------------------
 // オフライン用の単体シミュレーション
 // ---------------------------------------------------------------------------
 
 /**
  * 空盤面に template.cells を置いてアリ1匹を寿命まで走らせる(side0 固定)。
  * rule は template.rule か options.rule を使う(どちらも無ければ C.LEGACY_RULE)。
+ * ⚠️ cells は**絶対座標**で渡す(相対テンプレートは instantiateTemplate を通すこと)。
+ * ⚠️ 再入不可(上の「オフライン用シミュレーションの盤面バッファ」参照)。
  */
 export function simulateSolo(template, options = {}) {
-  const board = new Uint8Array(C.CELL_COUNT);
-  const lastToucher = new Int16Array(C.CELL_COUNT).fill(-1);
-  const lastToucherSide = new Uint8Array(C.CELL_COUNT);
+  if (!_soloBuffers) _soloBuffers = createGameBuffers();
+  const { board, lastToucher, lastToucherSide } = _soloBuffers;
+  const dirty = [];
   const kind = template.kind ?? 'attack';
   const sideIndex = 0;
   const antId = 0;
@@ -146,6 +211,7 @@ export function simulateSolo(template, options = {}) {
     board[j] = cellState(cell);
     lastToucher[j] = antId;
     lastToucherSide[j] = sideIndex + 1;
+    dirty.push(j);
   }
   const ant = {
     id: antId,
@@ -160,24 +226,37 @@ export function simulateSolo(template, options = {}) {
     steps: 0,
     life: options.life ?? C.ANT_KINDS[kind].life,
     cells,
+    touched: [],
   };
   const trackPath = !!options.trackPath;
   const path = trackPath ? [[ant.x, ant.y]] : undefined;
   let scored = false;
+  let reached = false;
   let entryY = null;
+  let entryX = null;
   for (;;) {
     stepAnt(board, lastToucher, lastToucherSide, ant);
     if (trackPath) path.push([ant.x, ant.y]);
-    const { dead, scored: didScore } = resolveAnt(ant);
-    if (dead) {
-      if (didScore) {
-        scored = true;
+    const r = resolveAnt(ant);
+    if (r.dead) {
+      if (r.reached) {
+        reached = true;
         entryY = ant.y;
+        entryX = ant.x;
       }
+      scored = r.scored;
       break;
     }
   }
-  return { scored, steps: ant.steps, entryY, endX: ant.x, endY: ant.y, path };
+  // バッファを使い回すため、触れたマスだけを白紙に戻す。
+  resetIndices(_soloBuffers, dirty);
+  resetIndices(_soloBuffers, ant.touched);
+  // ⚠️ `scored`(得点ゲート適用後)と `reached`(敵陣に到達したか)を区別して返す。
+  // 探索評価は **reached** を使う。発射列 antX は発射時に自由に選べて、左右がトーラス
+  // なので「到達 x をゲート内に持ってくる antX が必ず存在する」ため、ゲートは
+  // テンプレートの実力(viable かどうか)を左右しない。ゲートが効くのは実プレイで
+  // 「どの列から撃つか」を縛るところだけ(config.js の SCORE_GATE_WIDTH 参照)。
+  return { scored, reached, steps: ant.steps, entryY, entryX, endX: ant.x, endY: ant.y, path };
 }
 
 // ---------------------------------------------------------------------------
@@ -245,17 +324,24 @@ export function simulateSearch(template, options = {}) {
     steps: 0,
     life: options.life ?? C.SEARCH_LIFE,
     cells,
+    // 踏んだマスの添字は stepAnt が ant.touched に記録する(cleanupAnt と共用の仕組み)。
+    touched: [],
   };
   const trackPath = !!options.trackPath;
   const path = trackPath ? [[ant.x, ant.y]] : undefined;
   for (;;) {
-    touched.push(idx(ant.x, ant.y));
     stepAnt(board, lastToucher, lastToucherSide, ant);
     if (trackPath) path.push([ant.x, ant.y]);
     if (ant.y < 0 || ant.y >= C.SEARCH_BOARD_HEIGHT || ant.steps >= ant.life) break;
   }
   // 触れたセルだけを白に戻す(盤面バッファの使い回し)
   for (const j of touched) {
+    board[j] = 0;
+    lastToucher[j] = -1;
+    lastToucherSide[j] = 0;
+  }
+  for (let i = 0; i < ant.touched.length; i++) {
+    const j = ant.touched[i];
     board[j] = 0;
     lastToucher[j] = -1;
     lastToucherSide[j] = 0;
@@ -271,9 +357,13 @@ export function simulateSearch(template, options = {}) {
  * 試合の資源(トークン・同時飛行数)は考慮しない、純粋なオフライン検証用。
  */
 export function simulateVersus(attack, opponents, options = {}) {
-  const board = new Uint8Array(C.CELL_COUNT);
-  const lastToucher = new Int16Array(C.CELL_COUNT).fill(-1);
-  const lastToucherSide = new Uint8Array(C.CELL_COUNT);
+  if (!_versusBuffers) _versusBuffers = createGameBuffers();
+  const { board, lastToucher, lastToucherSide } = _versusBuffers;
+  // バッファ使い回しのため、この実行で盤面に書き込んだ添字を全部控える。
+  // 盤面への書き込みは place()(配置マス)と stepAnt()(ant.touched)の2箇所しかないので、
+  // dirty ∪ (全アリの touched) が「この実行で汚したマス」の上位集合になる。
+  const dirty = [];
+  const allAnts = [];
   let nextId = 0;
   const antsBySide = [[], []];
 
@@ -288,6 +378,7 @@ export function simulateVersus(attack, opponents, options = {}) {
       board[j] = cellState(cell);
       lastToucher[j] = id;
       lastToucherSide[j] = sideIndex + 1;
+      dirty.push(j);
     }
     const ant = {
       id,
@@ -302,8 +393,10 @@ export function simulateVersus(attack, opponents, options = {}) {
       steps: 0,
       life: options.life ?? C.ANT_KINDS[kind].life,
       cells,
+      touched: [],
     };
     antsBySide[sideIndex].push(ant);
+    allAnts.push(ant);
     return ant;
   }
 
@@ -335,14 +428,20 @@ export function simulateVersus(attack, opponents, options = {}) {
       for (const ant of antsBySide[s]) {
         stepAnt(board, lastToucher, lastToucherSide, ant);
         if (trackPath && ant.id === attackAnt.id) attackPath.push([ant.x, ant.y, ant.dir]);
-        const { dead, scored: didScore } = resolveAnt(ant);
+        const r = resolveAnt(ant);
+        const dead = r.dead;
         if (dead) {
           if (ant.id === attackAnt.id) {
             // 消滅した瞬間の座標を控える。得点の有無にかかわらず記録する
             // (§18 の attackFinalX/Y と、§29 の「衝突後 highway 復帰率」の材料)。
             attackFinalX = ant.x;
             attackFinalY = ant.y;
-            if (didScore) {
+            if (r.reached) {
+              // ⚠️ カウンター表の「止めた」は **得点ゲートではなく敵陣到達**で判定する。
+              // 発射列 antX は自由に選べるので、ゲート内に落とす antX は必ず存在する。
+              // 「ゲートの外にずらした」を成功と数えると、平行移動で無効になる
+              // カウンターを記録してしまう(counterTable は deltaX の表であって
+              // 絶対座標の表ではない)。
               scored = true;
               // 敵陣へ侵入した x 座標。盤面90度回転により、記述子は y ではなく x を使う(§14)。
               entryX = ant.x;
@@ -359,6 +458,10 @@ export function simulateVersus(attack, opponents, options = {}) {
     }
     step++;
   }
+
+  // バッファを使い回すため、この実行で汚したマスだけを白紙に戻す。
+  resetIndices(_versusBuffers, dirty);
+  for (const ant of allAnts) resetIndices(_versusBuffers, ant.touched);
 
   return {
     scored,
@@ -463,7 +566,9 @@ export function createSideView(match, sideIndex) {
     firedAtStep: ant.firedAtStep,
     templateId: ant.templateId,
     // 発射した陣営自身のローカル座標での「発射位置・向き」。
-    // identifyTable("antX,antY,antDir") はこのキーで引く。
+    // identifyTable は v5 で **"antY,antDir"** をキーにする(発射列 antX は
+    // 発射時に選ぶ自由度になったので識別キーに使えない)。spawnX は迎撃の発射列を
+    // deltaX から求めるために使う(counterTable の deltaX は攻撃の発射列からの相対)。
     // ⚠️ ant.x/y/dir は毎ステップ動くので識別には使えない(発射した次のステップには
     // もう1マス進んでいる)。必ず spawn* を使うこと。
     spawnX: ant.spawnX,
@@ -532,13 +637,16 @@ export function fire(match, sideIndex, action) {
     y: action.antY,
     dir: action.antDir,
     // 発射時の位置・向きを保存する。x/y/dir は毎ステップ動くので、
-    // identifyTable("antX,antY,antDir") を引くにはこちらを使う。
+    // identifyTable("antY,antDir") を引くには spawnY/spawnDir を使う。
+    // spawnX は counterTable の deltaX を絶対列に直すのに使う。
     spawnX: action.antX,
     spawnY: action.antY,
     spawnDir: action.antDir,
     steps: 0,
     life: C.ANT_KINDS[action.kind].life,
     cells,
+    // 踏んだマスの添字。cleanupAnt が全盤面(65,536マス)を走査しないために必要。
+    touched: [],
     firedAtStep: match.step,
     templateId: action.templateId ?? null,
   };

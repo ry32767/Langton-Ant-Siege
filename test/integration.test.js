@@ -2,8 +2,10 @@
 // 単体テストは手書きの view を使うため「view の中身が実際の engine とズレている」
 // 種類のバグを取り逃す。実際にそれで CPU の迎撃が丸ごと死んでいたので、ここで塞ぐ。
 //
-// ⚠️ data/templates.json はまだ旧スキーマのままなので、ここでは読み込まない。
-// テンプレートは新スキーマ(cells:[x,y,state] / rule / colorCount)の合成フィクスチャを使う。
+// ⚠️ data/templates.json はまだ旧スキーマ(schemaVersion 5未満)のままなので、ここでは
+// 読み込まない。テンプレートは v5 スキーマ(cells は antX,antY からの相対 [dx,dy,state] /
+// identifyTable のキーは "antY,antDir" / counterTable の要素は deltaX を持つ)の
+// 合成フィクスチャを使う。
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as C from '../src/config.js';
@@ -11,7 +13,7 @@ import { createMatch, createSideView, fire, stepMatch, createRng } from '../src/
 import { createCpuAgent } from '../src/cpu.js';
 
 // ---------------------------------------------------------------------------
-// fixture: 攻撃1種・妨害1種の小さなテンプレート集(新スキーマ)
+// fixture: 攻撃1種・妨害1種の小さなテンプレート集(v5スキーマ)
 // ---------------------------------------------------------------------------
 
 function makeTemplates() {
@@ -20,10 +22,11 @@ function makeTemplates() {
     kind: 'attack',
     rule: 'RRL',
     colorCount: 3,
-    cells: [[3, 10, 1]],
+    cells: [[3, 10, 1]], // antX=14 相対なら絶対x=17。ここでは actionOf() で直接antXを使うだけなので絶対でも相対でも同じ扱い
     antX: 14,
     antY: 12,
     antDir: 1,
+    entryXAt0: 0,
   };
   const D1 = {
     id: 'D1',
@@ -39,10 +42,10 @@ function makeTemplates() {
     attack: [A1],
     disrupt: [D1],
     identifyTable: {
-      '14,12,1': 'A1',
+      '12,1': 'A1', // v5: キーは "antY,antDir"(antX は可変になったので含まない)
     },
     counterTable: {
-      A1: [{ disruptId: 'D1', fireAtStep: 50, successRate: 1.0 }],
+      A1: [{ disruptId: 'D1', deltaX: 0, fireAtStep: 50, successRate: 1.0 }],
     },
     escortTable: {},
   };
@@ -102,7 +105,7 @@ test('CPU は実際の engine の view から敵の攻撃を identifyTable で�
   const threat = view.enemyAnts.find((a) => a.kind === 'attack');
   assert.ok(threat, '敵の攻撃アリが view に見えていない');
 
-  const key = `${threat.spawnX},${threat.spawnY},${threat.spawnDir}`;
+  const key = `${threat.spawnY},${threat.spawnDir}`; // v5: identifyTable のキーは antX を含まない
   assert.equal(
     templates.identifyTable[key],
     attack.id,
@@ -197,32 +200,35 @@ test('CPU は識別した攻撃に対して迎撃を予約する', () => {
 // CPU vs CPU の試合が最後まで進み、決定論的で、実際に得点しうる
 // ---------------------------------------------------------------------------
 
-/** 得点しうる小さなハイウェイ様のテンプレート集(自陣配置帯y=0..15で組む)。 */
+/**
+ * 得点しうる小さなハイウェイ様のテンプレート集(自陣配置帯y=0..15で組む、v5スキーマ)。
+ * cells はアリからの相対 [dx, dy, state]。entryXAt0=0 を与えて tryAttack が
+ * scoringLaunchColumns() で候補から外されないようにする(count=0 だと一度も発射されない)。
+ */
 function makeMatchTemplates() {
   const attack = {
     id: 'ATK1',
     kind: 'attack',
     rule: 'RL',
     colorCount: 2,
-    cells: [[10, 5, 1]],
-    antX: 10,
+    cells: [[0, 5, 1]],
     antY: 6,
     antDir: C.DIR_DOWN, // ローカルyが増える向き=自陣を出て相手陣(得点ライン)へ向かう
+    entryXAt0: 0,
   };
   const disrupt = {
     id: 'DIS1',
     kind: 'disrupt',
     rule: 'RL',
     colorCount: 2,
-    cells: [[20, 5, 1]],
-    antX: 20,
+    cells: [[0, 5, 1]],
     antY: 6,
     antDir: C.DIR_DOWN,
   };
   return {
     attack: [attack],
     disrupt: [disrupt],
-    identifyTable: { '10,6,0': 'ATK1' },
+    identifyTable: { [`6,${C.DIR_DOWN}`]: 'ATK1' },
     counterTable: {},
     escortTable: {},
   };

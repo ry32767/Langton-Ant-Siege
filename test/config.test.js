@@ -4,16 +4,40 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as C from '../src/config.js';
 
-test('盤面のジオメトリと得点ラインが整合する(v4: 60x120、上下が場外)', () => {
-  assert.equal(C.WIDTH, 60);
-  assert.equal(C.HEIGHT, 120);
-  assert.equal(C.ZONE_DEPTH, 16);
+test('盤面のジオメトリと得点ラインが整合する(v5: 256x256 正方形、上下が場外)', () => {
+  assert.equal(C.WIDTH, 256);
+  assert.equal(C.HEIGHT, 256);
+  assert.equal(C.ZONE_DEPTH, 32);
   assert.equal(C.SCORE_LINE_Y, C.HEIGHT - C.ZONE_DEPTH);
-  assert.equal(C.SCORE_LINE_Y, 104);
+  assert.equal(C.SCORE_LINE_Y, 224);
   assert.equal(C.CELL_COUNT, C.WIDTH * C.HEIGHT);
-  assert.equal(C.CELL_COUNT, 7200);
+  assert.equal(C.CELL_COUNT, 65536);
   // 両陣営の配置可能帯が重ならず、中間地帯が残る
   assert.ok(C.ZONE_DEPTH * 2 < C.HEIGHT);
+});
+
+test('得点ゲートが盤面中央に左右対称に取られている(§v5)', () => {
+  assert.equal(C.SCORE_GATE_WIDTH, 192);
+  assert.equal(C.SCORE_GATE_X_MIN, 32);
+  assert.equal(C.SCORE_GATE_X_MAX, 224);
+  assert.equal(C.SCORE_GATE_X_MAX - C.SCORE_GATE_X_MIN, C.SCORE_GATE_WIDTH);
+  // 左右対称(壁の幅が同じ)。x は陣営で鏡像にならないので、非対称だと片側が有利になる
+  assert.equal(C.SCORE_GATE_X_MIN, C.WIDTH - C.SCORE_GATE_X_MAX);
+  assert.ok(C.SCORE_GATE_WIDTH < C.WIDTH, 'ゲートが盤面全幅なら制限になっていない');
+  // isInScoreGate が唯一の定義であること(境界は min を含み max を含まない)
+  assert.equal(C.isInScoreGate(C.SCORE_GATE_X_MIN), true);
+  assert.equal(C.isInScoreGate(C.SCORE_GATE_X_MAX - 1), true);
+  assert.equal(C.isInScoreGate(C.SCORE_GATE_X_MIN - 1), false);
+  assert.equal(C.isInScoreGate(C.SCORE_GATE_X_MAX), false);
+});
+
+test('配置マスの局所半径が、配置帯に収まり かつ 意味のある密度になる(§v5)', () => {
+  // アリ近傍 (2r+1)^2 マスに MAX_CELLS 個を撒く。半径が大きすぎるとアリが配置マスを
+  // 踏まなくなり(v4 で 256列にすると密度0.2%になる問題)、小さすぎると自由度が無くなる。
+  const neighborhood = (2 * C.TEMPLATE_CELL_RADIUS + 1) ** 2;
+  assert.ok(neighborhood > C.MAX_CELLS, '近傍が配置マス数より狭いと座標が重複して置けない');
+  assert.ok(C.MAX_CELLS / neighborhood > 0.02, '近傍が広すぎてアリが配置マスを踏まない');
+  assert.ok(2 * C.TEMPLATE_CELL_RADIUS + 1 <= C.ZONE_DEPTH, '近傍の高さが配置帯に収まらない');
 });
 
 test('ラップの向きが左右のみ(上下はラップしない)', () => {
@@ -81,7 +105,7 @@ test('コストがトークン上限の範囲に収まる', () => {
 
 test('試合の時間定数が整合する', () => {
   assert.equal(C.TOTAL_STEPS, C.TIME_LIMIT_SEC * C.STEPS_PER_SECOND);
-  assert.equal(C.TOTAL_STEPS, 28800);
+  assert.equal(C.TOTAL_STEPS, 72000);
   assert.equal(C.TOKEN_TICK_STEPS, C.STEPS_PER_SECOND);
   // 上限まで貯めるのに30秒。試合時間に対して十分短い
   assert.ok(C.TOKEN_CAP / C.TOKEN_PER_TICK < C.TIME_LIMIT_SEC);
@@ -95,6 +119,26 @@ test('カウンター表の発射タイミング候補が昇順で寿命内に�
   }
   assert.equal(C.FIRE_TIMINGS[0], 0);
   assert.ok(C.FIRE_TIMINGS.at(-1) < C.ATTACK_LIFE);
+  // 間隔が判断周期の倍数だと、記録した迎撃タイミングの大半が実際には撃てない
+  // (docs/spec.md「共有盤面とステップ順序」の警告)
+  assert.notEqual(C.FIRE_TIMING_INTERVAL % C.DECISION_INTERVAL_STEPS, 0);
+  // 消滅間際に撃っても干渉できないので、末尾は妨害の寿命ぶん手前で打ち切る
+  assert.ok(C.FIRE_TIMINGS.at(-1) <= C.ATTACK_LIFE - C.DISRUPT_LIFE);
+});
+
+test('共進化中の deltaX 掃引グリッドが盤面幅を割り切る(§v5)', () => {
+  // 発射列 antX が可変になったので、カウンター表は deltaX の次元を持つ。
+  // 共進化中は全 WIDTH 列を掃引せず、この刻みで近似する。
+  assert.ok(C.COEVO_DELTA_X_STRIDE >= 1);
+  assert.equal(C.WIDTH % C.COEVO_DELTA_X_STRIDE, 0, '割り切れないと掃引点が偏る');
+  assert.ok(C.WIDTH / C.COEVO_DELTA_X_STRIDE >= 8, '掃引点が少なすぎるとカウンターを見落とす');
+});
+
+test('探索中のゲーム射影キャップが ATTACK_LIFE より大きい(後から寿命を決められる)', () => {
+  // 探索は GAME_LIFE_SEARCH_CAP で走らせて arrivalStep を記録するので、
+  // ATTACK_LIFE を後から変えても再探索が要らない。キャップが寿命以下だと成り立たない。
+  assert.ok(C.GAME_LIFE_SEARCH_CAP >= C.ATTACK_LIFE);
+  assert.ok(C.SEARCH_LIFE > C.GAME_LIFE_SEARCH_CAP, '探索評価はゲーム射影より長く走らせる');
 });
 
 test('記録された発射タイミングがすべて実際に撃てる(SCHEDULED_FIRE_IS_EXACT)', () => {

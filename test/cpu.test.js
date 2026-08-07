@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import * as C from '../src/config.js';
 import { createCpuAgent } from '../src/cpu.js';
+import { wrapX, scoringLaunchColumns, launchColumnScores } from '../src/template.js';
 // rng は engine.js が提供する決定論的な擬似乱数を使う(cpu.js 自体は engine を import しない)。
 import { createRng } from '../src/engine.js';
 
@@ -15,6 +16,10 @@ const CPU_SOURCE_PATH = fileURLToPath(new URL('../src/cpu.js', import.meta.url))
 // fixture: 攻撃3種・妨害3種の小さなテンプレート集
 // ---------------------------------------------------------------------------
 
+// v5: テンプレートは antX を持たず、cells はアリからの相対 [dx, dy, state]。
+// entryXAt0 は「発射列0で撃ったときに敵陣へ入る列」。全部 0 にしておくと
+// scoringLaunchColumns() は min=SCORE_GATE_X_MIN(=32), count=SCORE_GATE_WIDTH(=192) になる
+// (src/template.js 参照)。
 function makeTemplates() {
   const A1 = {
     id: 'A1',
@@ -22,9 +27,9 @@ function makeTemplates() {
     rule: 'RRL',
     colorCount: 3,
     cells: [[3, 21, 1]],
-    antX: 14,
     antY: 23,
     antDir: 1,
+    entryXAt0: 0,
   };
   const A2 = {
     id: 'A2',
@@ -32,9 +37,9 @@ function makeTemplates() {
     rule: 'RL',
     colorCount: 2,
     cells: [[3, 22, 1], [4, 22, 1]],
-    antX: 3,
     antY: 50,
     antDir: 0,
+    entryXAt0: 0,
   };
   const A3 = {
     id: 'A3',
@@ -42,9 +47,9 @@ function makeTemplates() {
     rule: 'RLL',
     colorCount: 3,
     cells: [[5, 5, 1], [5, 6, 1], [5, 7, 1]],
-    antX: 10,
     antY: 10,
     antDir: 2,
+    entryXAt0: 0,
   };
   const D1 = {
     id: 'D1',
@@ -52,7 +57,6 @@ function makeTemplates() {
     rule: 'RL',
     colorCount: 2,
     cells: [[6, 40, 1]],
-    antX: 5,
     antY: 41,
     antDir: 1,
   };
@@ -62,7 +66,6 @@ function makeTemplates() {
     rule: 'RRL',
     colorCount: 3,
     cells: [[6, 41, 1], [6, 42, 1]],
-    antX: 2,
     antY: 2,
     antDir: 0,
   };
@@ -72,7 +75,6 @@ function makeTemplates() {
     rule: 'LR',
     colorCount: 2,
     cells: [[1, 1, 1]],
-    antX: 1,
     antY: 1,
     antDir: 3,
   };
@@ -81,21 +83,25 @@ function makeTemplates() {
     attack: [A1, A2, A3],
     disrupt: [D1, D2, D3],
     identifyTable: {
-      '14,23,1': 'A1',
-      '3,50,0': 'A2',
-      '10,10,2': 'A3',
-      '5,41,1': 'D1',
-      '2,2,0': 'D2',
-      '1,1,3': 'D3',
+      '23,1': 'A1',
+      '50,0': 'A2',
+      '10,2': 'A3',
+      '41,1': 'D1',
+      '2,0': 'D2',
+      '1,3': 'D3',
     },
     counterTable: {
       A1: [
-        { disruptId: 'D2', fireAtStep: 600, successRate: 1.0 },
-        { disruptId: 'D1', fireAtStep: 150, successRate: 0.5 },
+        { disruptId: 'D2', deltaX: 5, fireAtStep: 600, successRate: 1.0 },
+        { disruptId: 'D1', deltaX: 3, fireAtStep: 150, successRate: 0.5 },
       ],
     },
     escortTable: {
-      A1: { D2: [{ escortId: 'D3', fireAtStep: 300 }] },
+      A1: {
+        D2: [
+          { interceptDeltaX: 5, interceptFireAtStep: 600, escortDisruptId: 'D3', escortDeltaX: 2, fireAtStep: 300 },
+        ],
+      },
     },
   };
 }
@@ -191,6 +197,8 @@ test('敵の攻撃をidentifyTableで特定しcounterTableの妨害を選ぶ(成
   assert.equal(scheduled[0].action.templateId, 'D2'); // successRate 1.0 が優先される
   assert.equal(scheduled[0].atStep, 100 + 600); // 敵の firedAtStep からの相対
   assert.equal(scheduled[0].action.rule, 'RRL'); // D2 の rule がそのまま載る
+  // 迎撃の発射列 = wrapX(threat.spawnX + deltaX)
+  assert.equal(scheduled[0].action.antX, wrapX(14 + 5));
 });
 
 test('counterTableのfireAtStepがすべて過去なら迎撃しない', () => {
@@ -242,6 +250,10 @@ test('escortBiasで護衛を選ぶ: 敵の迎撃を観測しなくても、自�
   assert.equal(scheduled.length, 1);
   assert.equal(scheduled[0].action.templateId, 'D3');
   assert.equal(scheduled[0].atStep, 0 + 300); // 自分が撃った今このステップ(0)からの相対
+  // 護衛の発射列 = wrapX(自分の攻撃の antX + escortDeltaX)
+  assert.equal(scheduled[0].action.antX, wrapX(action.antX + 2));
+  // 攻撃自体の発射列は、得点ゲートに届く区間の中にある
+  assert.ok(launchColumnScores(templates.attack.find((a) => a.id === 'A1'), action.antX));
 });
 
 test('counterTableに攻撃のエントリが無ければ護衛を予約しない(攻撃自体は撃つ)', () => {
@@ -276,6 +288,9 @@ test('攻撃選択はattackPrefのsoftmaxに従い、重みの大きいものが
   for (let i = 0; i < N; i++) {
     const action = agent.decide(baseView({ tokens: 30 }));
     counts[action.templateId]++;
+    // 選んだ発射列は、必ず得点ゲートに届く区間の中にある
+    const tpl = templates.attack.find((a) => a.id === action.templateId);
+    assert.ok(launchColumnScores(tpl, action.antX), `antX=${action.antX} が得点ゲートに届かない`);
   }
   assert.ok(counts.A3 > counts.A1 + counts.A2, `A3(重み最大)が多数派になるはず: ${JSON.stringify(counts)}`);
 });

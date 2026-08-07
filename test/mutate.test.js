@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRandomGenome, validateGenome, cloneGenome, genomeKey } from '../src/search/genome.js';
 import { mutate } from '../src/search/mutate.js';
+import { ZONE_DEPTH } from '../src/config.js';
 
 // engine.js に依存しない、テスト専用の決定論的 xorshift32 RNG。
 function makeRng(seed) {
@@ -72,15 +73,15 @@ test('cells.length は1..16の範囲を出ない', () => {
   }
 });
 
-test('セルの (x,y) 重複が発生しない', () => {
+test('セルの (dx,dy) 重複が発生しない', () => {
   const rng = makeRng(11);
   let g = createRandomGenome(rng);
   for (let i = 0; i < 20000; i++) {
     g = mutate(g, rng);
     const seen = new Set();
     for (const c of g.cells) {
-      const key = `${c.x},${c.y}`;
-      assert.ok(!seen.has(key), `座標重複: (${c.x},${c.y})`);
+      const key = `${c.dx},${c.dy}`;
+      assert.ok(!seen.has(key), `座標重複: (${c.dx},${c.dy})`);
       seen.add(key);
     }
   }
@@ -104,4 +105,60 @@ test('mutate は引数の genome を破壊しない', () => {
   const before = cloneGenome(g);
   mutate(g, rng);
   assert.deepEqual(g, before);
+});
+
+test('mutate を1,000回連鎖適用しても validateGenome を通り続ける', () => {
+  const rng = makeRng(2026);
+  let g = createRandomGenome(rng);
+  assert.deepEqual(validateGenome(g), []);
+  for (let i = 0; i < 1000; i++) {
+    g = mutate(g, rng);
+    const errors = validateGenome(g);
+    assert.deepEqual(errors, [], `${i}回目の変異後に違反: ${errors.join(' / ')}`);
+  }
+});
+
+// applyOneMutation は pickMutationCount(rng) → randInt(rng, ops.length) の順に rng を
+// 消費し、antYPlus/antYMinus 自体は rng を消費しない。この2回の呼び出し値を狙って
+// 固定することで、決定論的に特定のオペレータを選ばせる(rng の実装詳細に依存する
+// ホワイトボックステスト)。
+function makeFixedRng(sequence) {
+  let i = 0;
+  return () => sequence[i++ % sequence.length];
+}
+
+test('antYMinus は、動かすと配置マスが配置帯の下端を出る場合 reject(no-op)になる', () => {
+  // ops配列 = [bitFlip, cellState, antYPlus, antYMinus, antDir, ruleInsert, cellAdd, cellMove]
+  // (rule.length=2 なので ruleDelete 不可、cells.length=1 なので cellDelete 不可)。
+  // antYMinus は index=3 → randInt(rng,8) が 3 になる rng() ∈ [0.375, 0.5) を選ぶ。
+  const g = {
+    rule: 'RL',
+    antY: 0, // 下端。dy=0 のセルは antY-1=-1 で配置帯を出る
+    antDir: 0,
+    cells: [{ dx: 0, dy: 0, state: 0 }],
+    origin: 'random',
+    parentGenomeId: null,
+  };
+  const rng = makeFixedRng([0.1, 0.4]); // count=1(<0.7), opIndex=floor(0.4*8)=3=antYMinus
+  const mutated = mutate(g, rng);
+  assert.equal(mutated.antY, 0); // reject: 変化しない
+  assert.deepEqual(mutated.cells, g.cells);
+  assert.deepEqual(validateGenome(mutated), []);
+});
+
+test('antYPlus は、動かすと配置マスが配置帯の上端を出る場合 reject(no-op)になる', () => {
+  // 同じ ops配列。antYPlus は index=2 → randInt(rng,8) が 2 になる rng() ∈ [0.25, 0.375)。
+  const g = {
+    rule: 'RL',
+    antY: ZONE_DEPTH - 1, // 上端。dy=0 のセルは antY+1=ZONE_DEPTH で配置帯を出る
+    antDir: 0,
+    cells: [{ dx: 0, dy: 0, state: 0 }],
+    origin: 'random',
+    parentGenomeId: null,
+  };
+  const rng = makeFixedRng([0.1, 0.3]); // count=1(<0.7), opIndex=floor(0.3*8)=2=antYPlus
+  const mutated = mutate(g, rng);
+  assert.equal(mutated.antY, ZONE_DEPTH - 1); // reject: 変化しない
+  assert.deepEqual(mutated.cells, g.cells);
+  assert.deepEqual(validateGenome(mutated), []);
 });

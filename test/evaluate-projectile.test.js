@@ -66,14 +66,13 @@ test('quality は highway 未検出のとき formationPenalty が最大になり
   // 探索軌跡が短くハイウェイが検出されないはず。
   const genome = {
     rule: 'LL', // 常に左回転。すぐ場外に出やすいシンプルな挙動
-    antX: 0,
     antY: 0,
     antDir: C.DIR_UP, // 開始直後に上へ進むので y<0 に落ちてすぐ死ぬ
-    cells: [{ x: 0, y: 0, state: 1 }],
+    cells: [{ dx: 0, dy: 0, state: 1 }],
   };
   const result = evaluateProjectile(genome, { searchLife: 50 });
   assert.equal(result.highway.trajectoryPeriodic, false);
-  assert.equal(result.game.scored, false);
+  assert.equal(result.game.reached, false);
   assert.equal(result.viable, false);
 });
 

@@ -8,15 +8,40 @@
 //     ルールと色数はテンプレート(=アリ)ごとに持ち、配置セルは状態を個別に指定する
 
 // ---- 盤面 ----------------------------------------------------------------
-export const WIDTH = 60; // 列。左右はトーラス
-export const HEIGHT = 120; // 行。上下は場外(消滅 / 得点)
-export const ZONE_DEPTH = 16; // 配置可能帯の深さ。side1 は y=0..15、side2 は y=104..119
+//
+// ⚠️ v5 で 60×120 → **256×256(正方形)** に拡大した。理由は「より複雑なハイウェイと
+// 戦略が成立する余地を作るため」(設計判断)。副作用と対処は次のとおり:
+//   - 中間地帯が 88行 → 192行 になり横断距離が2.2倍。寿命を 3,600 → 6,000 に引き上げた
+//   - 1秒あたりのステップを 120 → 300 に上げ、横断の体感時間(11.6〜19.7秒)を維持した
+//   - 盤面セル数が 7,200 → 65,536 になり、engine の全盤面走査(クリーンアップ)が
+//     支配的コストになったので、アリごとの touched インデックス列に置き換えた(engine.js 参照)
+export const WIDTH = 256; // 列。左右はトーラス
+export const HEIGHT = 256; // 行。上下は場外(消滅 / 得点)
+export const ZONE_DEPTH = 32; // 配置可能帯の深さ。side1 は y=0..31、side2 は y=224..255
 export const WRAP_HORIZONTAL = true; // 左右はトーラス
 export const WRAP_VERTICAL = false; // 上下はラップしない
 export const CELL_COUNT = WIDTH * HEIGHT;
 
-/** 得点ライン。ローカル座標でこの y 以上に入った瞬間に1得点。 */
-export const SCORE_LINE_Y = HEIGHT - ZONE_DEPTH; // 104
+/** 得点ライン。ローカル座標でこの y 以上に入った瞬間に得点判定に入る。 */
+export const SCORE_LINE_Y = HEIGHT - ZONE_DEPTH; // 224
+
+/**
+ * 得点ゲート(§v5)。**敵陣に到達しただけでは得点にならない**。到達した瞬間の x が
+ * この帯の中に入っているときだけ1得点で、外に出た場合は得点せずに消滅する。
+ *
+ * ⚠️ 盤面を 256 列に広げると、守る側は 256 列すべてを警戒しなければならず迎撃が
+ * 成立しなくなる(発射位置を可変にしたのでなおさら)。得点を中央192列に限ることで
+ * 「門を守る」という防衛目標を作り、`BALANCE.attacksWithoutCounter = 0`(必須条件)を
+ * 満たせる幅に戻す。ゲートの外側は左右32列ずつの「壁」になる。
+ */
+export const SCORE_GATE_WIDTH = 192;
+export const SCORE_GATE_X_MIN = (WIDTH - SCORE_GATE_WIDTH) / 2; // 32
+export const SCORE_GATE_X_MAX = SCORE_GATE_X_MIN + SCORE_GATE_WIDTH; // 224(この値は含まない)
+
+/** x が得点ゲートの中か。engine の得点判定と UI の描画が共有する唯一の定義。 */
+export function isInScoreGate(x) {
+  return x >= SCORE_GATE_X_MIN && x < SCORE_GATE_X_MAX;
+}
 
 // ---- セルオートマトンのルール ----------------------------------------------
 // ルールは 'L' / 'R' の文字列で、添字がセルの状態。長さ = 色数。
@@ -48,7 +73,10 @@ export const DIR_DOWN = 2;
 export const DIR_LEFT = 3;
 
 // ---- 時間・試合 -----------------------------------------------------------
-export const STEPS_PER_SECOND = 120; // 論理は固定ステップ、描画は requestAnimationFrame
+// ⚠️ v5 で 120 → 300 に引き上げた。盤面が2.2倍縦長になったぶんアリの横断ステップ数が
+// 増えるので、そのままだと1回の攻撃に40秒以上かかって試合のテンポが崩れる。
+// 300 step/s なら横断時間は 11.6〜19.7秒に収まり、v4(13.5〜28.7秒)と同水準になる。
+export const STEPS_PER_SECOND = 300; // 論理は固定ステップ、描画は requestAnimationFrame
 export const TIME_LIMIT_SEC = 240; // 時間切れ時は得点が多い方の勝ち。同点なら引き分け
 export const TOTAL_STEPS = TIME_LIMIT_SEC * STEPS_PER_SECOND; // 28,800
 export const WIN_SCORE = 5;
@@ -65,32 +93,55 @@ export const ATTACK_COST = 5; // 実コスト = ATTACK_COST + 配置マス数 �
 /**
  * 攻撃アリの寿命(ステップ)。§7 の GAME_PROJECTILE_LIFE。
  *
- * ⚠️ v4 で 2,400 → 3,600 に引き上げた。理由は「弾速の多様性を物理的に成立させるため」。
+ * 🚧 **この値は暫定。本探索の結果から実測で確定させる**(docs/spec.md 未決定事項)。
+ * 「複雑なハイウェイには 6,000 でも足りないかもしれない」という指摘に対しては、
+ * **探索をやり直さずに後から決められる**構造にしてある:
+ *   - 第1アーカイブ(ハイウェイ発見)は仮想盤面 SEARCH_BOARD_HEIGHT を SEARCH_LIFE まで
+ *     走らせるので ATTACK_LIFE に依存しない
+ *   - 探索中のゲーム射影は ATTACK_LIFE ではなく GAME_LIFE_SEARCH_CAP(=12,000)で行い、
+ *     個体ごとの **実到達ステップ数(arrivalStep)** を記録する
+ *   - 探索後に scripts/tune-attack-life.mjs で arrivalStep の分布を掃引し、
+ *     「viable件数 / 到達時間の分散 / 速度クラス被覆」から ATTACK_LIFE を決める
+ * 決めたら必ずこのコメントを実測値の根拠に置き換えること。
  *
- * 中間地帯88行を渡るのに必要なステップ数は、ルールの速度クラスごとに次のとおり:
- *   LLR / RRL       0.0556 行/step  形成  38 →  1,621 step
- *   RRRRL / LLLLR   0.0294 行/step  形成 102 →  3,096 step
- *   RRRLLL / LLLRRR 0.0263 行/step  形成  98 →  3,445 step
- *   RRRRRL / LLLLLR 0.0238 行/step  形成 126 →  3,824 step
- *   RL / LR(古典)   0.0192 行/step  形成 9,976 → 14,560 step
+ * ⚠️ v5 で 3,600 → 6,000 に引き上げた。盤面が 60×120 → 256×256 になり、
+ * 最深発射位置(y=ZONE_DEPTH-1=31)から得点ライン(y=224)までが **193行**になったため
+ * (v4 は88行)。速度クラスごとの必要ステップ数は次のとおり:
+ *   v_y = 0.0556 (period 18 / drift 1)  →  3,471 step (11.6秒)
+ *   v_y = 0.0385 (period 52 / drift 2)  →  5,018 step (16.7秒)
+ *   v_y = 0.0327 (下限)                 →  5,900 step (19.7秒)
+ *   v_y = 0.0294 (period 34 / drift 1)  →  6,562 step ← **寿命内に届かない**
  *
- * 寿命2,400 では **LLR 系しか届かない**。実際 2,400 で生成した攻撃9種は全部
- * LLR 相当になり(宣言ルール長は 3/6/9/14/15 とばらついていたが、実効色数は 3 か 6 で、
- * `LLRLLR` は `rule[s % 3]` が同じなので `LLR` と力学的に同一)、
- * ハイウェイ署名(周期・並進)は9種すべて period=18 / drift=(±1,±1) の1種類しかなかった。
- * つまり「ルールを選んで撃つ」という v4 の主目的が成立していなかった。
+ * つまり ZONE_DEPTH=32 では最低速クラスが落ちる。到達可能な v_y は 0.033〜0.056 で、
+ * 到達時間に 11.6〜19.7秒 の差が出る(v4 は 13.5〜28.7秒)。ここは読み合いの軸なので
+ * `ARCHIVE2.speedClassBins` をこの範囲に合わせて切り直してある。
  *
- * 3,600 にすると上位3クラス(LLR / RRRRL / RRRLLL)が届き、到達時間に
- * 13.5秒〜28.7秒 の差が生まれて読み合いの軸になる。
- *
- * ⚠️ 代償: 「寿命がハイウェイ以外を落とすフィルタ」という設計原則が弱まる。
+ * ⚠️ 「寿命がハイウェイ以外を落とすフィルタ」という設計原則は v4 同様に弱まっている。
  * `BALANCE.highwayShareOfScoring`(95%以上)を必ず再測定して確認すること。
  */
-export const ATTACK_LIFE = 3600;
+export const ATTACK_LIFE = 6000;
 export const DISRUPT_COST = 3; // 実コスト = DISRUPT_COST + 配置マス数 → 4..19
-export const DISRUPT_LIFE = 400; // ステップ(3.3秒)。中間地帯までしか届かない
+/**
+ * 妨害アリの寿命(ステップ)。
+ * ⚠️ v5 で 400 → 1,000 に引き上げた。**実時間 3.3秒 を維持するための換算**
+ * (400/120秒 = 1,000/300秒)。最速クラスでも縦に約56行しか進まないので、
+ * 192行ある中間地帯の 1/3 までしか届かず、敵陣(y≥224)には到達しない。
+ * この「妨害は敵陣に届かない」性質は docs/spec.md 機能5の受け入れ条件。
+ */
+export const DISRUPT_LIFE = 1000;
 
 export const MAX_CELLS = 16; // 1回の発射で置ける配置マスの上限
+/**
+ * 配置マスをアリから何マス以内に置くか(チェビシェフ半径)。
+ *
+ * ⚠️ v5 で導入した。v4 は配置帯(60×16=960マス)全体に一様ランダムで16マス撒いていたが、
+ * 盤面が 256列 になると配置帯は 256×32=8,192マス になり、**アリが配置マスを一度も
+ * 踏まないまま飛んでいく**(密度 0.2%)。そうなると genome の初期配置部分が事実上
+ * 無意味になり「ルールだけの探索」に退化する。アリの近傍に限定して撒くことで
+ * 初期配置が軌道に効くようにする。Seed Distillation(§10-§24)が生成する種も
+ * 「アリ周囲の局所セル」なので、表現がそちらと一致する利点もある。
+ */
+export const TEMPLATE_CELL_RADIUS = 8;
 export const MIN_CELLS = 0; // 規則上の下限。0個(アリだけ)の発射も成立する
 /**
  * テンプレート/genome に要求する配置マス数の下限(§4・§28)。
@@ -123,16 +174,45 @@ export const TEMPLATE_COUNT_DISRUPT = 9;
  * つまり「遅い弾は構造的にカウンター不能 → 必須条件によって選抜不可能 → 弾速の多様性が出ない」
  * という詰みは、この格子の打ち切りが原因だった。
  *
- * 間隔150は維持する(判断周期120の倍数ばかりにしない。docs/spec.md の警告を参照)。
- * 末尾を `ATTACK_LIFE - 600` までにしているのは、消滅間際に撃っても干渉する時間が無いため。
+ * 間隔は「判断周期 DECISION_INTERVAL_STEPS の倍数ばかりにしない」ことが要件
+ * (docs/spec.md の警告を参照)。v4 の 150 は判断周期120の1.25倍だったので、
+ * v5 でも同じ比率 `STEPS_PER_SECOND * 1.25` = 375 を使う(300の倍数にならない)。
+ * 末尾を `ATTACK_LIFE - DISRUPT_LIFE * 1.5` までにしているのは、消滅間際に撃っても
+ * 干渉する時間が無いため(v4 の 600 = DISRUPT_LIFE 400 × 1.5 と同じ比率)。
  */
+export const FIRE_TIMING_INTERVAL = Math.round(STEPS_PER_SECOND * 1.25); // 375
+export const FIRE_TIMING_LAST = ATTACK_LIFE - Math.round(DISRUPT_LIFE * 1.5); // 4,500
 export const FIRE_TIMINGS = Object.freeze(
-  Array.from({ length: Math.floor((ATTACK_LIFE - 600) / 150) + 1 }, (_, i) => i * 150),
+  Array.from({ length: Math.floor(FIRE_TIMING_LAST / FIRE_TIMING_INTERVAL) + 1 }, (_, i) => i * FIRE_TIMING_INTERVAL),
 );
+
+/**
+ * 発射列(antX)の可変化(§v5)。テンプレートは `cells` をアリ列からの相対 dx で持ち、
+ * 発射時に antX を自由に選べる。左右がトーラスなので **x 方向の平行移動は力学の厳密な
+ * 対称性**であり、ハイウェイ署名・形成時間・カウンター関係はそのまま保存される
+ * (y 方向は飛距離が変わるので同じ扱いはできない。antY はテンプレート固有のまま)。
+ *
+ * カウンター表は (attack, disrupt, deltaX, fireAtStep) の表になる。deltaX は
+ * 「妨害の発射列 − 攻撃の発射列」を WIDTH で割った余り。
+ * 共進化中に全 WIDTH 列を掃引するのは重すぎるので、この粗いグリッドで近似し、
+ * 最終9×9のテーブル計算だけ全列を掃引する。
+ */
+export const COEVO_DELTA_X_STRIDE = 16; // 共進化中の deltaX 掃引の刻み(256/16 = 16点)
 
 // ---- 探索(MAP-Elites) -----------------------------------------------------
 /** ハイウェイ探索時のシミュレーション上限(§7)。ゲーム採用評価とは別。 */
 export const SEARCH_LIFE = 20000;
+
+/**
+ * 探索中のゲーム射影に使う寿命の**上限キャップ**。ATTACK_LIFE ではなくこの値で走らせ、
+ * 個体ごとの実到達ステップ数(arrivalStep)を記録する。
+ *
+ * こうしておくと ATTACK_LIFE を後から変えても探索をやり直す必要がない
+ * (arrivalStep <= 新しい ATTACK_LIFE かどうかを見るだけで再射影できる)。
+ * 値は「採用しうる ATTACK_LIFE の上限」として決める。193行 ÷ 最低速の実用ハイウェイ
+ * (v_y≈0.017)= 11,350 step なので、余裕を見て 12,000。
+ */
+export const GAME_LIFE_SEARCH_CAP = 12000;
 
 /**
  * 探索評価用の仮想盤面の高さ。実ゲーム盤面(HEIGHT=120)は上下端でアリが死ぬため
@@ -186,10 +266,19 @@ export const ARCHIVE1_QUALITY = Object.freeze({
 export const ARCHIVE2 = Object.freeze({
   entryPositionBins: 6, // 敵陣へ侵入した x 座標(旧仕様の entryY から変更)
   robustnessBins: Object.freeze([0.5, 1.0]),
-  // v_y の境界値。実測(archive1 viable)のクラスタは 1/34≒2/68=0.0294 / 2/52=0.0385 / 1/18=0.0556 の
-  // 3クラスなので、その間に境界を置いて3ビンに分ける。
-  speedClassBins: Object.freeze([0.035, 0.047, 1.0]),
+  // v_y の境界値。v5 で到達可能になる範囲は 193行 / (ATTACK_LIFE - 形成) なので
+  // おおよそ 0.033〜0.056。その間を3等分する位置に境界を置く。
+  // 🚧 ATTACK_LIFE を実測で確定させたら、この境界も同じ根拠で切り直すこと。
+  speedClassBins: Object.freeze([0.04, 0.048, 1.0]),
   reachBins: 6, // 妨害の縦方向到達距離(旧 reachColumns → reachRows)
+  /**
+   * 妨害の縦到達距離のビン幅スケール。理論上の最大値
+   * (最速ハイウェイ 0.0556 行/step × DISRUPT_LIFE)より少し大きい値にして、
+   * 実測範囲が reachBins に収まるようにする。
+   * ⚠️ v4 では generate-templates.mjs にローカル定数(25)として置いていたが、
+   * DISRUPT_LIFE に連動する値なのでここに移した(AGENTS.md「数値をソースに直書きしない」)。
+   */
+  reachScale: Math.ceil(DISRUPT_LIFE * 0.0556 * 1.1), // 62
 });
 
 // ---- CPU ------------------------------------------------------------------
