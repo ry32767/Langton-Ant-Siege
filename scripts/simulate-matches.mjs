@@ -17,6 +17,20 @@
 //     detectHighwayFromPath を使う。ただしこの関数は「x はラップしていない絶対座標」を要求する
 //     (呼び出し側の責務、と同ファイルの docstring に明記)ため、渡す前に unwrapPath() で
 //     トーラスのラップを展開する。
+//
+// v5(発射列可変化)追従メモ:
+//   - 盤面 256×256、ZONE_DEPTH=32、得点ライン y=224、STEPS_PER_SECOND=300、
+//     ATTACK_LIFE=6000、DISRUPT_LIFE=1000(すべて src/config.js から読む)。
+//   - 得点ゲート(C.isInScoreGate)導入。敵陣到達(reached)だけでは得点にならず、到達時の x が
+//     ゲート内(32〜224)でなければ得点しない(scored)。simulateSolo/simulateVersus は
+//     scored と reached を両方返す。
+//   - テンプレートの cells は **アリからの相対 [dx, dy, state]**(絶対座標ではない)。
+//     絶対座標の action に直すには src/template.js の instantiateTemplate(template, antX) を通す。
+//   - identifyTable のキーは "antY,antDir"(antX は可変になったのでキーから外れた)。
+//   - counterTable[attackId] の要素は { disruptId, deltaX, fireAtStep, successRate }。
+//     escortTable[attackId][interceptId] の要素は
+//     { interceptDeltaX, interceptFireAtStep, escortDisruptId, escortDeltaX, fireAtStep }。
+//     迎撃/護衛の発射列は wrapX(攻撃の発射列 + deltaX) で決める。
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -30,8 +44,11 @@ import {
   simulateSolo,
   simulateVersus,
   toGlobalY,
+  instantiateTemplate,
 } from '../src/engine.js';
+import { wrapX, scoringLaunchColumns } from '../src/template.js';
 import { detectHighwayFromPath } from '../src/search/highway-detector.js';
+import { buildCounterMatrix, buildEscortTable } from '../src/search/evaluate-interaction.js';
 import { createCpuAgent } from '../src/cpu.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -76,8 +93,12 @@ function deriveSeed(...parts) {
 
 // ---------------------------------------------------------------------------
 // 新スキーマの最小合成テンプレート(--synthetic)
-// 攻撃2種・妨害2種。counterTable / escortTable は simulateVersus の総当たりで
-// この場で計算する(9×9の本番選抜と同じ考え方を、件数だけ絞って再現する)。
+// 攻撃2種・妨害2種。counterTable / escortTable は src/search/evaluate-interaction.js の
+// buildCounterMatrix / buildEscortTable(generate-templates.mjs の本番選抜と同じ参照実装)を
+// そのまま使って計算する(ロジックを重複実装しない)。
+//
+// v5: テンプレートは antX を持たない。cells は**アリからの相対 [dx, dy, state]**
+// (config.js の TEMPLATE_CELL_RADIUS=8 以内)。identifyTable のキーは "antY,antDir"。
 // ---------------------------------------------------------------------------
 function buildSyntheticTemplates() {
   const attack = [
@@ -86,7 +107,6 @@ function buildSyntheticTemplates() {
       rule: 'RRL',
       colorCount: 3,
       cells: [[0, 0, 1]],
-      antX: 10,
       antY: 30,
       antDir: C.DIR_RIGHT,
       kind: 'attack',
@@ -97,7 +117,6 @@ function buildSyntheticTemplates() {
       rule: 'RRL',
       colorCount: 3,
       cells: [[1, 1, 1]],
-      antX: 20,
       antY: 30,
       antDir: C.DIR_RIGHT,
       kind: 'attack',
@@ -109,8 +128,7 @@ function buildSyntheticTemplates() {
       id: 'SD1',
       rule: 'RL',
       colorCount: 2,
-      cells: [[10, 5, 1]],
-      antX: 12,
+      cells: [[2, 5, 1]],
       antY: 8,
       antDir: C.DIR_DOWN,
       kind: 'disrupt',
@@ -120,8 +138,7 @@ function buildSyntheticTemplates() {
       id: 'SD2',
       rule: 'RL',
       colorCount: 2,
-      cells: [[20, 5, 1]],
-      antX: 22,
+      cells: [[-2, 5, 1]],
       antY: 8,
       antDir: C.DIR_DOWN,
       kind: 'disrupt',
@@ -129,40 +146,26 @@ function buildSyntheticTemplates() {
     },
   ];
 
+  // entryXAt0: 発射列0で撃ったときの到達列(scoringLaunchColumns / cpu.js の tryAttack が
+  // 参照する)。無いと得点ゲートに入る列が計算できず、CPU が攻撃候補から外してしまう。
+  for (const a of attack) {
+    const r = simulateSolo(instantiateTemplate(a, 0));
+    a.entryXAt0 = r.reached ? r.entryX : null;
+  }
+
   const identifyTable = {};
-  for (const a of attack) identifyTable[`${a.antX},${a.antY},${a.antDir}`] = a.id;
+  for (const a of attack) identifyTable[`${a.antY},${a.antDir}`] = a.id;
 
-  const counterTable = {};
-  for (const a of attack) {
-    const entries = [];
-    for (const d of disrupt) {
-      for (const t0 of C.FIRE_TIMINGS) {
-        const r = simulateVersus(a, [{ template: d, side: 1, fireAtStep: t0 }]);
-        if (!r.scored) entries.push({ disruptId: d.id, fireAtStep: t0, successRate: 1.0 });
-      }
-    }
-    entries.sort((x, y) => y.successRate - x.successRate);
-    counterTable[a.id] = entries;
-  }
+  // deltaX の全256列掃引は --synthetic 用の最小フィクスチャには過剰なので、
+  // generate-templates.mjs の共進化中の近似と同じ考え方で COEVO_DELTA_X_STRIDE 刻みの
+  // 粗いグリッドにする(本番の9×9選抜だけが全列を掃引する。config.js のコメント参照)。
+  const deltaXs = Array.from(
+    { length: Math.ceil(C.WIDTH / C.COEVO_DELTA_X_STRIDE) },
+    (_, i) => i * C.COEVO_DELTA_X_STRIDE,
+  );
 
-  const escortTable = {};
-  for (const a of attack) {
-    escortTable[a.id] = {};
-    for (const c of counterTable[a.id]) {
-      const counterTpl = disrupt.find((d) => d.id === c.disruptId);
-      const escorts = [];
-      for (const esc of disrupt) {
-        for (const t0 of C.FIRE_TIMINGS) {
-          const r = simulateVersus(a, [
-            { template: esc, side: 0, fireAtStep: t0 },
-            { template: counterTpl, side: 1, fireAtStep: c.fireAtStep },
-          ]);
-          if (r.scored) escorts.push({ escortId: esc.id, fireAtStep: t0 });
-        }
-      }
-      escortTable[a.id][c.disruptId] = escorts;
-    }
-  }
+  const { counterTable } = buildCounterMatrix(attack, disrupt, { deltaXs });
+  const escortTable = buildEscortTable(attack, disrupt, counterTable, { escortDeltaXs: deltaXs });
 
   return { attack, disrupt, identifyTable, counterTable, escortTable };
 }
@@ -188,6 +191,16 @@ if (SYNTHETIC) {
       '⚠️ data/templates.json は旧スキーマ(v3.1、rule/colorCount フィールドなし)のまま。' +
         ' 新スキーマでの検証には `--synthetic` を付けて実行してください。' +
         ' このまま処理は続行するが、配置マスが新しい配置帯(y=0..15)の外にある可能性が高く、数値は参考にならない。',
+    );
+  } else if (firstAttack && (templates.schemaVersion !== 5 || 'antX' in firstAttack)) {
+    // v5(schemaVersion:5)は cells が相対座標で、テンプレートごとの antX を持たない
+    // (generate-templates.mjs の templatesOutput 参照)。'antX' が残っている、または
+    // schemaVersion が無い/5でない場合は v5 以前(旧v4など)の生成物とみなす。
+    console.error(
+      '⚠️ data/templates.json は v5 スキーマ(schemaVersion:5、cells が相対座標、antX/entryXAt0 あり)ではない可能性が高い' +
+        `(検出: schemaVersion=${templates.schemaVersion ?? '無し'}, antX=${'antX' in firstAttack ? 'あり' : '無し'})。` +
+        ' `node scripts/generate-templates.mjs` で再生成するか、`--synthetic` を付けて実行してください。' +
+        ' このまま処理は続行するが、cells を相対座標として絶対座標に変換するため配置が壊れ、数値は参考にならない。',
     );
   }
 }
@@ -283,12 +296,19 @@ function makeTrackedAgent(getMatch, sideIndex, rngSeed, counters) {
       if (action) {
         counters[action.kind] = (counters[action.kind] ?? 0) + 1;
         recordRuleLength(action);
+        // §29(新規): launchColumnSpread。CPU が実際に選んだ攻撃の発射列(antX)の分布。
+        if (action.kind === 'attack') {
+          launchColumnCounts[action.antX] = (launchColumnCounts[action.antX] ?? 0) + 1;
+        }
       }
       return action;
     },
     reset: base.reset,
   };
 }
+
+// §29(新規): CPU が実際に選んだ攻撃の発射列(antX)ごとの発射回数。
+const launchColumnCounts = {};
 
 let sumTotalScore = 0;
 let sumDurationSec = 0;
@@ -309,6 +329,24 @@ let sumDisruptFired = 0;
 // 対応表を控えてから lastToucher を覗く。
 let crossRuleTouchedCells = 0;
 let crossRuleMismatch = 0;
+
+/**
+ * §29(新規): scoreGateMissRate。敵陣に到達した弾のうち、得点ゲートを外して得点にならなかった割合。
+ *
+ * engine.js は stepMatch() の内部で resolveAnt() を呼ぶだけで、reached/scored を外に返さない
+ * (moveSide が score++ するかどうかしか分からない)。そこで「y は1ステップに高々1しか動かない」
+ * (C.DIRS の dy は -1/0/+1 のみ)という不変量を使う: あるステップで敵陣境界(C.SCORE_LINE_Y)に
+ * **到達しうる**のは、そのステップの直前に y === C.SCORE_LINE_Y - 1 だったアリだけ。
+ * そのアリがこのステップで消滅していれば、それは必ず「敵陣到達(reached)」による消滅であり
+ * (寿命切れ(steps>=life)による消滅は resolveAnt 内で y>=SCORE_LINE_Y の判定より後に見るため、
+ * どのみち y>=SCORE_LINE_Y なら reached=true が先に確定する)、得点(scored)したかどうかは
+ * そのステップで自陣の scoredAnts が増えたかどうかで判別する。
+ * ⚠️ 同じ陣営が同じステップに複数の攻撃アリを境界(y=SCORE_LINE_Y-1)に持つ場合は近似になる
+ * (scoredAnts の増分は陣営単位のカウントで、どの弾が得点したかまでは追えないため)。
+ * MAX_FLYING が小さいので稀にしか起きない。
+ */
+let scoreGateReachedCount = 0;
+let scoreGateMissCount = 0;
 
 for (let g = 0; g < GAMES; g++) {
   const matchSeed = deriveSeed(SEED, g);
@@ -344,7 +382,27 @@ for (let g = 0; g < GAMES; g++) {
         }
       }
     }
+    // scoreGateMissRate 用: 敵陣境界(y=SCORE_LINE_Y-1)にいる攻撃アリだけを控える(上のコメント参照)。
+    const boundarySnapshot = [];
+    for (const side of match.sides) {
+      for (const ant of side.ants) {
+        if (ant.kind === 'attack' && ant.y === C.SCORE_LINE_Y - 1) {
+          boundarySnapshot.push({ id: ant.id, sideIndex: side.index });
+        }
+      }
+    }
+    const scoredAntsBefore = [match.sides[0].scoredAnts, match.sides[1].scoredAnts];
+
     stepMatch(match);
+
+    for (const snap of boundarySnapshot) {
+      const stillAlive = match.sides[snap.sideIndex].ants.some((a) => a.id === snap.id);
+      if (stillAlive) continue; // 境界にいたが消滅しなかった(=まだ届いていない)
+      scoreGateReachedCount++;
+      if (match.sides[snap.sideIndex].scoredAnts === scoredAntsBefore[snap.sideIndex]) {
+        scoreGateMissCount++;
+      }
+    }
   }
 
   const st = getStats(match);
@@ -377,6 +435,7 @@ const avgScoredAnts = sumScoredAnts / GAMES;
 const avgAttackFired = sumAttackFired / GAMES;
 const avgDisruptFired = sumDisruptFired / GAMES;
 const crossRuleCollisionRate = crossRuleTouchedCells > 0 ? crossRuleMismatch / crossRuleTouchedCells : NaN;
+const scoreGateMissRate = scoreGateReachedCount > 0 ? scoreGateMissCount / scoreGateReachedCount : NaN;
 
 // 経過時間・スループットは実行のたびに変わるため stderr に出す(stdout は --seed が同じなら完全一致させる)。
 console.error(`${GAMES}試合のシミュレーション完了(${elapsedSec().toFixed(1)}秒、${(GAMES / elapsedSec()).toFixed(0)}試合/秒)`);
@@ -389,23 +448,30 @@ console.error(`${GAMES}試合のシミュレーション完了(${elapsedSec().to
 // ---------------------------------------------------------------------------
 
 /** 配置可能帯(y=0..ZONE_DEPTH-1)内で連結気味のマス集合を n個作る(n>=1)。x はラップする。 */
-function blob(rng, n) {
-  const maxY = C.ZONE_DEPTH;
+/**
+ * v5: 配置マスはアリからの相対 [dx, dy] で、C.TEMPLATE_CELL_RADIUS 以内(config.js
+ * 「配置マスをアリから何マス以内に置くか」参照)。ランダムウォークの原点をアリ(0,0)に取り、
+ * |dx|,|dy| <= TEMPLATE_CELL_RADIUS かつ antY+dy が配置帯(0..ZONE_DEPTH-1)に収まる範囲だけを歩く。
+ * x はトーラスなので dx の符号に制約はいらない(半径だけ守る)。
+ */
+function blobRelative(rng, n, antY) {
+  const R = C.TEMPLATE_CELL_RADIUS;
   const seen = new Set();
-  let x = rng.int(C.WIDTH);
-  let y = rng.int(maxY);
+  let dx = 0;
+  let dy = 0;
   let guard = 0;
   while (seen.size < n && guard++ < n * 30) {
-    seen.add(y * C.WIDTH + x);
+    seen.add(`${dx},${dy}`);
     const d = C.DIRS[rng.int(4)];
-    const nx = (x + d[0] + C.WIDTH) % C.WIDTH; // 左右トーラス
-    const ny = y + d[1];
-    if (ny >= 0 && ny < maxY) {
-      x = nx;
-      y = ny;
+    const ndx = dx + d[0];
+    const ndy = dy + d[1];
+    const ny = antY + ndy;
+    if (Math.abs(ndx) <= R && Math.abs(ndy) <= R && ny >= 0 && ny < C.ZONE_DEPTH) {
+      dx = ndx;
+      dy = ndy;
     }
   }
-  return [...seen].map((k) => [k % C.WIDTH, Math.floor(k / C.WIDTH)]);
+  return [...seen].map((k) => k.split(',').map(Number));
 }
 
 /**
@@ -413,25 +479,26 @@ function blob(rng, n) {
  * C.LEGACY_RULE(='RRL'、L=3)へ既定で落ちてしまい、この得点率測定が事実上つねに
  * L=3 だけを測ることになる(§29-1 が検出しようとしているバイアスそのもの)ため、
  * ここでは必ずランダムな rule を明示する。
+ *
+ * v5: cells は相対テンプレートとして作り、instantiateTemplate で絶対座標(antX 込み)に直す。
+ * antX はランダムな列でよい(x 方向の平行移動はハイウェイの厳密な対称性なので、
+ * テンプレートの実力=到達可否は antX に依存しない。config.js「発射列(antX)の可変化」参照)。
  */
 function randomAttackCandidate(rng) {
   const colorCount = C.MIN_COLORS + rng.int(C.MAX_COLORS - C.MIN_COLORS + 1);
   const rule = Array.from({ length: colorCount }, () => (rng.next() < 0.5 ? 'L' : 'R')).join('');
-  const cells = blob(rng, 1 + rng.int(C.MAX_CELLS)).map(([x, y]) => [x, y, rng.int(colorCount)]);
-  return {
-    cells,
-    rule,
-    colorCount,
-    antX: rng.int(C.WIDTH),
-    antY: rng.int(C.ZONE_DEPTH),
-    antDir: rng.int(4),
-    kind: 'attack',
-  };
+  const antY = rng.int(C.ZONE_DEPTH);
+  const antDir = rng.int(4);
+  const antX = rng.int(C.WIDTH);
+  const cells = blobRelative(rng, 1 + rng.int(C.MAX_CELLS), antY).map(([dx, dy]) => [dx, dy, rng.int(colorCount)]);
+  const relTemplate = { cells, rule, colorCount, antY, antDir, kind: 'attack' };
+  return instantiateTemplate(relTemplate, antX);
 }
 
 const RANDOM_ATTACK_SAMPLES = 2000;
 const randomAttackRng = createRng(deriveSeed(SEED, 0xa11a5e1));
 let scoredCount = 0;
+let reachedCount = 0;
 const scoredCandidates = [];
 for (let i = 0; i < RANDOM_ATTACK_SAMPLES; i++) {
   const cand = randomAttackCandidate(randomAttackRng);
@@ -440,8 +507,16 @@ for (let i = 0; i < RANDOM_ATTACK_SAMPLES; i++) {
     scoredCount++;
     scoredCandidates.push(cand);
   }
+  if (r.reached) reachedCount++;
 }
-const scoreRateNoDisrupt = scoredCount / RANDOM_ATTACK_SAMPLES;
+/**
+ * v5: 「攻撃アリの得点率(妨害なし)」は **reached(敵陣到達)** で測る(scored=得点ゲート適用後、
+ * ではない)。理由: ランダム候補には発射列(antX)を選ぶ主体がいない。発射列は自由に選べ、
+ * 左右がトーラスなので、到達列をゲート内に持ってくる antX は必ず存在する。したがって
+ * ゲートはテンプレートの実力(到達できるかどうか)を左右しない。得点ゲートが実プレイで
+ * どう効くか(どの列から撃つ必要があるか)は別の観測項目 scoreGateMissRate で測る。
+ */
+const scoreRateNoDisrupt = reachedCount / RANDOM_ATTACK_SAMPLES;
 
 let highwayCount = 0;
 const formationStepHist = {};
@@ -463,25 +538,66 @@ const highwayShareOfScoring = scoredCandidates.length > 0 ? highwayCount / score
 
 // ---------------------------------------------------------------------------
 // 3) カウンター密度・カウンター無し攻撃数
-//    同梱9攻撃 × 9妨害 × FIRE_TIMINGS の全組み合わせを total-war で判定する。
+//    同梱9攻撃 × 9妨害 × deltaX × FIRE_TIMINGS の全組み合わせを total-war で判定する。
 //    (--synthetic では 2攻撃 × 2妨害 になる。)
+//
+//    v5: テンプレートの cells は相対 [dx,dy,state]。攻撃は常に antX=0 で実体化し、
+//    妨害は antX=deltaX で実体化する(差分 deltaX だけが結果を左右する。
+//    src/search/evaluate-interaction.js のモジュール冒頭コメントと同じ考え方)。
+//    deltaX の全256列掃引は 9×9×256×13 ≈ 27万回の simulateVersus になり重いので、
+//    ここも generate-templates.mjs の共進化中の近似と同じ COEVO_DELTA_X_STRIDE 刻みの
+//    粗いグリッドで妥協する(本番の9×9選抜だけが全列を掃引する)。
 // ---------------------------------------------------------------------------
 
-function isCountered(attack, disrupt, t0) {
-  const r = simulateVersus(attack, [{ template: disrupt, side: 1, fireAtStep: t0 }]);
+const densityDeltaXs = Array.from(
+  { length: Math.ceil(C.WIDTH / C.COEVO_DELTA_X_STRIDE) },
+  (_, i) => i * C.COEVO_DELTA_X_STRIDE,
+);
+
+function isCountered(attackInstance, disruptTpl, deltaX, t0) {
+  const disruptInstance = instantiateTemplate(disruptTpl, deltaX);
+  const r = simulateVersus(attackInstance, [{ template: disruptInstance, side: 1, fireAtStep: t0 }]);
   return !r.scored;
 }
 
+/**
+ * カウンター密度の分母は **(妨害 × 発射タイミング)** で、deltaX は分母に入れない。
+ *
+ * ⚠️ v5 で deltaX(発射列の差)の次元が増えたが、これを分母に掛けると v4 の数値と
+ * 比較できなくなる(掃引点を増やすほど密度が下がるだけの、意味のない指標になる)。
+ * この指標が答えるべき問いは「守る側が持っている手のうち、どれくらいが実際に効くか」で、
+ * **発射列は守る側が自由に選べる**(選ぶための表が counterTable の deltaX)。
+ * つまり「ある妨害をあるタイミングで撃つ」という1つの手は、**いずれかの deltaX で
+ * 止められるなら成立する**。そこで deltaX は「その手が成立するか」の内側の探索として扱い、
+ * 分母には入れない。これで v4 の「(妨害 × タイミング)のうち何割が効くか」と同じ意味に戻る。
+ *
+ * ⚠️ 合格レンジ(`BALANCE.counterDensityMedian`)は変更していない。変えたのは
+ * 「v5 で意味が壊れた分母の定義」だけ(AGENTS.md「バランスに関わる変更の規律」)。
+ */
 const timingsCount = C.FIRE_TIMINGS.length;
 const totalCombosPerAttack = disruptTemplates.length * timingsCount;
 const attackDensities = attackTemplates.map((a) => {
+  const attackInstance = instantiateTemplate(a, 0);
   let counteredCombos = 0;
+  let counteredWithDeltaX = 0; // 参考値: deltaX まで分母に入れた旧定義(観測のみ)
   for (const d of disruptTemplates) {
     for (const t0 of C.FIRE_TIMINGS) {
-      if (isCountered(a, d, t0)) counteredCombos++;
+      let anyDeltaXWorks = false;
+      for (const deltaX of densityDeltaXs) {
+        if (isCountered(attackInstance, d, deltaX, t0)) {
+          counteredWithDeltaX++;
+          anyDeltaXWorks = true;
+        }
+      }
+      if (anyDeltaXWorks) counteredCombos++;
     }
   }
-  return { id: a.id, counteredCombos, density: totalCombosPerAttack > 0 ? counteredCombos / totalCombosPerAttack : NaN };
+  return {
+    id: a.id,
+    counteredCombos,
+    counteredWithDeltaX,
+    density: totalCombosPerAttack > 0 ? counteredCombos / totalCombosPerAttack : NaN,
+  };
 });
 const sortedDensities = attackDensities.map((d) => d.density).slice().sort((x, y) => x - y);
 function median(sorted) {
@@ -497,11 +613,18 @@ const attacksWithoutCounter = attackDensities.filter((d) => d.counteredCombos ==
 // 4) 攻撃のみ vs 有効な迎撃の突破率 / 攻撃＋護衛 vs 同じ迎撃の突破率
 //    templates.json の counterTable / escortTable の第1候補(成功率最良)を使う。
 //    §29-6(衝突後highway復帰率)もここで使う counterTable の情報を流用する。
+//
+//    v5: 攻撃の発射列(antX)は「得点できる区間」(scoringLaunchColumns)から決定論的に
+//    1つ選ぶ(区間の中央。乱数を使わず再現性を保つ)。entryXAt0 が無い(旧スキーマの
+//    テンプレート等)場合は互換のため template.antX(無ければ0)にフォールバックする。
+//    迎撃/護衛の発射列は wrapX(攻撃の発射列 + deltaX / escortDeltaX) で合わせる
+//    (counterTable/escortTable は deltaX の表であって絶対座標の表ではないため。
+//    config.js「発射列(antX)の可変化」参照)。
 // ---------------------------------------------------------------------------
 
 const breakthroughVsCounterResults = [];
 const breakthroughWithEscortResults = [];
-// §29-6 用のサンプル: 攻撃 + その最良カウンターの組み合わせ。
+// §29-6 用のサンプル: 攻撃 + その最良カウンターの組み合わせ(どちらも実体化済み・絶対座標)。
 const recoverySamples = [];
 for (const a of attackTemplates) {
   const counters = counterTable[a.id] ?? [];
@@ -510,11 +633,16 @@ for (const a of attackTemplates) {
     breakthroughWithEscortResults.push({ id: a.id, available: false, scored: null });
     continue;
   }
+  const cols = scoringLaunchColumns(a);
+  const attackAntX = cols.count > 0 ? wrapX(cols.min + Math.floor(cols.count / 2)) : (a.antX ?? 0);
+  const attackInstance = instantiateTemplate(a, attackAntX);
+
   const best = counters[0];
   const counterTpl = disruptById.get(best.disruptId);
-  const r1 = simulateVersus(a, [{ template: counterTpl, side: 1, fireAtStep: best.fireAtStep }]);
+  const counterInstance = instantiateTemplate(counterTpl, wrapX(attackAntX + (best.deltaX ?? 0)));
+  const r1 = simulateVersus(attackInstance, [{ template: counterInstance, side: 1, fireAtStep: best.fireAtStep }]);
   breakthroughVsCounterResults.push({ id: a.id, available: true, scored: r1.scored });
-  recoverySamples.push({ attack: a, counterTpl, fireAtStep: best.fireAtStep });
+  recoverySamples.push({ attack: attackInstance, counterTpl: counterInstance, fireAtStep: best.fireAtStep });
 
   const escorts = escortTable[a.id]?.[best.disruptId] ?? [];
   if (escorts.length === 0) {
@@ -522,10 +650,11 @@ for (const a of attackTemplates) {
     continue;
   }
   const bestEscort = escorts[0];
-  const escortTpl = disruptById.get(bestEscort.escortId);
-  const r2 = simulateVersus(a, [
-    { template: escortTpl, side: 0, fireAtStep: bestEscort.fireAtStep },
-    { template: counterTpl, side: 1, fireAtStep: best.fireAtStep },
+  const escortTpl = disruptById.get(bestEscort.escortDisruptId ?? bestEscort.escortId);
+  const escortInstance = instantiateTemplate(escortTpl, wrapX(attackAntX + (bestEscort.escortDeltaX ?? 0)));
+  const r2 = simulateVersus(attackInstance, [
+    { template: escortInstance, side: 0, fireAtStep: bestEscort.fireAtStep },
+    { template: counterInstance, side: 1, fireAtStep: best.fireAtStep },
   ]);
   breakthroughWithEscortResults.push({ id: a.id, available: true, scored: r2.scored });
 }
@@ -696,6 +825,18 @@ console.log('[6] 衝突後highway復帰率(定義は上のコメント参照。a
 console.log(`    軌道に乱れが観測されたサンプル数(分母): ${recoveryDenominator}`);
 console.log(`    乱れの後に再びハイウェイと判定できたサンプル数(分子): ${recoveryNumerator}`);
 console.log(`    highwayRecoveryRateAfterCollision = ${fmtPct(highwayRecoveryRateAfterCollision)}`);
+console.log('');
+
+console.log('[7] scoreGateMissRate(v5新規。敵陣に到達した弾のうち、得点ゲートを外して得点にならなかった割合。' +
+  '実プレイ(games=' + GAMES + ')の試合ログから計測。定義・近似の限界は上のコメント参照)');
+console.log(`    分母(敵陣境界に到達したとみなせた消滅回数): ${scoreGateReachedCount}`);
+console.log(`    分子(同じステップで自陣の得点が増えなかった回数): ${scoreGateMissCount}`);
+console.log(`    scoreGateMissRate = ${fmtPct(scoreGateMissRate)}`);
+console.log('');
+
+console.log('[8] launchColumnSpread(v5新規。CPU が実プレイで実際に選んだ攻撃の発射列(antX)の分布)');
+console.log(`    使われた発射列の種類数: ${Object.keys(launchColumnCounts).length} / ${C.WIDTH}列`);
+printCountHistogram('    antX → 発射回数', launchColumnCounts, '回');
 console.log('');
 
 // ---------------------------------------------------------------------------

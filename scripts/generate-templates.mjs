@@ -313,9 +313,62 @@ function createReportSampler(cap) {
 const REPORT_SAMPLE_CAP = 120000;
 
 // ---------------------------------------------------------------------------
+// viable 個体のコレクタ
+// ---------------------------------------------------------------------------
+/**
+ * 「寿命内に敵陣へ届いた個体」を、**MAP-Elites アーカイブとは別に**溜めておく。
+ *
+ * ⚠️ これが無いと候補が枯れる。第1アーカイブは記述子セルごとに quality 最良の1体しか
+ * 残さないが、quality は viability を直接には見ていない(stability / verticality /
+ * usability / formationPenalty の合成)。そのため探索が進むほど viable な elite が
+ * 「quality はもっと高いが届かない個体」に置き換えられて消える。
+ * 実測: 評価2万回で viable elite 71件 → 18万回で 56件(アーカイブの充填は 759→1,100 と
+ * 増えているのに viable は減る)。3時間回しても最終候補が数十件しか残らないことになる。
+ *
+ * そこでハイウェイ署名ごとに quality 上位 perSignature 件を保持する。署名で分けるのは、
+ * 単純な上位N件にすると最頻署名(45度・周期18)だけで埋まって多様性が死ぬため。
+ */
+function createViableCollector(perSignature) {
+  const bySignature = new Map();
+  let total = 0;
+  return {
+    add(genome, evaluation) {
+      const sig = highwaySignatureKey(evaluation.highway) ?? 'none';
+      if (!bySignature.has(sig)) bySignature.set(sig, []);
+      const list = bySignature.get(sig);
+      list.push({ genome, quality: evaluation.quality, meta: { highway: evaluation.highway, game: evaluation.game, viable: true } });
+      total++;
+      if (list.length > perSignature * 2) {
+        // 償却: 上限の2倍まで溜まったら quality 降順で上位 perSignature 件に切り詰める
+        list.sort((a, b) => b.quality - a.quality || (genomeKey(a.genome) < genomeKey(b.genome) ? -1 : 1));
+        list.length = perSignature;
+      }
+    },
+    /** 署名ごとに quality 上位を切り詰めた entries を返す(決定論的)。 */
+    entries() {
+      const out = [];
+      for (const sig of [...bySignature.keys()].sort()) {
+        const list = bySignature.get(sig);
+        list.sort((a, b) => b.quality - a.quality || (genomeKey(a.genome) < genomeKey(b.genome) ? -1 : 1));
+        out.push(...list.slice(0, perSignature));
+      }
+      return out;
+    },
+    get signatureCount() {
+      return bySignature.size;
+    },
+    get seen() {
+      return total;
+    },
+  };
+}
+/** 署名ごとに保持する viable 個体の上限。署名20種 × 200件でも4,000件で、メモリは十分軽い。 */
+const VIABLE_PER_SIGNATURE = 200;
+
+// ---------------------------------------------------------------------------
 // ① 第1アーカイブ: MAP-Elites によるハイウェイ探索(バッチ並列 + Seed Distillation)
 // ---------------------------------------------------------------------------
-async function buildHighwayArchive(pool, sampler) {
+async function buildHighwayArchive(pool, sampler, viableCollector) {
   log(
     `①開始: 第1アーカイブ(ハイウェイ探索+Seed Distillation) workers=${pool.size} ` +
       `initialBatch=${PARAMS.archive1InitialBatch} 予算=${BUDGET_MIN > 0 ? BUDGET_MIN + '分' : PARAMS.archive1Iterations + '評価'}`,
@@ -343,6 +396,8 @@ async function buildHighwayArchive(pool, sampler) {
       distillation: r.distillation,
       distilledViable: r.distilledEval ? r.distilledEval.viable : null,
     });
+    // ⚠️ アーカイブの elite になれなくても、viable なら必ず拾っておく(コレクタのコメント参照)。
+    if (r.viable) viableCollector.add(genome, r);
     if (r.highway.trajectoryPeriodic && r.descriptor != null) {
       tryInsert(archive1, {
         genome,
@@ -357,6 +412,7 @@ async function buildHighwayArchive(pool, sampler) {
       if (r.distillation.success) distillStats.success++;
       if (r.distillation.gameUsable) distillStats.gameUsable++;
     }
+    if (r.distilledEval && r.distilledEval.viable) viableCollector.add(r.distilledGenome, r.distilledEval);
     if (r.distilledGenome && r.distilledEval && r.distilledEval.highway.trajectoryPeriodic) {
       distillStats.reinserted++;
       tryInsert(archive1, {
@@ -406,7 +462,8 @@ async function buildHighwayArchive(pool, sampler) {
       log(
         `  archive1: 評価${evalCount.toLocaleString()} (${(evalCount / elapsedSec()).toFixed(0)}/秒) ` +
           `coverage=${(stats.coverage * 100).toFixed(1)}% filled=${stats.filled}/${stats.total} ` +
-          `viable=${viableCount} qualityMax=${stats.qualityMax.toFixed(2)} ` +
+          `viable elite=${viableCount} / viable収集=${viableCollector.seen.toLocaleString()}(署名${viableCollector.signatureCount}種) ` +
+          `qualityMax=${stats.qualityMax.toFixed(2)} ` +
           `蒸留 成功${distillStats.success}/${distillStats.attempted} 再投入${distillStats.reinserted}`,
       );
     }
@@ -464,10 +521,20 @@ function stratifyBySignature(entries, cap) {
 // ---------------------------------------------------------------------------
 // ② ゲーム射影
 // ---------------------------------------------------------------------------
-function projectCandidates(archive1) {
+function projectCandidates(archive1, viableCollector) {
   const entries = archiveEntries(archive1);
   // 攻撃候補: 寿命内(ATTACK_LIFE)に敵陣へ届く。
-  const attackSeedEntries = entries.filter((e) => e.meta.viable);
+  // アーカイブの現在の elite だけでなく、探索中に拾った viable 個体(createViableCollector)も
+  // 合流させる。elite は quality 競合で入れ替わるので、これが無いと候補が枯れる。
+  const collected = viableCollector ? viableCollector.entries() : [];
+  const seenKeys = new Set();
+  const attackSeedEntries = [];
+  for (const e of [...entries.filter((x) => x.meta.viable), ...collected]) {
+    const k = genomeKey(e.genome);
+    if (seenKeys.has(k)) continue;
+    seenKeys.add(k);
+    attackSeedEntries.push(e);
+  }
   // 妨害候補: ハイウェイとして検出されている(妨害に「敵陣へ届く」ことは要求できない。
   // docs/spec.md 機能5「妨害は寿命内に敵陣に到達しない」が受け入れ条件のため)。
   const disruptSeedEntries = entries.filter((e) => e.meta.highway.trajectoryPeriodic);
@@ -996,6 +1063,7 @@ function reprojectViability(archive1) {
 }
 
 async function runPipeline(pool, sampler) {
+  const viableCollector = createViableCollector(VIABLE_PER_SIGNATURE);
   let archive1;
   let distillStats = null;
   let iterations = 0;
@@ -1008,13 +1076,13 @@ async function runPipeline(pool, sampler) {
     const stats = archiveStats(archive1);
     log(`  読み込み完了: filled=${stats.filled}/${stats.total} (元の反復回数 ${iterations})`);
   } else {
-    const built = await buildHighwayArchive(pool, sampler);
+    const built = await buildHighwayArchive(pool, sampler, viableCollector);
     archive1 = built.archive1;
     distillStats = built.distillStats;
     iterations = built.iterations;
   }
   reprojectViability(archive1);
-  const { attackSeedEntries, disruptSeedEntries, attackSeeds, disruptSeeds } = projectCandidates(archive1);
+  const { attackSeedEntries, disruptSeedEntries, attackSeeds, disruptSeeds } = projectCandidates(archive1, viableCollector);
   if (attackSeeds.length < C.TEMPLATE_COUNT_ATTACK || disruptSeeds.length < C.TEMPLATE_COUNT_DISRUPT) {
     throw new Error(`②の候補数が不足(攻撃${attackSeeds.length}/妨害${disruptSeeds.length})。探索予算を増やすこと`);
   }
