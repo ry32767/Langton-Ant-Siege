@@ -230,6 +230,22 @@ function robustnessTierOf(robustness) {
   return bounds.length - 1;
 }
 
+/**
+ * ARCHIVE2.speedClassBins の境界で速度クラス(v_y = |driftY| / period)をビン分けする。
+ * ハイウェイ署名(周期・並進)から実効的な縦方向速度を出し、それを archive2Attack の記述子軸にする
+ * (§8「多様性を rule.length で測ってはいけない」。速度クラスも同じ理由でハイウェイ署名から測る)。
+ * period===0 や未検出(highway なし)は最速ビン扱いにせず 0 番ビンに落とす(保険。通常は
+ * evaluateAttack が highway.trajectoryPeriodic を前提に呼ぶので起きない)。
+ */
+function speedClassTierOf(vy) {
+  const bounds = C.ARCHIVE2.speedClassBins;
+  const v = Number.isFinite(vy) ? vy : 0;
+  for (let i = 0; i < bounds.length; i++) {
+    if (v <= bounds[i]) return i;
+  }
+  return bounds.length - 1;
+}
+
 /** ARCHIVE2.reachBins 個に reachRows(縦到達距離)をビン分けする。 */
 function reachTierOf(reachRows) {
   const bins = C.ARCHIVE2.reachBins;
@@ -351,6 +367,10 @@ function coevolve(attackSeeds, disruptSeeds) {
     dims: [
       { name: 'entryPositionTier', bins: C.ARCHIVE2.entryPositionBins },
       { name: 'robustnessTier', bins: C.ARCHIVE2.robustnessBins.length },
+      // ハイウェイ署名(period・driftY)由来の速度クラス軸(v_y=|driftY|/period)。
+      // これが無いと別の速度クラスの弾が同じセルで競合して潰し合い、選抜前に多様性が失われる
+      // (実測: archive2Attack の elite が6件・署名2種類まで潰れた)。
+      { name: 'speedClassTier', bins: C.ARCHIVE2.speedClassBins.length },
     ],
   });
   const archive2Disrupt = createArchive({
@@ -377,9 +397,13 @@ function coevolve(attackSeeds, disruptSeeds) {
       const total = currentDisruptPool.length * C.FIRE_TIMINGS.length;
       const counterCount = currentDisruptPool.length > 0 ? countCounters(genome, currentDisruptPool) : 0;
       const robustness = total > 0 ? 1 - counterCount / total : 1;
+      // p.viable===true は trajectoryPeriodic な highway が前提(evaluateProjectile の viable 判定は
+      // highway 検出済みの game.scored に依存する)なので period===0 は通常起きないが、念のため保険。
+      const vy = p.highway.period > 0 ? Math.abs(p.highway.driftY) / p.highway.period : 0;
       const descriptor = {
         entryPositionTier: entryPositionTierOf(p.game.entryX),
         robustnessTier: robustnessTierOf(robustness),
+        speedClassTier: speedClassTierOf(vy),
       };
       return { descriptor, quality: p.quality, meta: { robustness, counterCount } };
     };
@@ -503,6 +527,28 @@ function selectNineByNine(attackPool, disruptPool) {
   // (§8「多様性を rule.length で測ってはいけない」。局所探索のループ内で毎回再計算しない)。
   const attackHighwaySig = attackPool.map((g) => highwaySignatureKey(evaluateProjectile(g).highway));
   const attackEffColor = attackPool.map((g) => effectiveColorCount(g));
+
+  // 診断ログ(§本タスク): 候補プール内のハイウェイ署名ごとに、いずれかの妨害候補で
+  // 1回でもカウンターされる(=局所探索が選び得る)個体が何件あるかを見る。0件のまま
+  // 最終選抜の多様性が伸びない場合、原因が「候補プールに無い」のか「妨害側に対応する
+  // カウンターが無く局所探索が選べない」のかを切り分けるための一次情報。
+  {
+    const sigStats = new Map();
+    for (let a = 0; a < attackPool.length; a++) {
+      const sig = attackHighwaySig[a];
+      if (!sig) continue;
+      const hasCounter = disruptPool.some((_, d) => M[a][d] > 0);
+      const rec = sigStats.get(sig) || { total: 0, withCounter: 0 };
+      rec.total++;
+      if (hasCounter) rec.withCounter++;
+      sigStats.set(sig, rec);
+    }
+    const summary = [...sigStats.entries()]
+      .sort((x, y) => y[1].total - x[1].total)
+      .map(([sig, v]) => `${sig}:${v.withCounter}/${v.total}`)
+      .join(', ');
+    log(`  診断: 候補プール内ハイウェイ署名ごとのカウンター保有件数 => ${summary}`);
+  }
 
   function evaluate(ai, di) {
     const sub = ai.map((a) => di.map((d) => M[a][d]));
@@ -738,7 +784,13 @@ function runPipeline() {
     // ④.5: 最終選抜(9×9)の直前に厳密確認(fingerprintVerified)のゲートをかける。
     // 候補が9件未満に減った場合は selectNineByNine 側の件数チェックで ok=false になり、
     // 下の予算拡張リトライに自然に合流する。
-    const verifiedAttackPool = filterFingerprintVerified(attackPool, '攻撃プール');
+    //
+    // ⚠️ attackPool(archive2Attack の生存者 + 種の補填)だけだと、記述子のセル数上限で
+    // 段階③④の共進化中に淘汰された弾がここで復活しない。②で見つけた viable な弾(attackSeeds、
+    // 実測131件)を保険として丸ごと候補プールに合流させる。共進化で鍛えたロバスト性評価は失うが、
+    // 「探索で見つけた使える弾をアーカイブのセル崩壊で捨てない」ことを優先する。
+    const candidateAttackPool = dedupeGenomes([...attackPool, ...attackSeeds]);
+    const verifiedAttackPool = filterFingerprintVerified(candidateAttackPool, '攻撃プール(archive1 viable全件込み)');
     const verifiedDisruptPool = filterFingerprintVerified(disruptPool, '妨害プール');
     const selection = selectNineByNine(verifiedAttackPool, verifiedDisruptPool);
     if (selection.ok) {

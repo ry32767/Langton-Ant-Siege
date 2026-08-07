@@ -199,7 +199,8 @@ genome = {
 | | `speed` | `ARCHIVE1.speedBins` = 10(0.0..1.0 を10等分) |
 | | `formationTime` | `ARCHIVE1.formationBins` = `[64,128,256,512,1024,2048,4096,SEARCH_LIFE(20000)]` の8段階(対数的な区切り) |
 | 第2アーカイブ(ゲーム候補) | `entryPositionTier` | `ARCHIVE2.entryPositionBins` = 6(敵陣へ侵入した **x座標**のビン。旧仕様は y だったが、盤面回転に伴い x に変更) |
-| | `robustnessTier` | `ARCHIVE2.robustnessBins` = `[0.2, 0.4, 0.6, 0.8, 1.0]` |
+| | `robustnessTier` | `ARCHIVE2.robustnessBins` = `[0.5, 1.0]`(v4.1 で `[0.2,0.4,0.6,0.8,1.0]` から削減。実測で robustness の値はほぼ最上位ビンに張り付き軸として機能していなかったため、後述の `speedClassTier` を追加した分のセル数増加を相殺する目的で粗くした) |
+| | `speedClassTier` | `ARCHIVE2.speedClassBins` = `[0.035, 0.047, 1.0]`(v4.1 で追加。ハイウェイ署名から実効的な縦方向速度 `v_y = |driftY| / period` を出し、境界値でビン分けする3段階。archive2Attack の記述子は `(entryPositionTier, robustnessTier, speedClassTier)` = 6×2×3 = 36セルになった) |
 | 妨害アーカイブ | `reach` | `ARCHIVE2.reachBins` = 6(縦方向の到達距離。旧 `reachColumns` → `reachRows`) |
 
 `ARCHIVE1_QUALITY`(`stability`/`verticality`/`usability`/`formationPenalty`、いずれも重み1.0)は quality(挿入時の優劣比較に使うスカラー)の配分であり、記述子の次元ではない。
