@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Langton Ant Siege — ハイウェイ検証デモ</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --line:#262d38; --ink:#e6edf3; --dim:#8b949e;
+    --own:#1b2430; --foe:#2a1d24; --ban:#3a2a1a;
+    --s1:#4fc3f7; --s2:#ff8a65; --hw:#ffd54f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Segoe UI",-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+    display:flex;flex-direction:column;align-items:center;gap:14px;padding:20px}
+  h1{font-size:17px;font-weight:600;margin:0;letter-spacing:.02em}
+  .sub{color:var(--dim);font-size:12.5px;margin:-8px 0 0;text-align:center;line-height:1.6;max-width:860px}
+  .wrap{width:880px;max-width:100%}
+  .hpbar{display:flex;align-items:center;gap:10px;margin:5px 0;font-size:12px}
+  .hpbar .name{width:112px;color:var(--dim)}
+  .track{flex:1;height:15px;background:#0a0d12;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .fill{height:100%;transition:width .18s}
+  .hpnum{width:78px;text-align:right;font-variant-numeric:tabular-nums;font-size:12px}
+  canvas{display:block;border:1px solid var(--line);border-radius:8px;background:#0a0d12;width:100%;image-rendering:pixelated}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 15px;margin-top:12px}
+  .row{display:flex;flex-wrap:wrap;gap:16px;align-items:center}
+  label{font-size:12.5px;color:var(--dim);display:flex;align-items:center;gap:7px}
+  select,button{background:#0d1117;color:var(--ink);border:1px solid var(--line);
+    border-radius:6px;padding:6px 11px;font-size:12.5px;font-family:inherit;cursor:pointer}
+  button:hover,select:hover{border-color:#3d4757}
+  button.pri{background:var(--s1);color:#04121b;border-color:var(--s1);font-weight:600}
+  input[type=range]{width:132px;accent-color:var(--s1)}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:10px 12px}
+  .stat .k{font-size:10.5px;color:var(--dim);letter-spacing:.04em}
+  .stat .v{font-size:19px;font-variant-numeric:tabular-nums;margin-top:3px}
+  .badge{display:inline-block;padding:1px 7px;border-radius:99px;font-size:10.5px;vertical-align:2px}
+  .on{background:var(--hw);color:#2b2000;font-weight:700}
+  .off{background:#22272e;color:var(--dim)}
+  .legend{display:flex;gap:15px;flex-wrap:wrap;font-size:11.5px;color:var(--dim);margin-top:9px}
+  .sw{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:5px;border:1px solid #0006}
+  .log{background:#0a0d12;border:1px solid var(--line);border-radius:9px;padding:9px 12px;margin-top:12px;
+    height:104px;overflow-y:auto;font-size:11.5px;line-height:1.75;font-variant-numeric:tabular-nums}
+  .log b{color:var(--hw)}
+  .note{font-size:11.5px;color:var(--dim);margin-top:9px;line-height:1.7}
+</style>
+</head>
+<body>
+
+<h1>Langton Ant Siege — ハイウェイ検証デモ</h1>
+<p class="sub">盤面は仕様どおりの <b>40×20・上下ラップ・境界から3列は配置禁止</b>。ルールを切り替えて、ハイウェイが出るかどうかを見比べられます。</p>
+
+<div class="wrap">
+  <div class="hpbar"><span class="name">◀ side1 (青)</span>
+    <span class="track"><span class="fill" id="hp1" style="width:100%;background:var(--s1)"></span></span>
+    <span class="hpnum" id="hp1n">300</span></div>
+  <div class="hpbar"><span class="name">side2 (橙) ▶</span>
+    <span class="track"><span class="fill" id="hp2" style="width:100%;background:var(--s2)"></span></span>
+    <span class="hpnum" id="hp2n">300</span></div>
+
+  <canvas id="cv" width="1200" height="600"></canvas>
+
+  <div class="legend">
+    <span><i class="sw" style="background:#1b2430"></i>自陣</span>
+    <span><i class="sw" style="background:#2a1d24"></i>敵陣</span>
+    <span><i class="sw" style="background:#3a2a1a"></i>配置禁止帯(境界3列)</span>
+    <span><i class="sw" style="background:#4fc3f7"></i>side1 のマス</span>
+    <span><i class="sw" style="background:#ff8a65"></i>side2 のマス</span>
+    <span><i class="sw" style="background:#ffd54f"></i>ハイウェイ状態のアリ</span>
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <label>アリのルール
+        <select id="rule">
+          <option value="RRL" selected>RRL(3色) — ハイウェイ38ステップ ★推奨</option>
+          <option value="RL">RL(古典) — ハイウェイ9,976ステップ</option>
+          <option value="RRRRL">RRRRL(5色) — ハイウェイ62ステップ</option>
+          <option value="RRRLLL">RRRLLL(6色) — ハイウェイ98ステップ</option>
+          <option value="RRRL">RRRL(4色) — ハイウェイ3,748ステップ</option>
+        </select>
+      </label>
+      <label>速度 <input type="range" id="spd" min="1" max="12" value="3"><span id="spdv">60 step/s</span></label>
+      <button class="pri" id="run">⏸ 一時停止</button>
+      <button id="reset">リセット</button>
+      <label><input type="checkbox" id="trail" checked> 残像を表示(ハイウェイの形が見えます)</label>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="k">side1 トークン</div><div class="v" id="t1">0</div></div>
+    <div class="stat"><div class="k">side2 トークン</div><div class="v" id="t2">0</div></div>
+    <div class="stat"><div class="k">ハイウェイ状態</div><div class="v" id="hw"><span class="badge off">—</span></div></div>
+    <div class="stat"><div class="k">飛行のうちHW割合</div><div class="v" id="hwf">—</div></div>
+  </div>
+
+  <div class="log" id="log"></div>
+
+  <p class="note">「ハイウェイ状態」= アリが一定周期で同じ量だけ並進し続けている(＝真っ直ぐな道を敷いている)状態。RRL は発射直後からほぼ常時ハイウェイになり、配置マスにぶつかると崩れて、しばらく暴れた後にまた別方向のハイウェイを作り直します。RL に切り替えると、盤面が小さすぎてハイウェイに到達できないことが確認できます。</p>
+</div>
+
+<script>
+const W=40,H=20,BOUND=20,MAXX=17,ANT_COST=5,CAP=25,HP0=300;
+const DIRS=[[0,-1],[1,0],[0,1],[-1,0]];
+const CS=30; // 1マスの描画サイズ(canvas は 1200x600)
+
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+const $=id=>document.getElementById(id);
+let RULE='RRL', K=3, SPS=60, running=true, trail=true;
+
+// 盤面: 状態 0..K-1。所有者を別に持つ(描画の色分け用)
+let board, owner, sides, elapsed, acc, lastT;
+let ghost, ghostOwner;   // 残像レイヤー(アリが通った跡を薄く残す)
+
+function gx(s,x){ return s===0 ? x : W-1-x; }           // ローカル→グローバル
+function gdir(s,d){ return s===0 ? d : (d===1?3:d===3?1:d); }
+
+function reset(){
+  board=new Uint8Array(W*H); owner=new Uint8Array(W*H);
+  ghost=new Float32Array(W*H); ghostOwner=new Uint8Array(W*H);
+  sides=[0,1].map(i=>({id:i,hp:HP0,tok:0,ant:null,placed:[],flip:new Set(),hwSteps:0,steps:0}));
+  elapsed=0; acc=0; lastT=performance.now();
+  $('log').innerHTML=''; log('ルール <b>'+RULE+'</b> で開始');
+  draw(); ui();
+}
+function log(m){ const l=$('log'); l.insertAdjacentHTML('afterbegin', m+'<br>'); }
+
+// --- テンプレート生成(ブラウザ内で軽くランダム探索) ---
+function simulate(cells,ax,ay,ad,maxSteps=1200){
+  const b=new Uint8Array(W*H);
+  for(const [x,y] of cells) b[y*W+x]=1;
+  let x=ax,y=ay,d=ad,s=0;
+  while(s<maxSteps){
+    const i=y*W+x, st=b[i];
+    d = RULE[st]==='R' ? (d+1)&3 : (d+3)&3;
+    b[i]=(st+1)%K;
+    x+=DIRS[d][0]; y=(y+DIRS[d][1]+H)%H; s++;
+    if(x<0) return null;
+    if(x>=BOUND){
+      // ダメージ = 到達マスを色付きとみなした4連結の非白マス数
+      const seen=new Uint8Array(W*H), stk=[[x,y]]; seen[y*W+x]=1; let n=1;
+      while(stk.length){ const [cx,cy]=stk.pop();
+        for(const [dx,dy] of DIRS){ const nx=cx+dx; if(nx<0||nx>=W) continue;
+          const ny=(cy+dy+H)%H, j=ny*W+nx;
+          if(!seen[j]&&b[j]!==0){seen[j]=1;n++;stk.push([nx,ny]);} } }
+      return {cells,ax,ay,ad,cost:ANT_COST+cells.length,steps:s,dmg:n};
+    }
+  }
+  return null;
+}
+const R=n=>Math.floor(Math.random()*n);
+function makeTemplate(maxCost){
+  let best=null;
+  for(let t=0;t<600;t++){
+    const n=R(Math.max(0,maxCost-ANT_COST)+1), set=new Set();
+    let x=R(MAXX),y=R(H),g=0;
+    while(set.size<n&&g++<n*30){ set.add(y*W+x);
+      const d=DIRS[R(4)], nx=x+d[0], ny=(y+d[1]+H)%H;
+      if(nx>=0&&nx<MAXX){x=nx;y=ny;} }
+    const cells=[...set].map(i=>[i%W,Math.floor(i/W)]);
+    const r=simulate(cells,R(MAXX),R(H),R(4));
+    if(r && r.cost<=maxCost && (!best || r.dmg>best.dmg)) best=r;
+  }
+  return best;
+}
+
+// --- 発射 ---
+function fire(s){
+  const tpl=makeTemplate(s.tok); if(!tpl) return;
+  s.tok-=tpl.cost; s.placed=[]; s.flip=new Set(); s.hwSteps=0; s.steps=0;
+  for(const [x,y] of tpl.cells){ const i=y*W+gx(s.id,x); board[i]=1; owner[i]=s.id+1; s.placed.push(i); }
+  s.ant={x:tpl.ax,y:tpl.ay,d:tpl.ad,hist:[]};
+  for(let i=0;i<W*H;i++) if(ghostOwner[i]===s.id+1) ghost[i]=0;   // 自分の残像をクリア
+  log(`side${s.id+1} 発射 — コスト${tpl.cost} / 予想${tpl.dmg}ダメージ / ${(tpl.steps/SPS).toFixed(1)}秒`);
+}
+function cleanup(s){
+  for(const i of s.placed){ board[i]=0; owner[i]=0; }
+  for(const i of s.flip){ board[i]=0; owner[i]=0; }
+  s.placed=[]; s.flip.clear(); s.ant=null;
+}
+const HWP={RL:104,RRL:18,RRRRL:68,RRRLLL:38,RRRL:26};
+function isHighway(a){
+  const P=HWP[RULE]||18, h=a.hist;
+  if(h.length<P+1) return false;
+  const A=h[h.length-1], B=h[h.length-1-P];
+  let dy=A[1]-B[1]; if(dy>H/2)dy-=H; if(dy<-H/2)dy+=H;
+  const dx=A[0]-B[0];
+  return dx!==0 && Math.abs(dx)===Math.abs(dy) && Math.abs(dx)<=2;
+}
+
+function step(s){
+  if(!s.ant){ if(s.tok>=ANT_COST+1) fire(s); return; }
+  const a=s.ant, i=a.y*W+gx(s.id,a.x), st=board[i];
+  a.d = RULE[st]==='R' ? (a.d+1)&3 : (a.d+3)&3;
+  board[i]=(st+1)%K;
+  if(board[i]!==0) owner[i]=s.id+1; else if(!s.placed.includes(i)) owner[i]=0;
+  s.flip.add(i);
+  ghost[i]=1; ghostOwner[i]=s.id+1;   // 残像に記録
+  a.x+=DIRS[a.d][0]; a.y=(a.y+DIRS[a.d][1]+H)%H;
+  a.hist.push([a.x,a.y]); if(a.hist.length>200) a.hist.shift();
+  s.steps++; if(isHighway(a)) s.hwSteps++;
+
+  if(a.x<0){ log(`side${s.id+1} 場外消滅 (${s.steps}ステップ)`); cleanup(s); return; }
+  if(a.x>=BOUND){
+    const AX=gx(s.id,a.x), AY=a.y;
+    const seen=new Uint8Array(W*H), stk=[[AX,AY]]; seen[AY*W+AX]=1; let n=1;
+    while(stk.length){ const [cx,cy]=stk.pop();
+      for(const [dx,dy] of DIRS){ const nx=cx+dx; if(nx<0||nx>=W) continue;
+        const ny=(cy+dy+H)%H, j=ny*W+nx;
+        if(!seen[j]&&board[j]!==0){seen[j]=1;n++;stk.push([nx,ny]);} } }
+    const o=sides[1-s.id]; o.hp=Math.max(0,o.hp-n);
+    log(`<b>side${s.id+1} 命中 ${n}ダメージ</b> — ${s.steps}ステップ / HW率 ${(s.hwSteps/s.steps*100).toFixed(0)}%`);
+    cleanup(s);
+  }
+}
+
+function draw(){
+  ctx.fillStyle='#0a0d12'; ctx.fillRect(0,0,cv.width,cv.height);
+  for(let x=0;x<W;x++){
+    const own1=x<BOUND, ban = (x>=MAXX&&x<BOUND)||(x>=BOUND&&x<W-MAXX);
+    ctx.fillStyle = ban ? getC('--ban') : (own1?getC('--own'):getC('--foe'));
+    ctx.fillRect(x*CS,0,CS,H*CS);
+  }
+  if(trail){
+    for(let i=0;i<W*H;i++){
+      const g=ghost[i]; if(g<=0.02) continue;
+      const base = ghostOwner[i]===2 ? [255,138,101] : [79,195,247];
+      ctx.fillStyle=`rgba(${base[0]},${base[1]},${base[2]},${g*0.30})`;
+      ctx.fillRect((i%W)*CS,Math.floor(i/W)*CS,CS,CS);
+    }
+  }
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const v=board[y*W+x]; if(!v) continue;
+    const o=owner[y*W+x];
+    const base = o===2 ? [255,138,101] : [79,195,247];
+    const a = v/(K-1)*0.55+0.45;
+    ctx.fillStyle=`rgba(${base[0]},${base[1]},${base[2]},${a})`;
+    ctx.fillRect(x*CS+1,y*CS+1,CS-2,CS-2);
+  }
+  // 境界線
+  ctx.strokeStyle='#4b5563'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(BOUND*CS,0); ctx.lineTo(BOUND*CS,H*CS); ctx.stroke();
+  // アリ
+  for(const s of sides){ if(!s.ant) continue;
+    const a=s.ant, X=gx(s.id,a.x)*CS+CS/2, Y=a.y*CS+CS/2;
+    const hw=isHighway(a);
+    ctx.fillStyle = hw ? getC('--hw') : (s.id?getC('--s2'):getC('--s1'));
+    ctx.beginPath(); ctx.arc(X,Y,CS*0.4,0,7); ctx.fill();
+    if(hw){ ctx.strokeStyle=getC('--hw'); ctx.lineWidth=2; ctx.globalAlpha=.5;
+      ctx.beginPath(); ctx.arc(X,Y,CS*0.72,0,7); ctx.stroke(); ctx.globalAlpha=1; }
+  }
+}
+const cache={};
+function getC(v){ return cache[v]||(cache[v]=getComputedStyle(document.documentElement).getPropertyValue(v).trim()); }
+
+function ui(){
+  $('hp1').style.width=(sides[0].hp/HP0*100)+'%'; $('hp1n').textContent=sides[0].hp;
+  $('hp2').style.width=(sides[1].hp/HP0*100)+'%'; $('hp2n').textContent=sides[1].hp;
+  $('t1').textContent=sides[0].tok; $('t2').textContent=sides[1].tok;
+  const fly=sides.filter(s=>s.ant);
+  const hw=fly.some(s=>isHighway(s.ant));
+  $('hw').innerHTML = fly.length ? `<span class="badge ${hw?'on':'off'}">${hw?'ハイウェイ':'カオス'}</span>` : '<span class="badge off">—</span>';
+  const tot=sides.reduce((a,s)=>a+s.steps,0), h=sides.reduce((a,s)=>a+s.hwSteps,0);
+  $('hwf').textContent = tot? (h/tot*100).toFixed(0)+'%' : '—';
+}
+
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt=Math.min(0.1,(now-lastT)/1000); lastT=now;
+  if(!running) return;
+  if(sides[0].hp<=0||sides[1].hp<=0){ running=false; $('run').textContent='▶ 再開';
+    log(sides[0].hp<=0?'<b>side2 の勝ち</b>':'<b>side1 の勝ち</b>'); return; }
+  acc+=dt*SPS; elapsed+=dt;
+  const prevSec=Math.floor((elapsed-dt)), nowSec=Math.floor(elapsed);
+  if(nowSec>prevSec) for(const s of sides) s.tok=Math.min(CAP,s.tok+1);
+  let k=0;
+  while(acc>=1 && k++<600){ acc-=1; for(const s of sides) step(s); }
+  // 残像をゆっくり減衰(ハイウェイの形が目で追えるように)
+  if(trail){ const d=Math.pow(0.5, dt/2.5); for(let i=0;i<W*H;i++) if(ghost[i]>0) ghost[i]*=d; }
+  else ghost.fill(0);
+  draw(); ui();
+}
+
+$('rule').onchange=e=>{ RULE=e.target.value; K=RULE.length; reset(); running=true; $('run').textContent='⏸ 一時停止'; };
+$('spd').oninput=e=>{ SPS=[0,15,30,45,60,60,90,120,180,240,360,480,600][+e.target.value]||60;
+  $('spdv').textContent=SPS+' step/s'; };
+$('run').onclick=()=>{ running=!running; $('run').textContent=running?'⏸ 一時停止':'▶ 再開'; lastT=performance.now(); };
+$('reset').onclick=()=>{ reset(); running=true; $('run').textContent='⏸ 一時停止'; };
+$('trail').onchange=e=>trail=e.target.checked;
+
+$('spd').value=3; SPS=30; $('spdv').textContent='30 step/s';
+reset(); requestAnimationFrame(loop);
+</script>
+</body>
+</html>

@@ -1,0 +1,659 @@
+/* ===========================================================================
+   Langton Ant Siege — スタイル
+   デザインの唯一の正は DESIGN.md。触る前に必ず読むこと。
+   値の実体は src/tokens.css(:root)。ここでは一切の色・書体・余白の実値を
+   書かない(ベタ書き禁止)。すべて var(--...) から引く。
+   世界観: 「方眼紙の上に藍と朱のインクで描く」。盤面そのものが方眼紙であり、
+   その罫線が実際に引かれている(Signature)。周囲の UI は静かに保つ。
+   =========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   ベース層
+   --------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--paper);
+  color: var(--sumi);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  -webkit-text-size-adjust: 100%;
+}
+
+/* 毎フレーム変わる数値は等幅数字でガタつきを消す(不変条件7) */
+.num {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * .hidden は必ず勝つ。#screen-match のような id セレクタで display を
+ * 上書きされても画面切り替えが壊れないよう !important を付ける。
+ */
+.hidden {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ===========================================================================
+   ここから下がコンポーネント層。モバイルファースト: 狭幅を基準に
+   min-width の メディアクエリで広幅(--layout-breakpoint = 900px)へ拡張する。
+   =========================================================================== */
+
+#app {
+  min-height: 100vh;
+}
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ---------------------------------------------------------------------------
+   ボタン共通
+   --------------------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius);
+  border: var(--border);
+  background: var(--paper-raised);
+  color: var(--sumi);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease), filter var(--dur-fast) var(--ease);
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--paper);
+  border-color: var(--sumi);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  color: var(--sumi-soft);
+  border-color: var(--rule-fine);
+  background: var(--paper);
+}
+
+.btn-primary {
+  background: var(--ai);
+  border-color: var(--ai);
+  color: var(--paper);
+}
+
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.2);
+}
+
+.btn-primary:active:not(:disabled) {
+  filter: brightness(0.9);
+}
+
+.btn-primary:disabled {
+  background: var(--paper-sunk);
+  border-color: var(--rule-fine);
+  color: var(--sumi-soft);
+}
+
+.btn-secondary {
+  background: transparent;
+  border-color: var(--rule-major);
+  color: var(--sumi-soft);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  color: var(--sumi);
+  border-color: var(--sumi);
+  background: var(--paper-raised);
+}
+
+/* ---------------------------------------------------------------------------
+   1. 開始画面
+   --------------------------------------------------------------------------- */
+#screen-start {
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4) var(--sp-3);
+}
+
+.start-panel {
+  width: 100%;
+  max-width: 560px;
+  padding: var(--sp-5) var(--sp-4);
+  background-color: var(--paper-raised);
+  border: var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.display-title {
+  margin: 0 0 var(--sp-3);
+  font-family: var(--font-display);
+  font-size: var(--fs-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--sumi);
+}
+
+.start-panel .lead {
+  margin: 0 0 var(--sp-4);
+  color: var(--sumi-soft);
+  text-align: left;
+}
+
+.start-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  align-items: stretch;
+}
+
+.start-buttons .btn {
+  width: 100%;
+}
+
+.load-status,
+.error {
+  margin: var(--sp-3) 0 0;
+  font-size: var(--fs-sm);
+  color: var(--sumi-soft);
+  white-space: pre-wrap;
+}
+
+.error {
+  color: var(--akane);
+  font-weight: 600;
+}
+
+@media (min-width: 640px) {
+  .start-buttons {
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .start-buttons .btn {
+    width: auto;
+    min-width: 220px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   2. 対戦画面 — HUD
+   --------------------------------------------------------------------------- */
+#screen-match {
+  padding: var(--sp-2);
+  gap: var(--sp-2);
+  padding-bottom: calc(var(--sp-2) + env(safe-area-inset-bottom));
+}
+
+.hud {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: var(--sp-2);
+  align-items: start;
+  padding: var(--sp-2);
+  background-color: var(--paper-raised);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+
+.hud-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  font-size: var(--fs-sm);
+}
+
+.hud-side1 {
+  color: var(--ai);
+}
+
+.hud-side2 {
+  align-items: flex-end;
+  text-align: right;
+  color: var(--shu);
+}
+
+.hud-label {
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.hud-row {
+  color: var(--sumi);
+}
+
+.hud-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--sp-2);
+}
+
+.hud-time {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--sumi);
+  white-space: nowrap;
+}
+
+/* 得点＝5升のインク升目。色だけでなく塗りの有無(枠→塗)でも状態を示す */
+.pips {
+  display: flex;
+  gap: var(--sp-1);
+}
+
+.hud-side2 .pips {
+  justify-content: flex-end;
+}
+
+.pip {
+  width: var(--sp-2);
+  height: var(--sp-2);
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+
+.hud-side1 .pip.filled {
+  background: var(--ai);
+  border-color: var(--ai);
+}
+
+.hud-side2 .pip.filled {
+  background: var(--shu);
+  border-color: var(--shu);
+}
+
+@media (min-width: 640px) {
+  .pip {
+    width: var(--sp-3);
+    height: var(--sp-3);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   3. 対戦画面 — レイアウト(盤面 + 操作パネル)
+   狭幅: 1カラム(盤面が上、幅基準で縮小)。広幅: 2カラム(盤面が高さ基準)。
+   --------------------------------------------------------------------------- */
+.match-layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  flex: 1;
+  min-height: 0;
+}
+
+.board-column {
+  display: flex;
+  justify-content: center;
+}
+
+.battle-area {
+  position: relative;
+  width: 100%;
+  background-color: var(--paper-sunk);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+
+#board {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: var(--board-aspect);
+}
+
+@media (min-width: 900px) {
+  .match-layout {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+  }
+
+  .board-column {
+    flex: 0 1 auto;
+    max-height: var(--board-max-h);
+  }
+
+  .battle-area {
+    width: auto;
+    height: var(--board-max-h);
+    max-width: 100%;
+  }
+
+  #board {
+    width: auto;
+    height: 100%;
+    max-width: 100%;
+  }
+
+  .control-panel {
+    width: var(--panel-w);
+    flex: 0 0 var(--panel-w);
+    align-self: stretch;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   結果オーバーレイ
+   --------------------------------------------------------------------------- */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-3);
+  background: rgba(42, 38, 32, 0.6);
+}
+
+.overlay-panel {
+  width: 100%;
+  max-width: 420px;
+  padding: var(--sp-4);
+  background-color: var(--paper-raised);
+  border: var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.overlay-panel h2 {
+  margin: 0 0 var(--sp-2);
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+}
+
+.overlay-panel p {
+  margin: 0 0 var(--sp-3);
+  color: var(--sumi-soft);
+  white-space: pre-wrap;
+}
+
+.overlay-panel .btn {
+  width: 100%;
+  margin-bottom: var(--sp-2);
+}
+
+.overlay-panel .btn:last-child {
+  margin-bottom: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   4. コントロールパネル
+   --------------------------------------------------------------------------- */
+.control-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-2);
+  background-color: var(--paper-raised);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+
+.tabs {
+  display: flex;
+  gap: var(--sp-1);
+}
+
+.tab {
+  flex: 1;
+  min-height: var(--tap-min);
+  padding: var(--sp-1) var(--sp-2);
+  background: var(--paper);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--sumi-soft);
+  font-family: var(--font-body);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
+}
+
+.tab:hover {
+  color: var(--sumi);
+  border-color: var(--sumi);
+}
+
+.tab.active {
+  background: var(--sumi);
+  border-color: var(--sumi);
+  color: var(--paper);
+}
+
+.template-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--sp-2);
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.template-card {
+  min-height: var(--tap-min);
+  padding: var(--sp-2);
+  background: var(--paper);
+  border: var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  /* transition / animation を付けない(render() の作り直しで再発火してちらつくため) */
+}
+
+.template-card:hover {
+  border-color: var(--sumi);
+}
+
+/* 選択: 太さと色の両方で示す(色だけに頼らない) */
+.template-card.selected {
+  border-width: 2px;
+  border-color: var(--ai);
+  background: var(--paper-raised);
+}
+
+/* 推奨(有効な迎撃候補): 破線と注意色で「無効」とは違う形にする */
+.template-card.highlight {
+  border-style: dashed;
+  border-color: var(--kin);
+}
+
+.template-card.disabled {
+  cursor: not-allowed;
+  background: var(--paper-sunk);
+  border-color: var(--rule-fine);
+  border-style: dashed;
+}
+
+.template-card.disabled .card-header,
+.template-card.disabled .card-body {
+  color: var(--sumi-soft);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-family: var(--font-numeric);
+  font-weight: 700;
+  color: var(--sumi);
+  margin-bottom: var(--sp-1);
+}
+
+.card-badge {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 1px var(--sp-1);
+  border-radius: var(--radius);
+  border: 1px solid currentColor;
+}
+
+.card-badge.badge-disabled {
+  color: var(--sumi-soft);
+}
+
+.card-badge.badge-highlight {
+  color: var(--kin);
+}
+
+.card-body {
+  font-family: var(--font-numeric);
+  font-size: var(--fs-sm);
+  color: var(--sumi-soft);
+  line-height: var(--lh-tight);
+}
+
+.card-body div {
+  margin-bottom: 2px;
+}
+
+.card-body div:last-child {
+  margin-bottom: 0;
+}
+
+.list-empty {
+  grid-column: 1 / -1;
+  padding: var(--sp-3);
+  color: var(--sumi-soft);
+  font-size: var(--fs-sm);
+  text-align: center;
+}
+
+.fire-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.fire-row .btn {
+  flex-shrink: 0;
+}
+
+.fire-reason {
+  font-size: var(--fs-sm);
+  color: var(--kin);
+  font-weight: 600;
+}
+
+.threat-panel h3 {
+  margin: 0 0 var(--sp-1);
+  font-size: var(--fs-sm);
+  color: var(--sumi);
+}
+
+.threat-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  margin-bottom: var(--sp-1);
+}
+
+.threat-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
+  padding: var(--sp-1) var(--sp-2);
+  background: var(--paper);
+  border: var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font-numeric);
+  cursor: pointer;
+  /* transition / animation を付けない(render() の作り直しで再発火してちらつくため) */
+}
+
+.threat-item:hover {
+  border-color: var(--sumi);
+}
+
+.threat-item.selected {
+  border-width: 2px;
+  border-color: var(--shu);
+  background: var(--paper-raised);
+}
+
+.threat-empty {
+  padding: var(--sp-2);
+  color: var(--sumi-soft);
+  font-size: var(--fs-sm);
+}
+
+.threat-empty p {
+  margin: 0 0 var(--sp-1);
+}
+
+.threat-empty p:last-child {
+  margin-bottom: 0;
+}
+
+.threat-detail {
+  font-family: var(--font-numeric);
+  font-size: var(--fs-sm);
+  color: var(--sumi-soft);
+  white-space: pre-wrap;
+}
+
+@media (min-width: 640px) {
+  .template-list {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   狭幅: 発射行を画面下部に sticky にし、盤面と重ならないよう内容側に余白を確保
+   --------------------------------------------------------------------------- */
+@media (max-width: 899px) {
+  .fire-row {
+    position: sticky;
+    bottom: 0;
+    padding: var(--sp-2);
+    margin: 0 calc(var(--sp-2) * -1) calc(var(--sp-2) * -1);
+    background-color: var(--paper-raised);
+    border-top: var(--border);
+    padding-bottom: calc(var(--sp-2) + env(safe-area-inset-bottom));
+  }
+
+  .threat-panel,
+  .template-list {
+    margin-bottom: var(--sp-2);
+  }
+}

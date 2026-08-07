@@ -1,0 +1,17 @@
+{
+  "name": "langton-ant-siege",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ラングトンのアリが敷くハイウェイを弾道として撃ち合う攻城ゲーム",
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "serve": "npx serve .",
+    "generate": "node scripts/generate-templates.mjs",
+    "train": "node scripts/train-policy.mjs",
+    "balance": "node scripts/simulate-matches.mjs --games 5000"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

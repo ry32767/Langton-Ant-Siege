@@ -1,0 +1,19 @@
+# 依存パッケージは無い(package.json は "type": "module" 宣言のためだけに置いてある)が、
+# npx serve などが作る場合に備えて無視する
+node_modules/
+
+# OS / エディタ
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# 一時ファイル
+*.log
+tmp/
+.tmp/
+
+# ⚠️ data/*.json は生成物だが **コミットする**。
+# ブラウザが fetch で読み込むため、GitHub Pages に同梱する必要がある(AGENTS.md 参照)。
+# 手で編集はしないこと。ロジックを直したら生成スクリプトを再実行して更新する。

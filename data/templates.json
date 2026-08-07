@@ -1,0 +1,1589 @@
+{
+  "generatedAt": "2026-08-07T00:00:00.000Z",
+  "config": {
+    "width": 60,
+    "height": 120,
+    "zoneDepth": 16,
+    "minColors": 2,
+    "maxColors": 16,
+    "searchLife": 20000,
+    "gameProjectileLife": 2400,
+    "attackCost": 5,
+    "attackLife": 2400,
+    "disruptCost": 3,
+    "disruptLife": 400,
+    "maxCells": 16
+  },
+  "attack": [
+    {
+      "id": "A1",
+      "kind": "attack",
+      "rule": "LLR",
+      "colorCount": 3,
+      "cells": [
+        [
+          34,
+          2,
+          0
+        ],
+        [
+          20,
+          2,
+          1
+        ],
+        [
+          23,
+          11,
+          2
+        ],
+        [
+          17,
+          0,
+          2
+        ],
+        [
+          26,
+          13,
+          0
+        ],
+        [
+          44,
+          9,
+          0
+        ],
+        [
+          20,
+          8,
+          1
+        ],
+        [
+          25,
+          12,
+          2
+        ],
+        [
+          50,
+          12,
+          1
+        ],
+        [
+          54,
+          11,
+          0
+        ],
+        [
+          15,
+          7,
+          2
+        ],
+        [
+          19,
+          12,
+          2
+        ]
+      ],
+      "antX": 21,
+      "antY": 15,
+      "antDir": 3,
+      "cost": 17,
+      "arrivalStep": 1653,
+      "robustness": 0.9666666666666667,
+      "costTier": 17,
+      "featureTier": 5,
+      "highway": {
+        "detected": true,
+        "formationStep": 38,
+        "period": 18,
+        "driftX": 1,
+        "driftY": 1,
+        "speed": 0.07856742013183862,
+        "verifiedCycles": 1109
+      }
+    },
+    {
+      "id": "A2",
+      "kind": "attack",
+      "rule": "LLRLLRLRRRLRLRL",
+      "colorCount": 15,
+      "cells": [
+        [
+          16,
+          13,
+          12
+        ],
+        [
+          20,
+          14,
+          6
+        ],
+        [
+          21,
+          11,
+          7
+        ]
+      ],
+      "antX": 47,
+      "antY": 15,
+      "antDir": 3,
+      "cost": 8,
+      "arrivalStep": 1653,
+      "robustness": 0.9777777777777777,
+      "costTier": 8,
+      "featureTier": 1,
+      "highway": {
+        "detected": true,
+        "formationStep": 38,
+        "period": 18,
+        "driftX": 1,
+        "driftY": 1,
+        "speed": 0.07856742013183862,
+        "verifiedCycles": 1109
+      }
+    },
+    {
+      "id": "A3",
+      "kind": "attack",
+      "rule": "LLR",
+      "colorCount": 3,
+      "cells": [
+        [
+          8,
+          12,
+          1
+        ],
+        [
+          20,
+          13,
+          2
+        ],
+        [
+          7,
+          9,
+          0
+        ],
+        [
+          52,
+          1,
+          1
+        ],
+        [
+          49,
+          2,
+          2
+        ],
+        [
+          31,
+          3,
+          0
+        ],
+        [
+          53,
+          9,
+          2
+        ],
+        [
+          21,
+          1,
+          0
+        ]
+      ],
+      "antX": 16,
+      "antY": 12,
+      "antDir": 0,
+      "cost": 13,
+      "arrivalStep": 1644,
+      "robustness": 0.9555555555555556,
+      "costTier": 13,
+      "featureTier": 4,
+      "highway": {
+        "detected": true,
+        "formationStep": 38,
+        "period": 18,
+        "driftX": -1,
+        "driftY": 1,
+        "speed": 0.07856742013183862,
+        "verifiedCycles": 1109
+      }
+    },
+    {
+      "id": "A4",
+      "kind": "attack",
+      "rule": "LLR",
+      "colorCount": 3,
+      "cells": [
+        [
+          13,
+          14,
+          1
+        ],
+        [
+          22,
+          5,
+          0
+        ],
+        [
+          55,
+          3,
+          1
+        ],
+        [
+          41,
+          8,
+          2
+        ],
+        [
+          26,
+          4,
+          1
+        ],
+        [
+          37,
+          12,
+          0
+        ],
+        [
+          49,
+          0,
+          1
+        ],
+        [
+          46,
+          6,
+          0
+        ],
+        [
+          56,
+          2,
+          1
+        ],
+        [
+          37,
+          15,
+          1
+        ],
+        [
+          49,
+          12,
+          0
+        ],
+        [
+          11,
+          9,
+          1
+        ],
+        [
+          8,
+          7,
+          1
+        ],
+        [
+          55,
+          1,
+          1
+        ]
+      ],
+      "antX": 34,
+      "antY": 14,
+      "antDir": 0,
+      "cost": 19,
+      "arrivalStep": 1620,
+      "robustness": 0.9555555555555556,
+      "costTier": 19,
+      "featureTier": 1,
+      "highway": {
+        "detected": true,
+        "formationStep": 68,
+        "period": 18,
+        "driftX": -1,
+        "driftY": 1,
+        "speed": 0.07856742013183862,
+        "verifiedCycles": 1107
+      }
+    },
+    {
+      "id": "A5",
+      "kind": "attack",
+      "rule": "LLRLLR",
+      "colorCount": 6,
+      "cells": [
+        [
+          0,
+          14,
+          1
+        ],
+        [
+          59,
+          4,
+          2
+        ],
+        [
+          57,
+          5,
+          0
+        ],
+        [
+          2,
+          3,
+          3
+        ],
+        [
+          7,
+          7,
+          2
+        ],
+        [
+          23,
+          13,
+          3
+        ],
+        [
+          31,
+          11,
+          2
+        ],
+        [
+          5,
+          6,
+          1
+        ],
+        [
+          5,
+          5,
+          1
+        ],
+        [
+          36,
+          15,
+          1
+        ],
+        [
+          33,
+          10,
+          0
+        ],
+        [
+          10,
+          0,
+          4
+        ],
+        [
+          16,
+          2,
+          2
+        ]
+      ],
+      "antX": 34,
+      "antY": 11,
+      "antDir": 0,
+      "cost": 18,
+      "arrivalStep": 1662,
+      "robustness": 0.9555555555555556,
+      "costTier": 18,
+      "featureTier": 0,
+      "highway": {
+        "detected": true,
+        "formationStep": 38,
+        "period": 18,
+        "driftX": -1,
+        "driftY": 1,
+        "speed": 0.07856742013183862,
+        "verifiedCycles": 1109
+      }
+    },
+    {
+      "id": "A6",
+      "kind": "attack",
+      "rule": "LLR",
+      "colorCount": 3,
+      "cells": [
+        [
+          38,
+          2,
+          0
+        ],
+        [
+          8,
+          12,
+          1
+        ],
+        [
+          20,
+          13,
+          2
+        ],
+        [
+          7,
+          9,
+          0
+        ],
+        [
+          52,
+          1,
+          1
+        ],
+        [
+          49,
+          2,
+          2
+        ],
+        [
+          31,
+          3,
+          0
+        ],
+        [
+          53,
+          9,
+          2
+        ],
+        [
+          21,
+          1,
+          0
+        ]
+      ],
+      "antX": 16,
+      "antY": 12,
+      "antDir": 3,
+      "cost": 14,
+      "arrivalStep": 1743,
+      "robustness": 0.9777777777777777,
+      "costTier": 14,
+      "featureTier": 5,
+      "highway": {
+        "detected": true,
+        "formationStep": 92,
+        "period": 18,
+        "driftX": 1,
+        "driftY": 1,
+        "speed": 0.07856742013183862,
+        "verifiedCycles": 1106
+      }
+    },
+    {
+      "id": "A7",
+      "kind": "attack",
+      "rule": "LLRLLRLRL",
+      "colorCount": 9,
+      "cells": [
+        [
+          21,
+          0,
+          4
+        ],
+        [
+          18,
+          12,
+          2
+        ],
+        [
+          9,
+          4,
+          2
+        ],
+        [
+          41,
+          6,
+          1
+        ],
+        [
+          38,
+          15,
+          3
+        ],
+        [
+          29,
+          2,
+          0
+        ],
+        [
+          23,
+          13,
+          5
+        ],
+        [
+          58,
+          8,
+          8
+        ],
+        [
+          25,
+          5,
+          5
+        ],
+        [
+          50,
+          7,
+          3
+        ],
+        [
+          18,
+          5,
+          0
+        ],
+        [
+          6,
+          3,
+          3
+        ]
+      ],
+      "antX": 20,
+      "antY": 14,
+      "antDir": 0,
+      "cost": 17,
+      "arrivalStep": 1608,
+      "robustness": 0.9777777777777777,
+      "costTier": 17,
+      "featureTier": 5,
+      "highway": {
+        "detected": true,
+        "formationStep": 38,
+        "period": 18,
+        "driftX": -1,
+        "driftY": 1,
+        "speed": 0.07856742013183862,
+        "verifiedCycles": 1109
+      }
+    },
+    {
+      "id": "A8",
+      "kind": "attack",
+      "rule": "LLR",
+      "colorCount": 3,
+      "cells": [
+        [
+          38,
+          2,
+          0
+        ],
+        [
+          8,
+          12,
+          1
+        ],
+        [
+          20,
+          13,
+          2
+        ],
+        [
+          54,
+          15,
+          1
+        ],
+        [
+          7,
+          9,
+          0
+        ],
+        [
+          52,
+          1,
+          1
+        ],
+        [
+          49,
+          2,
+          2
+        ],
+        [
+          31,
+          3,
+          0
+        ],
+        [
+          53,
+          9,
+          2
+        ],
+        [
+          42,
+          4,
+          0
+        ],
+        [
+          21,
+          1,
+          0
+        ]
+      ],
+      "antX": 17,
+      "antY": 10,
+      "antDir": 3,
+      "cost": 16,
+      "arrivalStep": 1743,
+      "robustness": 0.9666666666666667,
+      "costTier": 16,
+      "featureTier": 5,
+      "highway": {
+        "detected": true,
+        "formationStep": 38,
+        "period": 18,
+        "driftX": 1,
+        "driftY": 1,
+        "speed": 0.07856742013183862,
+        "verifiedCycles": 1109
+      }
+    },
+    {
+      "id": "A9",
+      "kind": "attack",
+      "rule": "LLRLLRLRRLRLRL",
+      "colorCount": 14,
+      "cells": [
+        [
+          16,
+          13,
+          12
+        ],
+        [
+          20,
+          14,
+          6
+        ],
+        [
+          21,
+          11,
+          7
+        ],
+        [
+          47,
+          15,
+          12
+        ]
+      ],
+      "antX": 47,
+      "antY": 15,
+      "antDir": 0,
+      "cost": 9,
+      "arrivalStep": 1586,
+      "robustness": 0.9777777777777777,
+      "costTier": 9,
+      "featureTier": 2,
+      "highway": {
+        "detected": true,
+        "formationStep": 16,
+        "period": 18,
+        "driftX": -1,
+        "driftY": 1,
+        "speed": 0.07856742013183862,
+        "verifiedCycles": 1110
+      }
+    }
+  ],
+  "disrupt": [
+    {
+      "id": "D1",
+      "kind": "disrupt",
+      "rule": "LLRLLRLRL",
+      "colorCount": 9,
+      "cells": [
+        [
+          21,
+          0,
+          4
+        ],
+        [
+          18,
+          12,
+          2
+        ],
+        [
+          9,
+          4,
+          2
+        ],
+        [
+          41,
+          6,
+          1
+        ],
+        [
+          38,
+          15,
+          3
+        ],
+        [
+          29,
+          2,
+          0
+        ],
+        [
+          23,
+          13,
+          5
+        ],
+        [
+          58,
+          8,
+          8
+        ],
+        [
+          25,
+          5,
+          5
+        ],
+        [
+          50,
+          7,
+          3
+        ],
+        [
+          18,
+          5,
+          0
+        ],
+        [
+          6,
+          3,
+          3
+        ]
+      ],
+      "antX": 19,
+      "antY": 14,
+      "antDir": 0,
+      "cost": 15,
+      "reachRows": 22,
+      "endDirection": 2,
+      "coverage": 1,
+      "costTier": 15,
+      "featureTier": 5
+    },
+    {
+      "id": "D2",
+      "kind": "disrupt",
+      "rule": "LLR",
+      "colorCount": 3,
+      "cells": [
+        [
+          38,
+          2,
+          0
+        ],
+        [
+          8,
+          12,
+          1
+        ],
+        [
+          20,
+          13,
+          2
+        ],
+        [
+          54,
+          15,
+          1
+        ],
+        [
+          7,
+          9,
+          0
+        ],
+        [
+          52,
+          1,
+          1
+        ],
+        [
+          49,
+          2,
+          2
+        ],
+        [
+          31,
+          3,
+          0
+        ],
+        [
+          53,
+          9,
+          2
+        ],
+        [
+          42,
+          4,
+          0
+        ],
+        [
+          21,
+          1,
+          0
+        ]
+      ],
+      "antX": 16,
+      "antY": 10,
+      "antDir": 3,
+      "cost": 14,
+      "reachRows": 20,
+      "endDirection": 1,
+      "coverage": 1,
+      "costTier": 14,
+      "featureTier": 4
+    },
+    {
+      "id": "D3",
+      "kind": "disrupt",
+      "rule": "RLRLRL",
+      "colorCount": 6,
+      "cells": [
+        [
+          44,
+          8,
+          3
+        ],
+        [
+          34,
+          13,
+          4
+        ],
+        [
+          6,
+          11,
+          4
+        ],
+        [
+          27,
+          8,
+          1
+        ],
+        [
+          11,
+          5,
+          0
+        ],
+        [
+          14,
+          3,
+          5
+        ],
+        [
+          34,
+          4,
+          0
+        ],
+        [
+          43,
+          15,
+          3
+        ]
+      ],
+      "antX": 45,
+      "antY": 14,
+      "antDir": 3,
+      "cost": 11,
+      "reachRows": 0,
+      "endDirection": 1,
+      "coverage": 1,
+      "costTier": 11,
+      "featureTier": 0
+    },
+    {
+      "id": "D4",
+      "kind": "disrupt",
+      "rule": "RLLRLRL",
+      "colorCount": 7,
+      "cells": [
+        [
+          44,
+          8,
+          3
+        ],
+        [
+          34,
+          13,
+          4
+        ],
+        [
+          6,
+          11,
+          4
+        ],
+        [
+          11,
+          5,
+          0
+        ],
+        [
+          14,
+          3,
+          5
+        ],
+        [
+          34,
+          4,
+          0
+        ],
+        [
+          44,
+          15,
+          3
+        ]
+      ],
+      "antX": 45,
+      "antY": 15,
+      "antDir": 1,
+      "cost": 10,
+      "reachRows": 6,
+      "endDirection": 1,
+      "coverage": 1,
+      "costTier": 10,
+      "featureTier": 1
+    },
+    {
+      "id": "D5",
+      "kind": "disrupt",
+      "rule": "RRL",
+      "colorCount": 3,
+      "cells": [
+        [
+          48,
+          4,
+          0
+        ],
+        [
+          28,
+          7,
+          1
+        ],
+        [
+          16,
+          8,
+          0
+        ],
+        [
+          43,
+          12,
+          1
+        ],
+        [
+          40,
+          6,
+          0
+        ]
+      ],
+      "antX": 42,
+      "antY": 8,
+      "antDir": 1,
+      "cost": 8,
+      "reachRows": 18,
+      "endDirection": 3,
+      "coverage": 1,
+      "costTier": 8,
+      "featureTier": 4
+    },
+    {
+      "id": "D6",
+      "kind": "disrupt",
+      "rule": "RLRLRL",
+      "colorCount": 6,
+      "cells": [
+        [
+          44,
+          8,
+          3
+        ],
+        [
+          34,
+          13,
+          4
+        ],
+        [
+          6,
+          11,
+          4
+        ],
+        [
+          27,
+          8,
+          1
+        ],
+        [
+          11,
+          5,
+          0
+        ],
+        [
+          14,
+          3,
+          5
+        ],
+        [
+          34,
+          4,
+          0
+        ],
+        [
+          43,
+          15,
+          3
+        ]
+      ],
+      "antX": 46,
+      "antY": 15,
+      "antDir": 2,
+      "cost": 11,
+      "reachRows": 6,
+      "endDirection": 0,
+      "coverage": 1,
+      "costTier": 11,
+      "featureTier": 1
+    },
+    {
+      "id": "D7",
+      "kind": "disrupt",
+      "rule": "RLRLRL",
+      "colorCount": 6,
+      "cells": [
+        [
+          44,
+          8,
+          3
+        ],
+        [
+          34,
+          13,
+          4
+        ],
+        [
+          6,
+          11,
+          4
+        ],
+        [
+          27,
+          8,
+          1
+        ],
+        [
+          11,
+          5,
+          0
+        ],
+        [
+          14,
+          3,
+          5
+        ],
+        [
+          34,
+          4,
+          0
+        ],
+        [
+          43,
+          15,
+          3
+        ]
+      ],
+      "antX": 44,
+      "antY": 14,
+      "antDir": 2,
+      "cost": 11,
+      "reachRows": 0,
+      "endDirection": 0,
+      "coverage": 1,
+      "costTier": 11,
+      "featureTier": 0
+    },
+    {
+      "id": "D8",
+      "kind": "disrupt",
+      "rule": "LLR",
+      "colorCount": 3,
+      "cells": [
+        [
+          13,
+          14,
+          1
+        ],
+        [
+          22,
+          5,
+          0
+        ],
+        [
+          55,
+          3,
+          1
+        ],
+        [
+          41,
+          8,
+          0
+        ],
+        [
+          26,
+          4,
+          1
+        ],
+        [
+          37,
+          12,
+          0
+        ],
+        [
+          49,
+          0,
+          1
+        ],
+        [
+          46,
+          6,
+          0
+        ],
+        [
+          56,
+          2,
+          1
+        ],
+        [
+          37,
+          15,
+          1
+        ],
+        [
+          49,
+          12,
+          0
+        ],
+        [
+          11,
+          9,
+          1
+        ],
+        [
+          8,
+          7,
+          1
+        ],
+        [
+          55,
+          1,
+          1
+        ]
+      ],
+      "antX": 32,
+      "antY": 15,
+      "antDir": 3,
+      "cost": 17,
+      "reachRows": 16,
+      "endDirection": 1,
+      "coverage": 1,
+      "costTier": 17,
+      "featureTier": 3
+    },
+    {
+      "id": "D9",
+      "kind": "disrupt",
+      "rule": "LLLR",
+      "colorCount": 4,
+      "cells": [
+        [
+          38,
+          2,
+          0
+        ],
+        [
+          8,
+          11,
+          1
+        ],
+        [
+          20,
+          13,
+          2
+        ],
+        [
+          54,
+          15,
+          1
+        ],
+        [
+          7,
+          9,
+          0
+        ],
+        [
+          52,
+          1,
+          1
+        ],
+        [
+          49,
+          2,
+          2
+        ],
+        [
+          31,
+          3,
+          0
+        ],
+        [
+          53,
+          9,
+          2
+        ],
+        [
+          42,
+          4,
+          0
+        ],
+        [
+          21,
+          1,
+          0
+        ],
+        [
+          34,
+          4,
+          2
+        ]
+      ],
+      "antX": 16,
+      "antY": 9,
+      "antDir": 0,
+      "cost": 15,
+      "reachRows": 16,
+      "endDirection": 2,
+      "coverage": 1,
+      "costTier": 15,
+      "featureTier": 3
+    }
+  ],
+  "identifyTable": {
+    "21,15,3": "A1",
+    "47,15,3": "A2",
+    "16,12,0": "A3",
+    "34,14,0": "A4",
+    "34,11,0": "A5",
+    "16,12,3": "A6",
+    "20,14,0": "A7",
+    "17,10,3": "A8",
+    "47,15,0": "A9"
+  },
+  "counterTable": {
+    "A1": [
+      {
+        "disruptId": "D3",
+        "fireAtStep": 1350,
+        "successRate": 0.1
+      },
+      {
+        "disruptId": "D6",
+        "fireAtStep": 1350,
+        "successRate": 0.1
+      },
+      {
+        "disruptId": "D7",
+        "fireAtStep": 1200,
+        "successRate": 0.1
+      }
+    ],
+    "A2": [
+      {
+        "disruptId": "D1",
+        "fireAtStep": 1350,
+        "successRate": 0.1
+      },
+      {
+        "disruptId": "D2",
+        "fireAtStep": 1050,
+        "successRate": 0.1
+      }
+    ],
+    "A3": [
+      {
+        "disruptId": "D3",
+        "fireAtStep": 1350,
+        "successRate": 0.1
+      },
+      {
+        "disruptId": "D4",
+        "fireAtStep": 1200,
+        "successRate": 0.1
+      },
+      {
+        "disruptId": "D6",
+        "fireAtStep": 1200,
+        "successRate": 0.2
+      },
+      {
+        "disruptId": "D6",
+        "fireAtStep": 1350,
+        "successRate": 0.2
+      }
+    ],
+    "A4": [
+      {
+        "disruptId": "D1",
+        "fireAtStep": 1200,
+        "successRate": 0.1
+      },
+      {
+        "disruptId": "D2",
+        "fireAtStep": 1200,
+        "successRate": 0.1
+      },
+      {
+        "disruptId": "D5",
+        "fireAtStep": 1050,
+        "successRate": 0.1
+      },
+      {
+        "disruptId": "D8",
+        "fireAtStep": 1050,
+        "successRate": 0.1
+      }
+    ],
+    "A5": [
+      {
+        "disruptId": "D1",
+        "fireAtStep": 1350,
+        "successRate": 0.1
+      },
+      {
+        "disruptId": "D2",
+        "fireAtStep": 1350,
+        "successRate": 0.1
+      },
+      {
+        "disruptId": "D8",
+        "fireAtStep": 1050,
+        "successRate": 0.1
+      },
+      {
+        "disruptId": "D9",
+        "fireAtStep": 1350,
+        "successRate": 0.1
+      }
+    ],
+    "A6": [
+      {
+        "disruptId": "D3",
+        "fireAtStep": 1350,
+        "successRate": 0.1
+      },
+      {
+        "disruptId": "D7",
+        "fireAtStep": 1350,
+        "successRate": 0.1
+      }
+    ],
+    "A7": [
+      {
+        "disruptId": "D2",
+        "fireAtStep": 1200,
+        "successRate": 0.1
+      },
+      {
+        "disruptId": "D9",
+        "fireAtStep": 1050,
+        "successRate": 0.1
+      }
+    ],
+    "A8": [
+      {
+        "disruptId": "D3",
+        "fireAtStep": 1350,
+        "successRate": 0.1
+      },
+      {
+        "disruptId": "D4",
+        "fireAtStep": 1350,
+        "successRate": 0.1
+      },
+      {
+        "disruptId": "D6",
+        "fireAtStep": 1350,
+        "successRate": 0.1
+      }
+    ],
+    "A9": [
+      {
+        "disruptId": "D1",
+        "fireAtStep": 1200,
+        "successRate": 0.1
+      },
+      {
+        "disruptId": "D5",
+        "fireAtStep": 1200,
+        "successRate": 0.1
+      }
+    ]
+  },
+  "escortTable": {
+    "A1": {
+      "D3": [
+        {
+          "escortId": "D5",
+          "fireAtStep": 150
+        }
+      ],
+      "D6": [
+        {
+          "escortId": "D5",
+          "fireAtStep": 150
+        }
+      ],
+      "D7": [
+        {
+          "escortId": "D5",
+          "fireAtStep": 150
+        }
+      ]
+    },
+    "A2": {
+      "D1": [
+        {
+          "escortId": "D1",
+          "fireAtStep": 0
+        }
+      ],
+      "D2": [
+        {
+          "escortId": "D1",
+          "fireAtStep": 0
+        }
+      ]
+    },
+    "A3": {
+      "D3": [
+        {
+          "escortId": "D1",
+          "fireAtStep": 0
+        }
+      ],
+      "D4": [
+        {
+          "escortId": "D1",
+          "fireAtStep": 0
+        }
+      ],
+      "D6": [
+        {
+          "escortId": "D1",
+          "fireAtStep": 0
+        },
+        {
+          "escortId": "D1",
+          "fireAtStep": 0
+        }
+      ]
+    },
+    "A4": {
+      "D1": [
+        {
+          "escortId": "D3",
+          "fireAtStep": 0
+        }
+      ],
+      "D2": [
+        {
+          "escortId": "D3",
+          "fireAtStep": 0
+        }
+      ],
+      "D5": [
+        {
+          "escortId": "D3",
+          "fireAtStep": 0
+        }
+      ],
+      "D8": [
+        {
+          "escortId": "D3",
+          "fireAtStep": 0
+        }
+      ]
+    },
+    "A5": {
+      "D1": [
+        {
+          "escortId": "D5",
+          "fireAtStep": 150
+        }
+      ],
+      "D2": [
+        {
+          "escortId": "D5",
+          "fireAtStep": 150
+        }
+      ],
+      "D8": [
+        {
+          "escortId": "D5",
+          "fireAtStep": 150
+        }
+      ],
+      "D9": [
+        {
+          "escortId": "D5",
+          "fireAtStep": 150
+        }
+      ]
+    },
+    "A6": {
+      "D3": [
+        {
+          "escortId": "D2",
+          "fireAtStep": 0
+        }
+      ],
+      "D7": [
+        {
+          "escortId": "D2",
+          "fireAtStep": 0
+        }
+      ]
+    },
+    "A7": {
+      "D2": [
+        {
+          "escortId": "D1",
+          "fireAtStep": 0
+        }
+      ],
+      "D9": [
+        {
+          "escortId": "D1",
+          "fireAtStep": 0
+        }
+      ]
+    },
+    "A8": {
+      "D3": [
+        {
+          "escortId": "D1",
+          "fireAtStep": 0
+        }
+      ],
+      "D4": [
+        {
+          "escortId": "D1",
+          "fireAtStep": 0
+        }
+      ],
+      "D6": [
+        {
+          "escortId": "D1",
+          "fireAtStep": 0
+        }
+      ]
+    },
+    "A9": {
+      "D1": [
+        {
+          "escortId": "D4",
+          "fireAtStep": 0
+        }
+      ],
+      "D5": [
+        {
+          "escortId": "D4",
+          "fireAtStep": 0
+        }
+      ]
+    }
+  }
+}

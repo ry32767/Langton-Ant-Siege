@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Langton Ant Siege</title>
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="src/tokens.css" />
+  <link rel="stylesheet" href="src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- 1. 開始画面 -->
+    <section id="screen-start" class="screen">
+      <div class="start-panel">
+        <h1 class="display-title">Langton Ant Siege</h1>
+        <p class="lead">
+          ラングトンのアリが敷く「ハイウェイ」を弾道として撃ち合う、リアルタイム攻城ゲーム。<br />
+          自陣の配置可能帯からテンプレートを発射し、敵の配置可能帯に届けば得点。妨害アリで敵の弾道を壊して防御する。
+        </p>
+        <div class="start-buttons">
+          <button id="btn-pvc" class="btn btn-primary" disabled>プレイヤー vs CPU</button>
+          <button id="btn-cvc" class="btn btn-secondary" disabled>CPU vs CPU</button>
+        </div>
+        <p id="load-status" class="load-status" role="status" aria-live="polite">データを読み込んでいます…</p>
+        <p id="load-error" class="error hidden" role="alert"></p>
+      </div>
+    </section>
+
+    <!-- 2. 対戦画面 -->
+    <section id="screen-match" class="screen hidden">
+      <div class="hud">
+        <div class="hud-side hud-side1">
+          <div class="hud-label">SIDE1(藍) <span id="label-side1"></span></div>
+          <div class="pips" id="pips1" aria-hidden="true">
+            <span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span>
+          </div>
+          <div class="hud-row">得点 <span id="score1" class="num">0</span> / 5</div>
+          <div class="hud-row">トークン <span id="tokens1" class="num">0</span> / <span id="tokens1-cap" class="num"></span></div>
+          <div class="hud-row">飛行中 <span id="flying1" class="num">0</span> / <span id="flying1-cap" class="num"></span></div>
+        </div>
+        <div class="hud-center">
+          <div class="hud-time">残り <span id="time-left" class="num">--</span> 秒</div>
+        </div>
+        <div class="hud-side hud-side2">
+          <div class="hud-label">SIDE2(朱) <span id="label-side2"></span></div>
+          <div class="pips" id="pips2" aria-hidden="true">
+            <span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span>
+          </div>
+          <div class="hud-row">得点 <span id="score2" class="num">0</span> / 5</div>
+          <div class="hud-row">トークン <span id="tokens2" class="num">0</span> / <span id="tokens2-cap" class="num"></span></div>
+          <div class="hud-row">飛行中 <span id="flying2" class="num">0</span> / <span id="flying2-cap" class="num"></span></div>
+        </div>
+      </div>
+
+      <div class="match-layout">
+        <div class="board-column">
+          <div class="battle-area">
+            <canvas id="board" role="img" aria-label="盤面(60列×120行、上が自陣、下が敵陣)"></canvas>
+            <div id="result-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="result-title">
+              <div class="overlay-panel">
+                <h2 id="result-title">-</h2>
+                <p id="result-detail"></p>
+                <button id="btn-restart" class="btn btn-primary">もう一度対戦する</button>
+                <button id="btn-back-title" class="btn btn-secondary">タイトルに戻る</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-panel" id="control-panel">
+          <div class="threat-panel">
+            <h3>飛来中の敵の攻撃</h3>
+            <div id="threat-items" class="threat-items"></div>
+            <div id="threat-detail" class="threat-detail"></div>
+          </div>
+          <div class="tabs" role="tablist">
+            <button data-tab="attack" class="tab active" role="tab" aria-selected="true">攻撃</button>
+            <button data-tab="disrupt" class="tab" role="tab" aria-selected="false">妨害</button>
+          </div>
+          <div id="template-list" class="template-list" role="tabpanel"></div>
+          <div class="fire-row">
+            <button id="btn-fire" class="btn btn-primary" disabled>発射</button>
+            <span id="fire-reason" class="fire-reason" role="status" aria-live="polite"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>
