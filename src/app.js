@@ -381,7 +381,13 @@ function renderTemplateList() {
         selectedTemplateId = null;
       } else {
         selectedTemplateId = tpl.id;
-        selectedAntX = defaultAntXForTemplate(tpl); // 新規選択時は初期値(得点ゲート中央)に戻す
+        // 新規選択時の発射列の初期値:
+        //   妨害 + 脅威を選択中 → counterTable の deltaX から求まる「当たる列」に合わせる。
+        //     v5 では列を合わせないと迎撃が成立しないので、ここで自動で寄せないと
+        //     推奨タイミングだけ出て実際には当てられない、という状態になる。
+        //   それ以外 → 得点ゲートに届く区間の中央。
+        const counterX = activeTab === 'disrupt' ? recommendedCounterAntX(tpl.id) : null;
+        selectedAntX = counterX ?? defaultAntXForTemplate(tpl);
       }
       renderTemplateList();
       updateFireButton();
@@ -501,9 +507,13 @@ document.addEventListener('keydown', (ev) => {
 // ---------------------------------------------------------------------------
 // 敵の攻撃の識別・カウンター強調表示
 //
-// 敵の攻撃アリの識別。docs/spec.md 機能3 のとおり、**発射位置と向き**から
-// identifyTable を引いて攻撃ID(A1〜A9)を決める。9種は発射位置・向きがすべて
+// 敵の攻撃アリの識別。docs/spec.md 機能3 のとおり、**発射行と向き**から
+// identifyTable を引いて攻撃ID(A1〜A9)を決める。9種は (antY, antDir) がすべて
 // 異なるように選抜されているので一意に決まる(選抜基準の必須項目)。
+//
+// ⚠️ v5: キーは "antY,antDir"。**発射列 antX は識別に使えない**(発射時に自由に
+// 選ぶ自由度になったため、同じテンプレートでも毎回違う列から飛んでくる)。
+// spawnX は識別ではなく「迎撃をどの列から撃つか」を deltaX から求めるのに使う。
 //
 // view の spawnX/spawnY/spawnDir は「発射した陣営自身のローカル座標での発射位置」で、
 // アリが動いても変わらない。現在位置(ownerX/ownerY/ownerDir)はアリが毎ステップ
@@ -511,7 +521,16 @@ document.addEventListener('keydown', (ev) => {
 // ---------------------------------------------------------------------------
 function identifyAttack(ant) {
   if (!ant) return null;
-  return templatesData.identifyTable?.[`${ant.spawnX},${ant.spawnY},${ant.spawnDir}`] ?? null;
+  return templatesData.identifyTable?.[`${ant.spawnY},${ant.spawnDir}`] ?? null;
+}
+
+/**
+ * カウンター候補を「実際に撃つべき発射列」まで解決する。
+ * counterTable の deltaX は**攻撃の発射列からの相対**なので、絶対列は
+ * `wrapX(敵攻撃の spawnX + deltaX)` になる。
+ */
+function resolveCounter(threat, cand) {
+  return { ...cand, antX: wrapX(threat.spawnX + (cand.deltaX ?? 0)) };
 }
 
 function currentEnemyThreats(view) {
@@ -572,16 +591,40 @@ function updateThreatDetail(view) {
     threatDetailEl.textContent = `${attackId}: 有効な妨害が見つかりません`;
     return;
   }
+  // ⚠️ v5: 迎撃は「どの妨害を・いつ」だけでは足りず、**どの列から撃つか**まで揃えないと
+  // 当たらない(counterTable は deltaX = 攻撃の発射列からの相対 で記録されている)。
+  // 実際に撃つべき絶対列を必ず併記する。
   const lines = raw
     .slice()
     .sort((a, b) => (b.successRate ?? 0) - (a.successRate ?? 0))
-    .map((c) => {
+    .slice(0, 6) // 全部出すと読めないので上位だけ
+    .map((cand) => {
+      const c = resolveCounter(threat, cand);
       const absStep = threat.firedAtStep + c.fireAtStep;
       const remainSec = (absStep - match.step) / C.STEPS_PER_SECOND;
-      const timing = remainSec >= 0 ? `あと${remainSec.toFixed(1)}秒後に撃つ` : 'タイミング終了';
-      return `${c.disruptId}: 成功率${Math.round((c.successRate ?? 0) * 100)}% ${timing}`;
+      const timing = remainSec >= 0 ? `あと${remainSec.toFixed(1)}秒後` : 'タイミング終了';
+      return `${c.disruptId}: x=${c.antX} から ${timing}(成功率${Math.round((c.successRate ?? 0) * 100)}%)`;
     });
   threatDetailEl.textContent = `${attackId} への迎撃候補\n` + lines.join('\n');
+}
+
+/**
+ * いま選んでいる脅威に対して、いま選んでいる妨害テンプレートで撃つべき発射列を返す。
+ * 見つからなければ null(=プレイヤーが自由に選ぶ)。
+ * これが無いと「推奨は出るが自分で列を合わせられない」状態になり、迎撃が実質不可能になる。
+ */
+function recommendedCounterAntX(disruptId) {
+  if (!match || selectedThreatAntId == null) return null;
+  const view = createSideView(match, PLAYER_SIDE);
+  const threat = view.enemyAnts.find((a) => a.id === selectedThreatAntId);
+  if (!threat) return null;
+  const attackId = identifyAttack(threat);
+  if (!attackId) return null;
+  const raw = templatesData.counterTable?.[attackId] ?? [];
+  const best = raw
+    .filter((c) => c.disruptId === disruptId)
+    .sort((a, b) => (b.successRate ?? 0) - (a.successRate ?? 0))[0];
+  return best ? resolveCounter(threat, best).antX : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -943,9 +986,12 @@ function updateLaunchPanel() {
   launchXEl.textContent = String(selectedAntX);
   launchEntryEl.textContent =
     tpl.entryXAt0 != null ? String(wrapX(selectedAntX + tpl.entryXAt0)) : '-';
-  launchGateWarningEl.textContent = launchColumnScores(tpl, selectedAntX)
-    ? ''
-    : 'この列から撃つと得点ゲートを外れます';
+  // ⚠️ ゲートの警告は**攻撃テンプレートにだけ**出す。妨害は敵陣に届かない設計
+  // (docs/spec.md 機能5)で entryXAt0 を持たないので、そのまま judge すると
+  // 「常に得点ゲートを外れます」という無意味な警告が出っぱなしになる。
+  const isAttack = activeTab === 'attack' && tpl.entryXAt0 != null;
+  launchGateWarningEl.textContent =
+    isAttack && !launchColumnScores(tpl, selectedAntX) ? 'この列から撃つと得点ゲートを外れます' : '';
 }
 
 function render() {
