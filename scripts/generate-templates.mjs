@@ -22,8 +22,8 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import * as C from '../src/config.js';
-import { createRng, simulateSolo } from '../src/engine.js';
-import { createRandomGenome, genomeKey, toTemplateCells, costOfGenome } from '../src/search/genome.js';
+import { createRng, simulateSolo, simulateSearch } from '../src/engine.js';
+import { createRandomGenome, genomeKey, toTemplateCells, costOfGenome, cloneGenome } from '../src/search/genome.js';
 import {
   createArchive,
   tryInsert,
@@ -120,6 +120,43 @@ function genomeToTemplate(genome, kind) {
     kind,
     templateId: genome.id ?? null,
   };
+}
+
+/**
+ * genome が実際に踏んだ状態の種類数を返す(宣言された rule.length ではなく実測)。
+ * §8「多様性を rule.length で測ってはいけない」準拠。`LLRLLR` は `LLR` と力学的に同一
+ * (`rule[s % 3]` が同じ)なので、実際にアリが読み取った状態値の集合の大きさで測る。
+ *
+ * src/engine.js の simulateSearch(CA規則の唯一の参照実装)をそのまま使い、CA規則自体は
+ * 複製しない。読み取り位置は simulateSearch が返す path から復元する: path[i](i=0..len-2)が
+ * 各ステップで盤面を読んだときのアリの座標なので(stepAnt は「現在位置を読んでから移動する」)、
+ * その座標を何回目に訪れたかだけを数えれば `(初期state + 訪問回数) % colorCount` で
+ * 読み取った状態値が求まる(これは訪問回数のカウントであって回転規則の複製ではない)。
+ */
+function effectiveColorCount(genome) {
+  const tpl = genomeToTemplate(genome, 'attack');
+  const r = simulateSearch(tpl, { trackPath: true });
+  const colorCount = genome.rule.length;
+  const initialState = new Map();
+  for (const [x, y, s] of tpl.cells) initialState.set(`${x},${y}`, s ?? 0);
+  const visitCounts = new Map();
+  const statesSeen = new Set();
+  const path = r.path;
+  // path[len-1] は最後のステップの移動後の位置で、まだ読まれていないので除外する。
+  for (let i = 0; i < path.length - 1; i++) {
+    const key = `${path[i][0]},${path[i][1]}`;
+    const init = initialState.get(key) ?? 0;
+    const visited = visitCounts.get(key) ?? 0;
+    statesSeen.add((init + visited) % colorCount);
+    visitCounts.set(key, visited + 1);
+  }
+  return statesSeen.size;
+}
+
+/** ハイウェイ署名(周期・並進の絶対値)を多様性判定用の文字列キーにする。未検出は null。 */
+function highwaySignatureKey(highway) {
+  if (!highway || !highway.detected) return null;
+  return `${highway.period},${Math.abs(highway.driftX)},${Math.abs(highway.driftY)}`;
 }
 
 /** genomeKey で重複を除いた配列を返す。 */
@@ -437,6 +474,11 @@ function selectNineByNine(attackPool, disruptPool) {
   // M[a][d] = FIRE_TIMINGS のうち d が a を止めた(scored===false だった)タイミングの数。
   const M = matrix.map((row) => row.map((cell) => cell.filter((scored) => !scored).length));
 
+  // 多様性判定用に、攻撃候補プール全件のハイウェイ署名(周期・並進)と実効色数を先に計算しておく
+  // (§8「多様性を rule.length で測ってはいけない」。局所探索のループ内で毎回再計算しない)。
+  const attackHighwaySig = attackPool.map((g) => highwaySignatureKey(evaluateProjectile(g).highway));
+  const attackEffColor = attackPool.map((g) => effectiveColorCount(g));
+
   function evaluate(ai, di) {
     const sub = ai.map((a) => di.map((d) => M[a][d]));
     const pa = sub.map((row) => row.filter((v) => v > 0).length); // 攻撃1件あたりのカウンター種数
@@ -457,11 +499,15 @@ function selectNineByNine(attackPool, disruptPool) {
     // 目標: コストの散らばり
     const costSet = new Set(ai.map((a) => C.ATTACK_COST + attackPool[a].cells.length));
     score += costSet.size * 5;
-    // 目標(v4追加): ルール長の散らばり。ランダムgenomeはL=3に偏りやすいため明示的にボーナスを与える。
-    const ruleLenSet = new Set(ai.map((a) => attackPool[a].rule.length));
-    score += ruleLenSet.size * 8;
+    // 目標(v4追加、正規化後の再定義): 多様性は rule.length ではなくハイウェイ署名(周期・並進)と
+    // 実効色数(実際に踏んだ状態数)で測る(§8「多様性を rule.length で測ってはいけない」)。
+    // `LLRLLR` は `LLR` と力学的に同一なので、宣言ルール長の異なり数はボーナスに使わない。
+    const hwSigSet = new Set(ai.map((a) => attackHighwaySig[a]));
+    const effColorSet = new Set(ai.map((a) => attackEffColor[a]));
+    score += hwSigSet.size * 8;
+    score += effColorSet.size * 8;
 
-    return { score, pa, pd, zeroA, zeroD, posSet, ruleLenSet, costSet };
+    return { score, pa, pd, zeroA, zeroD, posSet, hwSigSet, effColorSet, costSet };
   }
 
   // 貪欲初期化: カウンター数が多い(=止められやすい)攻撃を優先、カバー数の多い妨害を優先
@@ -506,8 +552,8 @@ function selectNineByNine(attackPool, disruptPool) {
     di.every((d) => disruptPool[d].cells.length >= C.MIN_TEMPLATE_CELLS);
   log(
     `⑤完了: score=${finalEval.score} カウンター無し攻撃=${finalEval.zeroA} 死に札=${finalEval.zeroD} ` +
-      `識別可能=${finalEval.posSet.size}/9 ルール長多様性=${finalEval.ruleLenSet.size}種 ` +
-      `コスト多様性=${finalEval.costSet.size}種 必須条件=${ok ? 'OK' : 'NG'}`
+      `識別可能=${finalEval.posSet.size}/9 ハイウェイ署名多様性=${finalEval.hwSigSet.size}種 ` +
+      `実効色数多様性=${finalEval.effColorSet.size}種 コスト多様性=${finalEval.costSet.size}種 必須条件=${ok ? 'OK' : 'NG'}`
   );
   return { ai, di, M, ok, report: finalEval };
 }
@@ -518,13 +564,17 @@ function selectNineByNine(attackPool, disruptPool) {
 function buildOutput(attackPool, disruptPool, ai, di) {
   log('最終テーブル計算開始(選抜した9×9のみ)');
 
+  // ⚠️ attackPool/disruptPool は同一 genome オブジェクトを共有しうる(viable かつ
+  // highway.detected な genome は attackSeeds/disruptSeeds の両方に入りうる)。id を
+  // 元オブジェクトに直接書き込むと片方が上書きされて id が衝突する(実測で発覚)ので、
+  // 出力用に必ず複製してから id を割り当てる。
   const attacks = ai.map((idx, i) => {
-    const g = attackPool[idx];
+    const g = cloneGenome(attackPool[idx]);
     g.id = `A${i + 1}`;
     return g;
   });
   const disrupts = di.map((idx, i) => {
-    const g = disruptPool[idx];
+    const g = cloneGenome(disruptPool[idx]);
     g.id = `D${i + 1}`;
     return g;
   });
@@ -570,6 +620,28 @@ function buildOutput(attackPool, disruptPool, ai, di) {
       highway: p.highway,
     };
   });
+
+  // §8「多様性を rule.length で測ってはいけない」の検証用レポート(選抜した最終9種のみ)。
+  // ハイウェイ署名(周期・並進)と実効色数(実際に踏まれた状態数)の異なり数を出す。
+  const counterCounts = attacks.map((_, i) =>
+    matrix[i].reduce((s, cell) => s + cell.filter((scored) => !scored).length, 0)
+  );
+  const reportHwSigSet = new Set();
+  const reportEffColorSet = new Set();
+  log('--- 選抜した攻撃9種の多様性レポート(§8) ---');
+  attacks.forEach((g, i) => {
+    const effColor = effectiveColorCount(g);
+    const hw = attackOut[i].highway;
+    const hwSig = highwaySignatureKey(hw);
+    reportHwSigSet.add(hwSig);
+    reportEffColorSet.add(effColor);
+    log(
+      `  ${g.id} rule=${g.rule} 宣言色数=${g.rule.length} 実効色数=${effColor} ` +
+        `ハイウェイ署名=(period=${hw.period}, driftX=${hw.driftX}, driftY=${hw.driftY}, formationStep=${hw.formationStep}) ` +
+        `cost=${attackOut[i].cost} counterCount=${counterCounts[i]}`
+    );
+  });
+  log(`  ハイウェイ署名の異なり数=${reportHwSigSet.size}種 実効色数の異なり数=${reportEffColorSet.size}種`);
 
   const disruptOut = disrupts.map((g, j) => {
     const tpl = genomeToTemplate(g, 'disrupt');

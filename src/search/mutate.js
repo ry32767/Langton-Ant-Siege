@@ -10,7 +10,7 @@ import {
   ZONE_DEPTH,
   MUTATION_COUNT_WEIGHTS,
 } from '../config.js';
-import { cloneGenome } from './genome.js';
+import { cloneGenome, canonicalRule } from './genome.js';
 
 /** rng の [0,n) 整数を返す(n は正整数)。 */
 function randInt(rng, n) {
@@ -39,6 +39,21 @@ function rewrapCellStates(g) {
   for (const cell of g.cells) cell.state %= colorCount;
 }
 
+/**
+ * ルール変異(bitFlip/ruleInsert/ruleDelete)の候補文字列を原始形に正規化して適用する。
+ * §8「ルールは原始形に正規化する」準拠。
+ * 原始形の長さが MIN_COLORS 未満('L'/'R'単独)になる場合はこの変異全体を reject する(no-op)。
+ * ルール長が変わった(正規化で縮んだ、または元々長さが変わる変異だった)場合は
+ * 全セルの state をラップし直す。
+ */
+function applyCanonicalRule(g, candidateRule) {
+  const canon = canonicalRule(candidateRule);
+  if (canon.length < MIN_COLORS) return; // reject: 何もしない
+  const lenChanged = canon.length !== g.rule.length;
+  g.rule = canon;
+  if (lenChanged) rewrapCellStates(g);
+}
+
 /** (x,y) が cells 内のいずれかと重複するか。 */
 function collides(cells, x, y, ignoreIndex = -1) {
   return cells.some((c, i) => i !== ignoreIndex && c.x === x && c.y === y);
@@ -51,19 +66,19 @@ function opBitFlip(g, rng) {
   const i = randInt(rng, g.rule.length);
   const chars = g.rule.split('');
   chars[i] = chars[i] === 'L' ? 'R' : 'L';
-  g.rule = chars.join('');
+  applyCanonicalRule(g, chars.join(''));
 }
 
 function opRuleInsert(g, rng) {
   const pos = randInt(rng, g.rule.length + 1);
-  g.rule = g.rule.slice(0, pos) + randRuleChar(rng) + g.rule.slice(pos);
-  rewrapCellStates(g);
+  const candidate = g.rule.slice(0, pos) + randRuleChar(rng) + g.rule.slice(pos);
+  applyCanonicalRule(g, candidate);
 }
 
 function opRuleDelete(g, rng) {
   const pos = randInt(rng, g.rule.length);
-  g.rule = g.rule.slice(0, pos) + g.rule.slice(pos + 1);
-  rewrapCellStates(g);
+  const candidate = g.rule.slice(0, pos) + g.rule.slice(pos + 1);
+  applyCanonicalRule(g, candidate);
 }
 
 function opCellAdd(g, rng) {

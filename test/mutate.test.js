@@ -28,9 +28,12 @@ test('mutation bounds: 100,000回連鎖適用しても不変条件が一度も�
 });
 
 test('ルール短縮変異の後、全セルの state < rule.length になる', () => {
-  // rule.length=16、全セルの state を 15 にしておき、短縮を強制的に起こしやすくする
+  // rule.length=16、全セルの state を 15 にしておき、短縮を強制的に起こしやすくする。
+  // 'R'.repeat(16) は canonicalRule で 'R'(長さ1)に潰れ MIN_COLORS 未満になるため
+  // ruleDelete が常に reject されてしまう。末尾を1文字だけ 'L' にして非周期(=原始形が
+  // 16文字のまま)にしておく(位置15を消す一部の変異だけが偶発的に reject される)。
   const g = {
-    rule: 'R'.repeat(16),
+    rule: 'R'.repeat(15) + 'L',
     antX: 5,
     antY: 5,
     antDir: 0,

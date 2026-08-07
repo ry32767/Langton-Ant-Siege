@@ -8,6 +8,7 @@ import {
   genomeKey,
   toTemplateCells,
   costOfGenome,
+  canonicalRule,
 } from '../src/search/genome.js';
 
 // engine.js に依存しない、テスト専用の決定論的 xorshift32 RNG。
@@ -21,6 +22,13 @@ function makeRng(seed) {
     return state / 0xffffffff;
   };
 }
+
+test('canonicalRule はルールを原始形(primitive root)に還元する', () => {
+  assert.equal(canonicalRule('LLRLLR'), 'LLR');
+  assert.equal(canonicalRule('RRRR'), 'R');
+  assert.equal(canonicalRule('LRLRLR'), 'LR');
+  assert.equal(canonicalRule('LLR'), 'LLR'); // 既に原始形ならそのまま
+});
 
 test('createRandomGenome は10,000件すべて不変条件を満たす', () => {
   const rng = makeRng(1);
@@ -129,4 +137,5 @@ test('validateGenome は不変条件違反を個別に検出する', () => {
       ],
     }).length > 0, // 座標重複
   );
+  assert.ok(validateGenome({ ...base, rule: 'LLRLLR' }).length > 0); // 原始形でない(LLRの繰り返し)
 });
