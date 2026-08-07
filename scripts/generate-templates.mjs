@@ -10,11 +10,14 @@
 //   ① MAP-Elites 探索(第1アーカイブ: direction × speed × formationTime × cost)
 //        → ハイウェイアーカイブ
 //   ② ゲーム射影(evaluateProjectile の viable===true だけを攻撃候補として通す。
-//        妨害候補は highway.detected だけを条件にする。§28 未決定事項「0マス発射」と
+//        妨害候補は highway.trajectoryPeriodic だけを条件にする。§28 未決定事項「0マス発射」と
 //        同種の理由で妨害は「敵陣へ届く」ことを要求できない。下の「妨害の viable 解釈」参照)
 //   ③ 攻撃/妨害それぞれの第2 MAP-Elites アーカイブ(entryPositionTier×robustnessTier /
 //        reachTier×endDirTier)を、①②のプールから種を蒔いて作る
 //   ④ 共進化(攻撃ラウンド ⇄ 防御ラウンドを交互に coevoRounds 回)
+//   ④.5 最終選抜直前のゲート: 攻撃/妨害プールそれぞれに strict:true の再評価をかけ、
+//        highway.fingerprintVerified===true の genome だけを残す(§9。探索中の
+//        trajectoryPeriodic はあくまで高速フィルタの近似で、最終選抜には使わない)
 //   ⑤ 候補プールから 9×9 を貪欲法+局所探索で選抜し、counterTable/escortTable/identifyTable を計算
 //
 // 乱数は createRng(seed) だけを使う(Math.random() は使わない)。数値は src/config.js から import する。
@@ -155,7 +158,7 @@ function effectiveColorCount(genome) {
 
 /** ハイウェイ署名(周期・並進の絶対値)を多様性判定用の文字列キーにする。未検出は null。 */
 function highwaySignatureKey(highway) {
-  if (!highway || !highway.detected) return null;
+  if (!highway || !highway.trajectoryPeriodic) return null;
   return `${highway.period},${Math.abs(highway.driftX)},${Math.abs(highway.driftY)}`;
 }
 
@@ -298,9 +301,11 @@ function buildHighwayArchive() {
   function evaluate(genome) {
     evalCount++;
     const p = evaluateProjectile(genome);
-    // 高速フィルタでハイウェイ未検出の genome はアーカイブに入れない(単一セルへの汚染防止。
-    // map-elites.js の runMapElites は descriptor===null を「挿入せずスキップ」として扱う)。
-    if (!p.highway.detected) return null;
+    // 高速フィルタ(trajectoryPeriodic)でハイウェイ未検出の genome はアーカイブに入れない
+    // (単一セルへの汚染防止。map-elites.js の runMapElites は descriptor===null を
+    // 「挿入せずスキップ」として扱う)。探索中は厳密確認(fingerprintVerified)を使わない
+    // (options.strict を渡していないので常に false。最終選抜のゲートは別途行う)。
+    if (!p.highway.trajectoryPeriodic) return null;
     return { descriptor: p.descriptor, quality: p.quality, meta: { highway: p.highway, game: p.game, viable: p.viable } };
   }
 
@@ -320,20 +325,20 @@ function buildHighwayArchive() {
 }
 
 // ---------------------------------------------------------------------------
-// ② ゲーム射影: viable(攻撃) / highway.detected(妨害) だけを候補プールへ通す
+// ② ゲーム射影: viable(攻撃) / highway.trajectoryPeriodic(妨害) だけを候補プールへ通す
 // ---------------------------------------------------------------------------
 function projectCandidates(archive1) {
   const entries = archiveEntries(archive1);
   // 攻撃候補: 寿命内(ATTACK_LIFE)に敵陣へ届く(evaluateProjectile の viable===true)。
   const attackSeeds = entries.filter((e) => e.meta.viable).map((e) => e.genome);
-  // 妨害候補: ハイウェイとして検出されている(highway.detected)。
+  // 妨害候補: ハイウェイとして検出されている(探索中の評価なので highway.trajectoryPeriodic)。
   //
   // ⚠️ 妨害の「viable」は「寿命内に敵陣へ到達できる」とは解釈しない。docs/spec.md 機能5は
   // 「妨害アリは寿命400では最大でも約22列しか進めず、敵陣には到達しない」ことを受け入れ条件に
   // している。したがって攻撃と同じ意味の viable ゲートを妨害に課すと候補が恒常的に0件になる
   // (満たせない要求)。ここでは「ハイウェイとして検出される非退化な軌道であること」を妨害版の
   // viable として扱い、後述の検証で「妨害は寿命内に敵陣へ届かない」ことを逆に確認する(報告参照)。
-  const disruptSeeds = entries.filter((e) => e.meta.highway.detected).map((e) => e.genome);
+  const disruptSeeds = entries.filter((e) => e.meta.highway.trajectoryPeriodic).map((e) => e.genome);
   log(`②完了: 攻撃候補(viable)=${attackSeeds.length}件 / 妨害候補(highway検出)=${disruptSeeds.length}件`);
   return { attackSeeds, disruptSeeds };
 }
@@ -451,6 +456,26 @@ function coevolve(attackSeeds, disruptSeeds) {
 }
 
 // ---------------------------------------------------------------------------
+// ④.5 最終選抜(9×9)直前のゲート: 厳密確認(fingerprintVerified)を通った genome だけを残す
+// ---------------------------------------------------------------------------
+/**
+ * 探索中はずっと高速フィルタ(highway.trajectoryPeriodic)だけで進めてきたが、それは軌跡の
+ * 周期性だけを見た近似であり近傍セル状態の再生産までは保証しない(タスク仕様「軌跡の周期性は
+ * ハイウェイの十分条件ではない」docs/spec.md 第8章)。最終テンプレートに採用する直前に
+ * evaluateProjectile(genome, {strict:true}) で厳密確認をかけ、fingerprintVerified===true の
+ * ものだけを 9×9 選抜の候補プールに残す。
+ */
+function filterFingerprintVerified(pool, label) {
+  const kept = pool.filter((g) => {
+    evalCount++;
+    const p = evaluateProjectile(g, { strict: true });
+    return p.highway.fingerprintVerified;
+  });
+  log(`  厳密検証(fingerprintVerified)ゲート: ${label} ${pool.length}件 → ${kept.length}件`);
+  return kept;
+}
+
+// ---------------------------------------------------------------------------
 // ⑤ 9×9 選抜(貪欲法+局所探索)
 // ---------------------------------------------------------------------------
 function selectNineByNine(attackPool, disruptPool) {
@@ -565,7 +590,7 @@ function buildOutput(attackPool, disruptPool, ai, di) {
   log('最終テーブル計算開始(選抜した9×9のみ)');
 
   // ⚠️ attackPool/disruptPool は同一 genome オブジェクトを共有しうる(viable かつ
-  // highway.detected な genome は attackSeeds/disruptSeeds の両方に入りうる)。id を
+  // highway.trajectoryPeriodic な genome は attackSeeds/disruptSeeds の両方に入りうる)。id を
   // 元オブジェクトに直接書き込むと片方が上書きされて id が衝突する(実測で発覚)ので、
   // 出力用に必ず複製してから id を割り当てる。
   const attacks = ai.map((idx, i) => {
@@ -601,7 +626,11 @@ function buildOutput(attackPool, disruptPool, ai, di) {
   });
 
   const attackOut = attacks.map((g, i) => {
-    const p = evaluateProjectile(g);
+    // strict:true で再評価する。この時点の attacks は ④.5 の fingerprintVerified ゲートを
+    // 通過済みの genome なので、出力に書き込む highway スナップショットも
+    // fingerprintVerified===true を反映した値にする(既定の非strict呼び出しだと常に false
+    // のままになり、実際の検証状況と食い違ってしまうため)。
+    const p = evaluateProjectile(g, { strict: true });
     const cost = costOfGenome(g, C.ATTACK_COST);
     return {
       id: g.id,
@@ -706,9 +735,14 @@ function runPipeline() {
     }
 
     const { archive2Attack, archive2Disrupt, attackPool, disruptPool } = coevolve(attackSeeds, disruptSeeds);
-    const selection = selectNineByNine(attackPool, disruptPool);
+    // ④.5: 最終選抜(9×9)の直前に厳密確認(fingerprintVerified)のゲートをかける。
+    // 候補が9件未満に減った場合は selectNineByNine 側の件数チェックで ok=false になり、
+    // 下の予算拡張リトライに自然に合流する。
+    const verifiedAttackPool = filterFingerprintVerified(attackPool, '攻撃プール');
+    const verifiedDisruptPool = filterFingerprintVerified(disruptPool, '妨害プール');
+    const selection = selectNineByNine(verifiedAttackPool, verifiedDisruptPool);
     if (selection.ok) {
-      const output = buildOutput(attackPool, disruptPool, selection.ai, selection.di);
+      const output = buildOutput(verifiedAttackPool, verifiedDisruptPool, selection.ai, selection.di);
       return { output, archive1, archive2Attack, archive2Disrupt };
     }
     log('  ⑤の必須条件を満たさなかったため予算を拡張してリトライ');

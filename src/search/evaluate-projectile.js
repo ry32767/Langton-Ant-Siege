@@ -9,11 +9,18 @@
 // (HEIGHT=120)は上下端でアリが死ぬため SEARCH_LIFE(=20,000)まで届かない(実測到達率
 // 11.6%)。simulateSearch は上下端のない仮想盤面(C.SEARCH_BOARD_HEIGHT)で走らせ、
 // 探索評価とゲーム評価を分離する(差分仕様 §7)。
+//
+// highway は2段構え(§8/§9、docs/spec.md 第8章)。単一の boolean にすると高速フィルタの
+// 近似が最終選抜まで素通りしてしまうため:
+//   trajectoryPeriodic = detectHighwayFromPath による高速フィルタ(位置+向きの周期性)。
+//     MAP-Elites 探索中(アーカイブ挿入・descriptor・quality)はこちらだけを使う。
+//   fingerprintVerified = verifyHighwayStrict による厳密確認(近傍セル fingerprint)。
+//     最終テンプレート選抜(9×9)のゲートに使う。options.strict===true のときだけ実行する。
 
 import * as C from '../config.js';
 import { simulateSolo, simulateSearch } from '../engine.js';
 import { toTemplateCells, costOfGenome } from './genome.js';
-import { detectHighwayFromPath, directionBin } from './highway-detector.js';
+import { detectHighwayFromPath, directionBin, verifyHighwayStrict } from './highway-detector.js';
 
 /**
  * simulateSearch の trackPath 出力([x,y] のみ・x はトーラス巻き戻し済み・y は仮想盤面の
@@ -84,6 +91,12 @@ const STABILITY_CYCLES_CAP = 20; // これ以上の連続一致周期数は「�
 /**
  * genome 1件を評価し、MAP-Elites 用の descriptor・quality・viable を返す。
  * 決定論的(同じ genome を2回渡すと完全に同じ結果になる)。
+ *
+ * @param {object} genome
+ * @param {{strict?: boolean}} [options]
+ *   options.strict=true のときだけ verifyHighwayStrict による厳密確認を実行し
+ *   highway.fingerprintVerified を埋める(既定 false。数百万回呼ばれる探索経路では
+ *   厳密確認は実行しない。最終テンプレート選抜(9×9)の直前でのみ true にする)。
  */
 export function evaluateProjectile(genome, options = {}) {
   const template = toTemplate(genome);
@@ -96,9 +109,19 @@ export function evaluateProjectile(genome, options = {}) {
   const searchPath = toUnwrappedSearchPath(searchRun.path);
   const hw = detectHighwayFromPath(searchPath, options.detectorOptions);
 
+  // highway は2段構え(タスク仕様。highway-detector.js 冒頭コメント参照):
+  //   trajectoryPeriodic = 高速フィルタ(detectHighwayFromPath)を通ったか。
+  //     MAP-Elites 探索中(アーカイブ挿入・記述子計算・quality)はこちらだけを使う。
+  //   fingerprintVerified = 厳密確認(verifyHighwayStrict)を通ったか。
+  //     最終テンプレート選抜(9×9)で使う。既定では実行しない(数百万回呼ばれるため重すぎる)。
+  //     options.strict===true のときだけ実行して埋める。
+  const strict = options.strict === true;
+  const fingerprintVerified = hw != null && strict ? verifyHighwayStrict(genome, hw, options.strictOptions) : false;
+
   const highway = hw
     ? {
-        detected: true,
+        trajectoryPeriodic: true,
+        fingerprintVerified,
         formationStep: hw.formationStep,
         period: hw.period,
         driftX: hw.driftX,
@@ -107,7 +130,8 @@ export function evaluateProjectile(genome, options = {}) {
         verifiedCycles: hw.verifiedCycles,
       }
     : {
-        detected: false,
+        trajectoryPeriodic: false,
+        fingerprintVerified: false,
         formationStep: null,
         period: null,
         driftX: null,
@@ -126,18 +150,18 @@ export function evaluateProjectile(genome, options = {}) {
     entryX: gameRun.scored ? gameRun.endX : null,
   };
 
-  // ---- descriptor ----
-  const direction = highway.detected ? directionBin(highway.driftX, highway.driftY) : null;
-  const speedBin = highway.detected ? speedBinOf(highway.speed) : null;
-  const formationBin = highway.detected ? formationBinOf(highway.formationStep) : null;
+  // ---- descriptor(MAP-Elites 探索中の評価。trajectoryPeriodic を使う) ----
+  const direction = highway.trajectoryPeriodic ? directionBin(highway.driftX, highway.driftY) : null;
+  const speedBin = highway.trajectoryPeriodic ? speedBinOf(highway.speed) : null;
+  const formationBin = highway.trajectoryPeriodic ? formationBinOf(highway.formationStep) : null;
   const cost = costOfGenome(genome, C.ATTACK_COST);
   const descriptor = { direction, speedBin, formationBin, cost };
 
-  // ---- quality(§12。「最速」を最大化しない) ----
+  // ---- quality(§12。「最速」を最大化しない。探索中の評価なので trajectoryPeriodic を使う) ----
   // stability: 検証周期数の寄与(多いほど安定)。STABILITY_CYCLES_CAP で頭打ちにして0..1化。
-  const stabilityNorm = highway.detected ? Math.min(1, highway.verifiedCycles / STABILITY_CYCLES_CAP) : 0;
+  const stabilityNorm = highway.trajectoryPeriodic ? Math.min(1, highway.verifiedCycles / STABILITY_CYCLES_CAP) : 0;
   // verticality: 目的方向(上下)への直進性。並進のうち縦方向成分の割合(cosine)。
-  const verticalityNorm = highway.detected
+  const verticalityNorm = highway.trajectoryPeriodic
     ? Math.abs(highway.driftY) / Math.sqrt(highway.driftX * highway.driftX + highway.driftY * highway.driftY)
     : 0;
   // usability: ゲーム寿命内で得られる変位。開始位置から到達した y までの距離を、
@@ -147,7 +171,7 @@ export function evaluateProjectile(genome, options = {}) {
   // formationPenalty: formationStep の長さのペナルティ。未検出は最大ペナルティにする。
   // formationBins の最終手前の境界(SEARCH_LIFE の1つ前)をスケールに使う(新しい定数を増やさない)。
   const formationScale = C.ARCHIVE1.formationBins[C.ARCHIVE1.formationBins.length - 2];
-  const formationPenaltyNorm = highway.detected ? Math.min(1, highway.formationStep / formationScale) : 1;
+  const formationPenaltyNorm = highway.trajectoryPeriodic ? Math.min(1, highway.formationStep / formationScale) : 1;
 
   const W = C.ARCHIVE1_QUALITY;
   const quality =
@@ -162,7 +186,7 @@ export function evaluateProjectile(genome, options = {}) {
   // ラップがあるため斜めハイウェイでも敵陣に到達できる(ランダム genome の1.81%が
   // 実際に得点する)。driftX/driftY は descriptor.direction として記録するだけにし、
   // viable の判定条件には入れない。
-  const viable = highway.detected && game.scored && genome.cells.length >= C.MIN_TEMPLATE_CELLS;
+  const viable = highway.trajectoryPeriodic && game.scored && genome.cells.length >= C.MIN_TEMPLATE_CELLS;
 
   return { highway, game, descriptor, quality, viable };
 }

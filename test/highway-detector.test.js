@@ -2,7 +2,43 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as C from '../src/config.js';
 import * as E from '../src/engine.js';
+import { createRandomGenome, toTemplateCells } from '../src/search/genome.js';
 import { detectHighwayFromPath, directionBin, verifyHighwayStrict } from '../src/search/highway-detector.js';
+
+/**
+ * simulateSearch の trackPath 出力([x,y] のみ・x はトーラス巻き戻し済み・y は仮想盤面の
+ * 素の座標)から detectHighwayFromPath 用の [x,y,dir] 絶対座標軌跡を作る。
+ * evaluate-projectile.js の toUnwrappedSearchPath と同じ変換をテスト側でも使う
+ * (simulateSearch は上下端が無いため y は既にラップしていない)。
+ */
+function toUnwrappedSearchPathLocal(rawPath) {
+  const n = rawPath.length;
+  const ux = new Array(n);
+  ux[0] = rawPath[0][0];
+  for (let i = 1; i < n; i++) {
+    let dx = rawPath[i][0] - rawPath[i - 1][0];
+    if (dx > C.WIDTH / 2) dx -= C.WIDTH;
+    else if (dx < -C.WIDTH / 2) dx += C.WIDTH;
+    ux[i] = ux[i - 1] + dx;
+  }
+  const path = [];
+  for (let i = 0; i < n; i++) {
+    const y = rawPath[i][1];
+    let dir = null;
+    if (i < n - 1) {
+      const dx2 = ux[i + 1] - ux[i];
+      const dy2 = rawPath[i + 1][1] - y;
+      for (let d = 0; d < 4; d++) {
+        if (C.DIRS[d][0] === dx2 && C.DIRS[d][1] === dy2) {
+          dir = d;
+          break;
+        }
+      }
+    }
+    path.push([ux[i], y, dir]);
+  }
+  return path;
+}
 
 /**
  * simulateSolo の trackPath 出力([x,y] のみ・x はトーラス巻き戻し済み)から、
@@ -182,4 +218,46 @@ test('verifyHighwayStrict: LEGACY_RULE の回帰フィクスチャで採用さ�
   assert.ok(candidate !== null);
   assert.equal(candidate.period, C.LEGACY_HIGHWAY_PERIOD);
   assert.equal(verifyHighwayStrict(genome, candidate), true);
+});
+
+test('§3 バグ修正の回帰: ちょうど HIGHWAY_MIN_CYCLES(=5) 周期しか検証されていない候補でも、本物のハイウェイなら fingerprintVerified 相当(verifyHighwayStrict)が true になる', () => {
+  // 修正前は tailCycleStart = formationStep + (verifiedCycles - cycles) * period だったため、
+  // verifiedCycles === HIGHWAY_MIN_CYCLES(= cycles)のとき tailCycleStart が formationStep に
+  // 退化し、まだ収束していない transient 直後を検証してしまい偽陰性になっていた。
+  // ここでは実際の verifiedCycles(SEARCH_LIFE 分の軌跡なのでずっと大きい)を無視し、
+  // わざと verifiedCycles を HIGHWAY_MIN_CYCLES に切り詰めた candidate を作って
+  // 「高速フィルタが最小限の5周期しか確認できなかった」状況を再現する。
+  const genome = { rule: C.LEGACY_RULE, antX: 10, antY: 30, antDir: C.DIR_RIGHT, cells: [] };
+  const r = E.simulateSolo(
+    { cells: [], antX: genome.antX, antY: genome.antY, antDir: genome.antDir, rule: genome.rule },
+    { life: C.SEARCH_LIFE, trackPath: true },
+  );
+  const path = toUnwrappedDirPath(r.path);
+  const candidate = detectHighwayFromPath(path);
+  assert.ok(candidate !== null);
+  assert.ok(candidate.verifiedCycles > C.HIGHWAY_MIN_CYCLES, '前提: 実際の verifiedCycles は5より大きいはず');
+  const degenerateCandidate = { ...candidate, verifiedCycles: C.HIGHWAY_MIN_CYCLES };
+  assert.equal(verifyHighwayStrict(genome, degenerateCandidate), true);
+});
+
+test('2段構えが意味を持つことの確認: 軌跡は周期的だが近傍状態が再生産されない候補では trajectoryPeriodic===true かつ verifyHighwayStrict===false になりうる', () => {
+  // ランダム genome を探索し、高速フィルタ(位置+向きの周期性)は通るが、盤面込みの
+  // 厳密確認(近傍 fingerprint)には通らない候補を見つける。手作りの反例を構成するのは
+  // CA の挙動に依存し脆いため、決定論的な seed による探索で見つける(見つからない場合は
+  // このテスト自体が2段構えの意味を検証できていないことになるので明示的に失敗させる)。
+  const rng = E.createRng(20260807);
+  let found = false;
+  for (let i = 0; i < 3000 && !found; i++) {
+    const genome = createRandomGenome(() => rng.next());
+    const tpl = { cells: toTemplateCells(genome), antX: genome.antX, antY: genome.antY, antDir: genome.antDir, rule: genome.rule };
+    const r = E.simulateSearch(tpl, { life: C.SEARCH_LIFE, trackPath: true });
+    const path = toUnwrappedSearchPathLocal(r.path);
+    const candidate = detectHighwayFromPath(path);
+    if (candidate === null) continue;
+    // verifyHighwayStrict は genome.cells を {x,y,state} 形で読む(genome 側の元の形をそのまま使う)。
+    if (verifyHighwayStrict(genome, candidate) === false) {
+      found = true;
+    }
+  }
+  assert.ok(found, '軌跡周期性は通るが厳密確認には落ちる候補が3000件の探索で見つかるはず');
 });

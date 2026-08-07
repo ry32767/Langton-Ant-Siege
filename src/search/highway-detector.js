@@ -99,7 +99,7 @@ export function directionBin(driftX, driftY) {
 // 厳密確認(§9)。高速フィルタで採用された候補にだけ適用する高コストな再検証。
 // ---------------------------------------------------------------------------
 
-/** 盤面の1次元インデックス。engine.js の idx() と同じ規則(WIDTH*y + x)。 */
+/** 盤面の1次元インデックス。engine.js の idx() と同じ規則(WIDTH*y + x)。boardHeight に依存しない。 */
 function idx(x, y) {
   return y * C.WIDTH + x;
 }
@@ -115,21 +115,34 @@ function idx(x, y) {
  * ⚠️ 盤面は毎ステップ書き換わるため、fingerprint はシミュレーション完了後の盤面ではなく
  * その時点のスナップショットで比較しなければならない。checkpointSteps に含めたステップの
  * 「踏む前」の盤面を複製して保存するのはそのため。
+ *
+ * ⚠️ 盤面の高さは実ゲームの C.HEIGHT に固定しない。verifyHighwayStrict が検証する候補は
+ * evaluateProjectile の探索評価(simulateSearch)、すなわち上下端の無い仮想盤面
+ * (C.SEARCH_BOARD_HEIGHT)由来のものである。実ゲーム盤面(HEIGHT=120)は上下端で
+ * アリが死ぬため、そこに縛ると縦方向に十分ドリフトするハイウェイ(=verifiedCycles が
+ * 大きく tailCycleStart が formationStep よりずっと先になる候補)が maxSteps に届く前に
+ * 盤外判定で打ち切られ、実際は本物のハイウェイでも偽陰性になる(実測で確認)。
+ * そこで simulateSearch と同じ考え方で、antY を中心に maxSteps 分の余裕を持つ
+ * 専用サイズの仮想盤面をこの呼び出しごとに確保する(1ステップの縦移動は高々1マスなので、
+ * これだけの余裕があれば maxSteps 分は盤外に出ない)。
  */
 function simulateWithBoard(genome, maxSteps, checkpointSteps) {
-  const board = new Uint8Array(C.CELL_COUNT);
+  const margin = 8; // 安全マージン(念のため)
+  const centerY = maxSteps + Math.abs(genome.antY) + margin;
+  const boardHeight = 2 * centerY + 1;
+  const board = new Uint8Array(C.WIDTH * boardHeight);
   for (const cell of genome.cells) {
-    board[idx(cell.x, cell.y)] = cell.state;
+    board[idx(cell.x, centerY + cell.y)] = cell.state;
   }
   const colorCount = genome.rule.length;
   let x = genome.antX;
-  let y = genome.antY;
+  let y = centerY + genome.antY;
   let dir = genome.antDir;
   const frames = []; // { x, y, dir }(踏む前の状態。detectHighwayFromPath の path と同じ意味)
   const snapshots = new Map(); // step -> その時点の盤面スナップショット(踏む前)
   for (let step = 0; step < maxSteps; step++) {
     frames.push({ x, y, dir });
-    if (y < 0 || y >= C.HEIGHT || x < 0 || x >= C.WIDTH) break; // 盤外に出たら打ち切り
+    if (y < 0 || y >= boardHeight || x < 0 || x >= C.WIDTH) break; // 盤外に出たら打ち切り(想定上は起きない)
     if (checkpointSteps.has(step)) snapshots.set(step, board.slice());
     const j = idx(x, y);
     const s = board[j] % colorCount;
@@ -139,15 +152,17 @@ function simulateWithBoard(genome, maxSteps, checkpointSteps) {
     x = (x + d[0] + C.WIDTH) % C.WIDTH;
     y = y + d[1];
   }
-  return { frames, snapshots };
+  return { frames, snapshots, boardHeight };
 }
 
 /**
  * アリ座標を原点とし、その時点の向きで正規化(回転)した近傍セル状態の fingerprint を作る。
  * radius は近傍の半径(実装の内部パラメータ。config.js には出さない。ゲームバランスの
  * 数値ではなく検出アルゴリズム内部の解像度のため)。
+ * boardHeight は simulateWithBoard が確保した盤面の高さ(実ゲームの C.HEIGHT ではない。
+ * 上のコメント参照)。
  */
-function neighborhoodFingerprint(board, x, y, dir, radius) {
+function neighborhoodFingerprint(board, x, y, dir, radius, boardHeight) {
   const forward = C.DIRS[dir];
   const right = C.DIRS[(dir + 1) & 3];
   const out = [];
@@ -155,7 +170,7 @@ function neighborhoodFingerprint(board, x, y, dir, radius) {
     for (let u = -radius; u <= radius; u++) {
       const gx = (((x + right[0] * u + forward[0] * v) % C.WIDTH) + C.WIDTH) % C.WIDTH;
       const gy = y + right[1] * u + forward[1] * v;
-      out.push(gy < 0 || gy >= C.HEIGHT ? 0 : board[idx(gx, gy)]);
+      out.push(gy < 0 || gy >= boardHeight ? 0 : board[idx(gx, gy)]);
     }
   }
   return out.join(',');
@@ -176,10 +191,23 @@ export function verifyHighwayStrict(genome, candidate, options = {}) {
   // ⚠️ formationStep は「位置+向きが一致し始める最小のステップ」でしかない。
   // 近傍 radius マス以内には、まだ上書きされていない形成前(transient)の残骸セルが
   // 残っていることがあり、position/dir が一致していても fingerprint は formationStep
-  // 直後の数周期はまだ収束しない(実測で確認済み)。そこで検証対象は verifiedCycles の
-  // 「末尾側」の cycles 周期分にする。末尾側はハイウェイ自身の軌跡で近傍が繰り返し
-  // 上書きされ尽くしているため、真のハイウェイなら確実に収束している。
-  const tailCycleStart = formationStep + (verifiedCycles - cycles) * period;
+  // 直後の数周期はまだ収束しない(実測で確認済み)。
+  //
+  // §3 バグ修正: 以前は tailCycleStart = formationStep + (verifiedCycles - cycles) * period
+  // としていた。これは「高速フィルタで確認済みの verifiedCycles 周期の窓のうち、末尾側
+  // cycles 周期分」を指すつもりだったが、verifiedCycles === cycles(= HIGHWAY_MIN_CYCLES、
+  // 高速フィルタの下限)のとき (verifiedCycles - cycles) === 0 になり、tailCycleStart が
+  // ちょうど formationStep に退化してしまう。つまり「末尾側」のつもりが実際には
+  // formationStep 直後(transient がまだ残る領域)を検証してしまい、ちょうど5周期しか
+  // 確認できていない本物のハイウェイまで偽陰性になっていた。
+  //
+  // 修正: このヘルパは detectHighwayFromPath が見た軌跡長に縛られず盤面込みで独立に
+  // 再シミュレーションできるので、「verifiedCycles 周期の窓の中の末尾側」ではなく
+  // 「高速フィルタが確認した窓(formationStep + verifiedCycles*period)よりさらに先」を
+  // 基準にする。ハイウェイなら形成後は転移が起きず近傍パターンは既に収束し尽くしている
+  // はずなので、確認済み窓の直後から cycles 周期分を追加シミュレーションして見れば、
+  // verifiedCycles の大小に関わらず(=5でも)確実に収束した区間を検証できる。
+  const tailCycleStart = formationStep + verifiedCycles * period;
   const neededSteps = tailCycleStart + cycles * period + 1;
   const checkpointSteps = new Set();
   for (let c = 0; c < cycles; c++) checkpointSteps.add(tailCycleStart + c * period);

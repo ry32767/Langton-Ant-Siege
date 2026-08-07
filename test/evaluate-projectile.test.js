@@ -20,7 +20,7 @@ test('回帰フィクスチャ: engine.test.js と同じ配置(cells無し・ant
     cells: [{ x: 0, y: 15, state: 1 }], // アリの経路から十分離した無関係セル
   };
   const result = evaluateProjectile(genome);
-  assert.equal(result.highway.detected, true);
+  assert.equal(result.highway.trajectoryPeriodic, true);
   assert.equal(result.highway.period, C.LEGACY_HIGHWAY_PERIOD);
   assert.equal(result.highway.formationStep, C.LEGACY_HIGHWAY_ONSET_STEP);
 });
@@ -72,7 +72,50 @@ test('quality は highway 未検出のとき formationPenalty が最大になり
     cells: [{ x: 0, y: 0, state: 1 }],
   };
   const result = evaluateProjectile(genome, { searchLife: 50 });
-  assert.equal(result.highway.detected, false);
+  assert.equal(result.highway.trajectoryPeriodic, false);
   assert.equal(result.game.scored, false);
   assert.equal(result.viable, false);
+});
+
+test('既定(strict省略)では fingerprintVerified===false のまま、厳密確認は実行されない', () => {
+  // LEGACY_RULE は strict:true をかければ確実に fingerprintVerified===true になる
+  // genome(下のテストで確認する回帰フィクスチャ)。strict を渡さない既定呼び出しでは
+  // trajectoryPeriodic===true であっても fingerprintVerified は false のままであるはず
+  // (探索経路で数百万回呼ばれるため、既定では高コストな厳密確認を実行しない設計)。
+  const genome = {
+    rule: C.LEGACY_RULE,
+    antX: 10,
+    antY: 15,
+    antDir: C.DIR_RIGHT,
+    cells: [{ x: 0, y: 15, state: 1 }],
+  };
+  const result = evaluateProjectile(genome);
+  assert.equal(result.highway.trajectoryPeriodic, true);
+  assert.equal(result.highway.fingerprintVerified, false);
+});
+
+test('options.strict===true を渡すと fingerprintVerified が実際に埋まる(回帰フィクスチャ: LEGACY_RULE)', () => {
+  const genome = {
+    rule: C.LEGACY_RULE,
+    antX: 10,
+    antY: 15,
+    antDir: C.DIR_RIGHT,
+    cells: [{ x: 0, y: 15, state: 1 }],
+  };
+  const result = evaluateProjectile(genome, { strict: true });
+  assert.equal(result.highway.trajectoryPeriodic, true);
+  assert.equal(result.highway.fingerprintVerified, true);
+});
+
+test('trajectoryPeriodic===false なら strict:true でも fingerprintVerified は必ず false になる', () => {
+  const genome = {
+    rule: 'LL',
+    antX: 0,
+    antY: 0,
+    antDir: C.DIR_UP,
+    cells: [{ x: 0, y: 0, state: 1 }],
+  };
+  const result = evaluateProjectile(genome, { searchLife: 50, strict: true });
+  assert.equal(result.highway.trajectoryPeriodic, false);
+  assert.equal(result.highway.fingerprintVerified, false);
 });

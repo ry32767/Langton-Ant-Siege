@@ -210,11 +210,36 @@ genome = {
 
 ### ハイウェイ検出
 
-`highway-detector.js` という独立ファイルは存在せず、検出ロジックは **`src/engine.js` の `detectHighway(path, maxPeriod = 40)`** にある。`simulateSolo(..., { trackPath: true })` の `path` を受け取り、周期 `period` と並進 `(dx, dy)` が以降ずっと一定になる最小の開始ステップ `onsetStep` を探して `{ onsetStep, period, dx, dy }` を返す(見つからなければ `null`)。採用条件は「同じ並進が3周期以上(`repeats >= 3`)続くこと」で、これはコード中にハードコードされている。
+検出ロジックは **`src/search/highway-detector.js`** にある(独立ファイルとして存在する)。ハイウェイ判定は2段構え(docs/spec.md 第8章「`highway.detected` を単一の boolean にしない」の決定に基づく。**軌跡の周期性はハイウェイの十分条件ではない**——位置と向きが周期的でも、周囲のセル状態が同じ構造を再生産しているとは限らないため):
 
-> ⚠️ `src/config.js` の `HIGHWAY_MIN_CYCLES`(5)・`HIGHWAY_MAX_PERIOD`(2000)は定義されているが、`detectHighway` のデフォルト引数(`maxPeriod = 40`)や採用条件(`repeats >= 3`)はこれらを参照していない。値が食い違って見えるのは実装未同期であり、想像で辻褄合わせをしていない。
+1. **高速フィルタ = `detectHighwayFromPath(path, options)`**: 軌跡(位置+向き)だけを見る安価な周期性検出。`{ period, driftX, driftY, formationStep, verifiedCycles, speed }` を返す(見つからなければ `null`)。MAP-Elites が数百万 genome を評価するため、全候補にこれだけを適用する。
+2. **厳密確認 = `verifyHighwayStrict(genome, candidate, options)`**: アリ座標を原点とした近傍セルの正規化 fingerprint が、確認済み窓のさらに先(`formationStep + verifiedCycles*period` 以降)で `HIGHWAY_MIN_CYCLES` 周期分一致することを、盤面込みで再シミュレーションして確認する高コストな検証。`true`/`false` を返す。高速フィルタで採用された候補にだけ適用する。
 
-作業指示にある `highway` メトリクス(`detected`, `formationStep`, `period`, `driftX`, `driftY`, `speed`, `verifiedCycles`)は `data/templates.json` の想定スキーマ(次節)としては記載するが、**この形をそのまま生成するコードは見つかっていない**。`detectHighway` の戻り値は `{ onsetStep, period, dx, dy }` で、フィールド名(`onsetStep` vs `formationStep`)も個数も一致しない。
+`src/search/evaluate-projectile.js` の `evaluateProjectile(genome, options)` がこの2段を `highway` オブジェクトの2つの boolean フィールドに落とし込む:
+
+```ts
+highway: {
+  trajectoryPeriodic: boolean,   // detectHighwayFromPath(高速フィルタ)を通ったか
+  fingerprintVerified: boolean,  // verifyHighwayStrict(厳密確認)を通ったか。
+                                  // 既定では実行しない(常に false)。options.strict===true
+                                  // のときだけ verifyHighwayStrict を実行して埋める
+  period: number | null,
+  driftX: number | null,
+  driftY: number | null,
+  verifiedCycles: number | null,
+  formationStep: number | null,
+  speed: number | null,
+}
+```
+
+**使い分けは固定**(タスク仕様。混同すると高速フィルタの近似が最終選抜まで素通りしてしまう):
+
+| 場面 | 使う値 |
+|---|---|
+| MAP-Elites 探索中(`scripts/generate-templates.mjs` のアーカイブ挿入・記述子計算・quality) | `trajectoryPeriodic` |
+| 最終テンプレート選抜(9×9、`scripts/generate-templates.mjs` の候補プールから 9×9 を選ぶ直前のゲート) | `fingerprintVerified`(`evaluateProjectile(genome, {strict:true})` で再評価してから絞り込む) |
+
+`src/config.js` の `HIGHWAY_MIN_CYCLES`(5)・`HIGHWAY_MAX_PERIOD`(2000)は `detectHighwayFromPath`/`verifyHighwayStrict` の既定パラメータとして実際に参照されている。
 
 ### data/search-archive.json
 
@@ -242,7 +267,7 @@ MAP-Elites 探索アーカイブのデバッグ・再現性確保用ダンプ。
       "robustness": 0.990,
       "costTier": 8,
       "featureTier": 3,
-      "highway": { "formationStep": 418, "period": 26, "driftX": 0, "driftY": 2, "speed": 0.076923, "verifiedCycles": 5 }
+      "highway": { "trajectoryPeriodic": true, "fingerprintVerified": true, "formationStep": 418, "period": 26, "driftX": 0, "driftY": 2, "speed": 0.076923, "verifiedCycles": 5 }
     }
   ],
   "disrupt": [
