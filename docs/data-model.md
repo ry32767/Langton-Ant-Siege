@@ -302,7 +302,7 @@ game: {
 }
 ```
 
-`viable`(genome がゲーム候補として成立するか)の判定は `highway.trajectoryPeriodic && game.reached && game.arrivalStep <= attackLife && cells.length >= MIN_TEMPLATE_CELLS`。`options.attackLife`(既定 `C.ATTACK_LIFE`)を変えるだけで、**再シミュレーションなしに**別の寿命に対する viable 判定ができる(`isViableAtLife(result, attackLife)`)。これが `ATTACK_LIFE` を「本探索の後から決める」ことを可能にしている構造([spec.md](spec.md) 未決定事項参照)。
+`viable`(genome がゲーム候補として成立するか)の判定は `highway.trajectoryPeriodic && game.reached && game.arrivalStep <= attackLife && cells.length >= MIN_TEMPLATE_CELLS`。⚠️ **別の寿命へ再判定するときは、保存済みの `arrivalStep` に閾値を当て直すだけでは足りない。** `arrivalStep` は当時の `GAME_LIFE_SEARCH_CAP` までしか記録されておらず、キャップの外で到達した個体は「未到達」として保存されている(実測: 6,000→20,000 で311件の判定漏れ)。正しくは genome を**再評価**する。`scripts/generate-templates.mjs --resume-archive` がこれを行い、段階①(数時間)を飛ばして数秒で済ませる。これが `ATTACK_LIFE` を「本探索の後から決める」ことを可能にしている構造。
 
 ### Seed Distillation(v5 で追加)
 

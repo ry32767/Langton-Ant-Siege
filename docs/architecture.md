@@ -54,7 +54,7 @@ MAP-Elites 探索用の型・変異・アーカイブ・評価・検出・蒸留
 | `src/search/highway-trajectory.js` | ハイウェイ検出の**高速フィルタ**(`detectHighwayFromPath`)。軌跡(位置+向き)だけを見る安価な周期性検出。MAP-Elites の全候補に適用する。`directionBin` も持つ |
 | `src/search/highway-fingerprint.js` | ハイウェイ検出の**厳密確認**(`verifyHighwayStrict`)。近傍セルの正規化 fingerprint による盤面込みの高コストな再検証。高速フィルタで採用された候補にだけ適用する。**唯一の例外として engine.js の CA 1ステップ処理を最小限だけ複製する**(`simulateWithBoard`)。理由は engine.js が1ステップごとの盤面スナップショットを外部に公開していないため |
 | `src/search/highway-detector.js` | 上記2モジュールの**再エクスポートのみを行うファサード**。既存の import 元(`test/highway-detector.test.js`、`evaluate-projectile.js`)を壊さないために残っている。実体はここには無い |
-| `src/search/evaluate-projectile.js` | genome 1件を「探索評価(`simulateSearch`、`SEARCH_LIFE`ステップ)＋ゲーム評価(`simulateSolo`、`GAME_LIFE_SEARCH_CAP`ステップ)」にかけ、`highway`(2段構え)・`game`(`arrivalStep`込み)・`descriptor`・`quality`・`viable` を返す。`isViableAtLife` で再シミュレーションなしの寿命再判定もできる |
+| `src/search/evaluate-projectile.js` | genome 1件を「探索評価(`simulateSearch`、`SEARCH_LIFE`ステップ)＋ゲーム評価(`simulateSolo`、`GAME_LIFE_SEARCH_CAP`ステップ)」にかけ、`highway`(2段構え)・`game`(`arrivalStep`込み)・`descriptor`・`quality`・`viable` を返す。寿命を変えたときは `--resume-archive` で genome を再評価して再射影する(保存済み `arrivalStep` はキャップまでしか無いので閾値の当て直しでは足りない) |
 | `src/search/evaluate-interaction.js` | 攻撃 × 妨害 × `deltaX` × 発射タイミングの相互作用評価(`evaluateInteraction`/`buildCounterMatrix`/`buildEscortTable`)。`simulateVersus`/`instantiateTemplate` を経由し、自前でシミュレーションを書き直さない |
 | `src/search/seed-distillation.js` | Seed Distillation 本体(`captureFormationSnapshot`/`replaySeed`/`gameUsability`/`distillSeed`)。ハイウェイ形成時点の局所盤面を種として逆抽出する |
 | `src/search/seed-compression.js` | 種セルの貪欲圧縮(`compressSeed`)。アリから遠い順に削除を試し、検証関数(呼び出し側が渡す)が通る場合だけ確定する |
