@@ -11,6 +11,14 @@
 > v5.1 で `ATTACK_LIFE` が暫定値6,000から**確定値20,000**になり、`STEPS_PER_SECOND` が300→**670**に、
 > `TOTAL_STEPS` が72,000→**160,800**になった(`DISRUPT_LIFE`=1,000は据え置き)。数値は必ず
 > [`src/config.js`](../src/config.js) の実際の値を参照すること。
+>
+> v5.2 で方策ベクトルが13 → **16次元**に拡張された。CPU が盤面を見られるようになり、自爆機能が追加された。
+>
+> v5.3 で妨害アリの寿命が 1,000 → **6,000**に引き上げられ、盤面中央を越えられない空間制約が追加された。
+> 発射列が方策で決まるようになり、方策ベクトルが 16 → **18次元**に拡張された。
+>
+> v5.4 で妨害発射列の照準が事前計算テーブルに戻り、方策ベクトルが18 → **17次元**に縮小された。
+> `disruptAimOffsetFrac` を削除し、`selfDestructAgeFrac` を `selfDestructRemainingTicks` に置換した。
 
 ```mermaid
 erDiagram
@@ -126,6 +134,23 @@ lastToucherSide = new Uint8Array(W * H);   // 最後にそのマスへ触れた�
 `lastToucher` は `Int16Array`(最大32,767)。1試合の発射数は最大でも「毎秒+1 × 240秒 ÷ 最小コスト3」= 80発なので、id は溢れない。
 
 `lastToucherSide` は描画専用の追加フィールド(v4)。UI がセルの色相(陣営: 藍/朱)を決めるのに使い、`lastToucher` によるクリーンアップ判定のロジック自体には影響しない。
+
+### 盤面汚染度の計算(v5.2)
+
+CPU が盤面を観測できるようにするため、`createMatch` の内部に増分カウンタを追加:
+
+| カウンタ | 意味 |
+|---|---|
+| `nonWhiteTotal` | 盤面全体の非白セル数。`boardPollution = nonWhiteTotal / CELL_COUNT` で算出 |
+| `nonWhiteZone` | 自分の陣営の配置可能帯(深さ `ZONE_DEPTH`=32)の非白セル数。`myZonePollution = nonWhiteZone / (WIDTH * ZONE_DEPTH)` で算出 |
+
+敵陣の汚染度 `enemyZonePollution` も同じカウンタから算出(敵側の配置帯も32行)。`fire()` / `stepAnt()` / `cleanupAnt()` はセル値が「0 ↔ 0以外」を跨ぐときだけカウンタを更新する(O(1)・性能オーバーヘッド小)。
+
+`createSideView` が CPU に渡す内容(v5.2 以降):
+- **派生スカラー**(0..1): `boardPollution`, `myZonePollution`, `enemyZonePollution`
+- **参照渡し(読み取り専用)**(`board`: `Uint8Array`[65536], `lastToucherSide`: `Uint8Array`[65536], `columnNonWhite`: `Int32Array`[256])
+
+⚠️ **重要**: view は学習1回で約4,600万回作られるので、(a)コピーを1回でも挟むと学習が終わらない、(b)利用側が毎判断で全65,536セルを走査しても同様に破綻する。「どの列が汚れているか」を知りたいだけなら **`columnNonWhite` を使うこと**。参照渡しなので読み取り専用として扱う。engine 側は `createMatch` が `nonWhiteColumn`(長さ WIDTH の `Int32Array`)を持ち、`fire()` / `stepAnt()` / `cleanupAnt()` がセル値の「0 ↔ 0以外」の跨ぎだけで増分更新する。
 
 ### `ant.touched` によるクリーンアップの高速化(v5)
 
@@ -501,8 +526,13 @@ MAP-Elites 探索アーカイブのデバッグ・再現性確保用ダンプ。
     "reserveTokens": 6,
     "defendBias": 0.7,
     "escortBias": 0.5,
-    "attackPref": [1.0, 0.8, 1.2, 0.6, 1.1, 0.9, 1.3, 0.7, 1.0]
-  }
+    "attackPref": [1.0, 0.8, 1.2, 0.6, 1.1, 0.9, 1.3, 0.7, 1.0],
+    "selfDestructBias": 0.2,
+    "selfDestructRemainingTicks": 5,
+    "pollutionDestructWeight": 0.5,
+    "attackAvoidBias": 0.3
+  },
+  "selfDestructTicksTrajectory": [5.96, 6.08, 4.84, "…(世代数ぶん)…", 5.59]
 }
 ```
 
@@ -513,9 +543,16 @@ MAP-Elites 探索アーカイブのデバッグ・再現性確保用ダンプ。
 | `defendBias` | 敵の攻撃が飛来中に、攻撃ではなく迎撃を選ぶ確率 |
 | `escortBias` | 自分の攻撃に敵の迎撃が来たとき、護衛を撃つ確率 |
 | `attackPref[9]` | 攻撃テンプレート9種(`TEMPLATE_COUNT_ATTACK`)の選好重み(softmaxで選択)。相手の防御傾向への適応がここに現れる |
+| `selfDestructBias` | 自爆を試みる基礎確率(v5.2) |
+| `selfDestructRemainingTicks` | 寿命までの残りCPU判断tick数がこの値以下のアリだけ自爆対象。整数1..10 |
+| `pollutionDestructWeight` | `boardPollution` に比例して自爆確率を上げる重み(v5.2) |
+| `attackAvoidBias` | 攻撃の発射列を盤面(`columnNonWhite`)から選ぶ確率(v5.3) |
 | `winRateVsRandom` | 学習の効果を示す記録値。再学習したら更新する |
 
-学習は CEM法(交差エントロピー法)による自己対戦。パラメータは13個。実測(v3.1) 362試合/秒 で、集団60 × 各40試合 × 40世代 = **約4分**(v5.1盤面・寿命20,000・670ステップ/秒での再計測は未実施)。CPU の意思決定周期は `DECISION_INTERVAL_STEPS`(=`STEPS_PER_SECOND`=670)ステップに1回(v4までは120、v5は300)。
+> **`selfDestructTicksTrajectory`**(v5.4・`policy` の外側のトップレベル): CEM の各世代における `selfDestructRemainingTicks` 次元の平均(丸めない生の浮動小数)を世代順に並べた配列。
+> ⚠️ これは学習結果ではなく**学習の診断用**。この次元は値域 1〜10 に対して `MIN_STD` が 0.18、方策へのデコード時の丸め粒度が 1 なので、エリートが一度ある整数に揃うと隣の整数へ移るのに約2.8σを要し、**序盤で凍結したまま一度も探索されずに終わる**ことがあり得る。その場合「自爆にゲーム上の価値が無い」と「そもそも探索されていない」が区別できなくなるため、軌跡を残す。
+
+学習は CEM法(交差エントロピー法)による自己対戦。パラメータは17個(v5.2で13→16、v5.3で18、v5.4で17に縮小)。実測(v3.1) 362試合/秒 で、集団60 × 各40試合 × 40世代 = **約4分**(v5.3盤面・寿命20,000・670ステップ/秒での再計測は未実施)。CPU の意思決定周期は `DECISION_INTERVAL_STEPS`(=`STEPS_PER_SECOND`=670)ステップに1回(v4までは120、v5は300)。
 
 > ⚠️ 上の値は**形式を示す例**であり実在の学習結果ではない。`node scripts/train-policy.mjs` を実行して実際の値で上書きすること。
 >

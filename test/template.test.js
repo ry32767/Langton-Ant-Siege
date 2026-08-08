@@ -4,7 +4,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as C from '../src/config.js';
-import { instantiateTemplate, wrapX, scoringLaunchColumns, launchColumnScores } from '../src/template.js';
+import {
+  instantiateTemplate,
+  wrapX,
+  scoringLaunchColumns,
+  launchColumnScores,
+  launchPathSegments,
+} from '../src/template.js';
 import { simulateSolo } from '../src/engine.js';
 
 const baseTemplate = {
@@ -114,4 +120,74 @@ test('得点ゲートの外へ到達する発射列では、実際に得点し�
   assert.equal(inside.scored, true, 'ゲート内の発射列なのに得点していない');
   assert.equal(outside.reached, true, 'ゲート外でも敵陣には到達するはず');
   assert.equal(outside.scored, false, 'ゲート外の発射列なのに得点している');
+});
+
+test('launchPathSegments はラップ無しなら線分1本を返す', () => {
+  const segs = launchPathSegments(10, 20, 30, 100);
+  assert.equal(segs.length, 1);
+  assert.deepEqual(segs[0], { x1: 10, y1: 20, x2: 40, y2: 100 });
+});
+
+test('launchPathSegments はラップ1回で線分2本に分割する', () => {
+  const startX = 250;
+  const totalDx = 20; // 250 -> 270 は WIDTH=256 を1回だけまたぐ
+  const segs = launchPathSegments(startX, 0, totalDx, 100);
+  assert.equal(segs.length, 2);
+  assert.equal(segs[0].x1, startX);
+  assert.equal(segs[0].x2, C.WIDTH, '1本目は x=WIDTH で終わるはず');
+  assert.equal(segs[1].x1, 0, '2本目は x=0 から始まるはず');
+  assert.equal(segs[0].y2, segs[1].y1, '分割点で y が連続しているはず');
+});
+
+test('launchPathSegments はラップが複数回でも正しく分割する', () => {
+  const startX = 10;
+  const totalDx = 2 * C.WIDTH + 40; // 2回またぐ
+  const segs = launchPathSegments(startX, 0, totalDx, 100);
+  assert.equal(segs.length, 3);
+  for (let i = 0; i < segs.length - 1; i++) {
+    assert.equal(segs[i].x2, C.WIDTH, `${i}本目は x=WIDTH で終わるはず`);
+    assert.equal(segs[i + 1].x1, 0, `${i + 1}本目は x=0 から始まるはず`);
+    assert.equal(segs[i].y2, segs[i + 1].y1, `${i}-${i + 1}間で y が連続しているはず`);
+  }
+});
+
+test('launchPathSegments は totalDx が負でも 0 をまたぐ側へ正しくラップする', () => {
+  const startX = 0;
+  const totalDx = -1;
+  const segs = launchPathSegments(startX, 0, totalDx, 100);
+  assert.equal(segs.length, 1);
+  assert.equal(segs[0].x1, C.WIDTH, '負方向にラップした始点は x=WIDTH のはず');
+  assert.equal(wrapX(segs[0].x2), wrapX(startX + totalDx));
+});
+
+test('launchPathSegments は totalDx===0 なら垂直な線分1本を返す', () => {
+  const segs = launchPathSegments(50, 5, 0, 200);
+  assert.equal(segs.length, 1);
+  assert.deepEqual(segs[0], { x1: 50, y1: 5, x2: 50, y2: 200 });
+});
+
+test('launchPathSegments は endY<=startY なら空配列を返す', () => {
+  assert.deepEqual(launchPathSegments(10, 50, 30, 50), []);
+  assert.deepEqual(launchPathSegments(10, 50, 30, 20), []);
+});
+
+test('launchPathSegments の不変条件: 最後の線分の終点は wrapX(startX+totalDx) と一致する', () => {
+  const startXs = [0, 1, 100, 255];
+  const totalDxs = [-300, -1, 0, 1, 193, 300];
+  for (const startX of startXs) {
+    for (const totalDx of totalDxs) {
+      const segs = launchPathSegments(startX, 0, totalDx, 50);
+      assert.ok(segs.length >= 1, `startX=${startX} totalDx=${totalDx} で線分が空`);
+      const last = segs[segs.length - 1];
+      assert.equal(
+        wrapX(last.x2),
+        wrapX(startX + totalDx),
+        `startX=${startX} totalDx=${totalDx} で終点がずれている`,
+      );
+      for (const seg of segs) {
+        assert.ok(seg.x1 >= 0 && seg.x1 <= C.WIDTH, `x1 が範囲外: ${seg.x1}`);
+        assert.ok(seg.x2 >= 0 && seg.x2 <= C.WIDTH, `x2 が範囲外: ${seg.x2}`);
+      }
+    }
+  }
 });

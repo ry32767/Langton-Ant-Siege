@@ -41,6 +41,7 @@ import {
   stepMatch,
   getStats,
   scheduleFire as engineScheduleFire,
+  selfDestruct as engineSelfDestruct,
   simulateSolo,
   simulateVersus,
   toGlobalY,
@@ -211,12 +212,21 @@ const counterTable = templates.counterTable ?? {};
 const escortTable = templates.escortTable ?? {};
 
 // data/policy.json が無ければ中立方策(仕様書の指示どおりの既定値)を使う。
+// ⚠️ v5.4 で方策は17次元になった(disruptAimOffsetFrac 削除、selfDestructAgeFrac →
+// selfDestructRemainingTicks)。ここは「学習前の既定値」なので、自爆の2つは
+// **意図的に「自爆しない」設定**にしてある(selfDestructBias=0, selfDestructRemainingTicks=0
+// =候補になるアリが存在しない)。学習済みの方策と比べたときに「自爆を覚えたかどうか」が
+// 差として見えるようにするため。attackAvoidBias も同じ流儀で「新機能を使わない既定値」にしてある。
 const NEUTRAL_POLICY = Object.freeze({
   fireThreshold: 8,
   reserveTokens: 6,
   defendBias: 0.7,
   escortBias: 0.5,
   attackPref: Array.from({ length: C.TEMPLATE_COUNT_ATTACK }, () => 1.0),
+  selfDestructBias: 0,
+  selfDestructRemainingTicks: 0, // 値域は1..10だが「自爆しない」既定値として意図的に範囲外の0を使う
+  pollutionDestructWeight: 0,
+  attackAvoidBias: 0, // 盤面を見ない一様選択(既定挙動)
 });
 
 let policy;
@@ -277,6 +287,21 @@ function recordRuleLength(action) {
   ruleLengthHist[len] = (ruleLengthHist[len] ?? 0) + 1;
 }
 
+// §29(新規): 予約発射の消化率。scheduleFire() された回数(予約数)と、自爆(selfDestruct)の
+// 呼び出し回数・成功回数を数える。
+//
+// ⚠️ engine.js の side.fired(getStats() の st.fired)は「scheduleFire 経由で予約が
+// 満期を迎えて発火した回数」と「decide() が即座に返したアクションがその場で fire() された
+// 回数」の両方を合算したものなので、これをそのまま「予約の消化数」として使うと分母
+// (scheduleFire 呼び出し回数)より大きくなってしまう(即時発射ぶんが混ざるため)。
+// そこで decide() が非nullを返した回数(即時発射の回数)を別に数え、
+// st.fired からその分を差し引いた値を「予約が満期を迎えて実際に発火した回数」の推定値とする
+// (engine.js を編集できないため、呼び出し側だけで完結させる近似)。
+let sumScheduleFireCalls = 0;
+let sumImmediateFireCalls = 0;
+let sumSelfDestructCalls = 0;
+let sumSelfDestructSuccess = 0;
+
 /** CPU エージェントを作り、発射した kind ごとの回数を counters に積む(診断用)。 */
 function makeTrackedAgent(getMatch, sideIndex, rngSeed, counters) {
   const rng = createRng(rngSeed);
@@ -287,7 +312,14 @@ function makeTrackedAgent(getMatch, sideIndex, rngSeed, counters) {
     scheduleFire: (action, atStep) => {
       counters[action.kind] = (counters[action.kind] ?? 0) + 1;
       recordRuleLength(action);
+      sumScheduleFireCalls++;
       engineScheduleFire(getMatch(), sideIndex, action, atStep);
+    },
+    selfDestruct: (antId) => {
+      sumSelfDestructCalls++;
+      const ok = engineSelfDestruct(getMatch(), sideIndex, antId);
+      if (ok) sumSelfDestructSuccess++;
+      return ok;
     },
   });
   return {
@@ -296,6 +328,7 @@ function makeTrackedAgent(getMatch, sideIndex, rngSeed, counters) {
       if (action) {
         counters[action.kind] = (counters[action.kind] ?? 0) + 1;
         recordRuleLength(action);
+        sumImmediateFireCalls++;
         // §29(新規): launchColumnSpread。CPU が実際に選んだ攻撃の発射列(antX)の分布。
         if (action.kind === 'attack') {
           launchColumnCounts[action.antX] = (launchColumnCounts[action.antX] ?? 0) + 1;
@@ -908,6 +941,19 @@ console.log('');
 console.log('[8] launchColumnSpread(v5新規。CPU が実プレイで実際に選んだ攻撃の発射列(antX)の分布)');
 console.log(`    使われた発射列の種類数: ${Object.keys(launchColumnCounts).length} / ${C.WIDTH}列`);
 printCountHistogram('    antX → 発射回数', launchColumnCounts, '回');
+console.log('');
+
+console.log('[9] 予約発射の消化率・自爆(新規。selfDestruct 配線の観測。合否判定には使わない。定義は上のコメント参照)');
+const estimatedScheduledMatured = Math.max(0, sumFired - sumImmediateFireCalls);
+const scheduleFireConsumptionRate =
+  sumScheduleFireCalls > 0 ? estimatedScheduledMatured / sumScheduleFireCalls : NaN;
+console.log(`    scheduleFire() 呼び出し回数(予約数、全試合合計): ${sumScheduleFireCalls}`);
+console.log(`    実際に発射に至った回数(全試合合計、st.fired 合計): ${sumFired}`);
+console.log(`    うち decide() が即座に返した回数(即時発射、全試合合計): ${sumImmediateFireCalls}`);
+console.log(`    予約が満期を迎えて発火した回数(推定、st.fired - 即時発射): ${estimatedScheduledMatured}`);
+console.log(`    予約発射の消化率(推定) = ${fmtPct(scheduleFireConsumptionRate)}`);
+console.log(`    selfDestruct() 呼び出し回数(全試合合計): ${sumSelfDestructCalls}`);
+console.log(`    selfDestruct() 成功回数(全試合合計): ${sumSelfDestructSuccess}`);
 console.log('');
 
 // ---------------------------------------------------------------------------

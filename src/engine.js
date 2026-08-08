@@ -22,17 +22,38 @@ function cellState(cell) {
 }
 
 /**
+ * 増分カウンタの更新(0 ↔ 0以外 を跨いだ瞬間だけ動かす)。
+ * counters は match(または match 相当のオブジェクト)。null なら何もしない
+ * (探索・単体シミュレーション経路はカウンタを持たないため)。
+ */
+function bumpCounters(counters, x, gy, wasZero, isZero) {
+  if (!counters || wasZero === isZero) return;
+  const delta = wasZero ? 1 : -1; // 0→非0 は +1、非0→0 は -1
+  counters.nonWhiteTotal += delta;
+  // 列ごとの非白セル数(v5.3)。発射列を選ぶ判断に使うので列単位で持つ。
+  // 盤面そのものは createSideView が参照で渡すが、65,536セルを毎判断で走査させると
+  // 学習が終わらない(view は学習1回で約4,600万回作られる)。列集計は増分で O(1)。
+  counters.nonWhiteColumn[x] += delta;
+  if (gy < C.ZONE_DEPTH) counters.nonWhiteZone[0] += delta;
+  else if (gy >= C.HEIGHT - C.ZONE_DEPTH) counters.nonWhiteZone[1] += delta;
+}
+
+/**
  * アリを1歩進める。
  * 「回転は踏んだ時点の状態で決める」(進める前の状態を読んでから状態を進める)。
  * 盤面の生値はアリの色数で割った余りとして解釈する(異種ルールの衝突)。
+ * counters: 省略可(null なら増分カウンタを更新しない)。試合の盤面(match.board)を
+ * 触る経路(moveSide)だけが match を渡す。
  */
-function stepAnt(board, lastToucher, lastToucherSide, ant) {
+function stepAnt(board, lastToucher, lastToucherSide, ant, counters = null) {
   const gy = toGlobalY(ant.sideIndex, ant.y);
   const j = idx(ant.x, gy);
   const raw = board[j];
   const s = raw % ant.colorCount;
   ant.dir = ant.rule[s] === 'R' ? (ant.dir + 1) & 3 : (ant.dir + 3) & 3;
-  board[j] = (s + 1) % ant.colorCount;
+  const newVal = (s + 1) % ant.colorCount;
+  bumpCounters(counters, ant.x, gy, raw === 0, newVal === 0);
+  board[j] = newVal;
   lastToucher[j] = ant.id;
   lastToucherSide[j] = ant.sideIndex + 1;
   // 踏んだマスを記録する(cleanupAnt が全盤面を走査しないため。下の cleanupAnt のコメント参照)。
@@ -55,11 +76,13 @@ function stepAnt(board, lastToucher, lastToucherSide, ant) {
  * 同一マスを複数回踏んでいると `touched` に重複が入るが、1回目で白に戻したあと
  * `lastToucher` が -1 になるため2回目以降は条件に合わず、二重処理にはならない。
  */
-function cleanupAnt(board, lastToucher, lastToucherSide, ant) {
+function cleanupAnt(board, lastToucher, lastToucherSide, ant, counters = null) {
   for (const cell of ant.cells) {
     const [x, y] = cell;
-    const q = idx(x, toGlobalY(ant.sideIndex, y));
+    const gy = toGlobalY(ant.sideIndex, y);
+    const q = idx(x, gy);
     if (lastToucher[q] === -1 || lastToucher[q] === ant.id) {
+      bumpCounters(counters, x, gy, board[q] === 0, true);
       board[q] = 0;
       lastToucher[q] = -1;
       lastToucherSide[q] = 0;
@@ -68,6 +91,7 @@ function cleanupAnt(board, lastToucher, lastToucherSide, ant) {
   for (let i = 0; i < ant.touched.length; i++) {
     const q = ant.touched[i];
     if (lastToucher[q] === ant.id) {
+      if (counters) bumpCounters(counters, q % C.WIDTH, Math.floor(q / C.WIDTH), board[q] === 0, true);
       board[q] = 0;
       lastToucher[q] = -1;
       lastToucherSide[q] = 0;
@@ -85,6 +109,15 @@ function cleanupAnt(board, lastToucher, lastToucherSide, ant) {
  */
 function resolveAnt(ant) {
   if (ant.y < 0) return { dead: true, scored: false, reached: false };
+  // ⚠️ v5.3: 妨害アリは盤面中央(自陣ローカル y >= DISRUPT_MAX_LOCAL_Y)を越えられない。
+  // 得点ラインの判定より**前**に置くこと(後ろに置くと素通りして得点しうる)。
+  // これは種類による唯一の特別扱いで、意図的なもの。v5.2 までは「妨害の寿命が短いから
+  // 敵陣に届かない」という担保だったが、それはテンプレートを再生成すると壊れる
+  // (実測: 寿命4,000で乱数配置の43%が敵陣に到達し得点した)。空間で縛れば原理的に破れない。
+  // config.js の DISRUPT_MAX_LOCAL_Y のコメント参照。
+  if (ant.kind === 'disrupt' && ant.y >= C.DISRUPT_MAX_LOCAL_Y) {
+    return { dead: true, scored: false, reached: false };
+  }
   if (ant.y >= C.SCORE_LINE_Y) return { dead: true, scored: C.isInScoreGate(ant.x), reached: true };
   if (ant.steps >= ant.life) return { dead: true, scored: false, reached: false };
   return { dead: false, scored: false, reached: false };
@@ -549,6 +582,12 @@ export function createMatch(options = {}) {
     nextAntId: 0,
     sides: [makeSide(0), makeSide(1)],
     scheduled: [],
+    // 盤面の非白セル数の増分カウンタ(createSideView の pollution 系が O(1) で参照する)。
+    // 更新は board に触る経路(fire / stepAnt / cleanupAnt)だけが行う(下記コメント参照)。
+    nonWhiteTotal: 0,
+    nonWhiteZone: [0, 0], // 添字 = sideIndex。自陣の配置可能帯(深さ ZONE_DEPTH)の非白セル数
+    // 列ごとの非白セル数(v5.3)。発射列を選ぶ判断のために列単位で持つ。
+    nonWhiteColumn: new Int32Array(C.WIDTH),
   };
 }
 
@@ -589,6 +628,25 @@ export function createSideView(match, sideIndex) {
     flyingCount: side.ants.length,
     myAnts: side.ants.map(toView),
     enemyAnts: enemy.ants.map(toView),
+    // 盤面の派生スカラー(増分カウンタから O(1) で算出。全走査しない)。
+    boardPollution: match.nonWhiteTotal / C.CELL_COUNT,
+    myZonePollution: match.nonWhiteZone[sideIndex] / (C.WIDTH * C.ZONE_DEPTH),
+    enemyZonePollution: match.nonWhiteZone[1 - sideIndex] / (C.WIDTH * C.ZONE_DEPTH),
+
+    // ---- 盤面そのもの(v5.3) --------------------------------------------
+    // ⚠️ **参照渡し。コピーしない。** view は学習1回で約4,600万回作られるので、
+    // 65,536セルのコピーを1回でも挟むと学習が終わらない。読み取り専用として扱うこと
+    // (view の利用側が書き換えると試合が壊れる)。
+    //
+    // ⚠️ 利用側の責任: これを毎判断で全走査してはいけない(同じ理由で学習が破綻する)。
+    // 「どの列が汚れているか」を知りたいだけなら下の columnPollution を使うこと。
+    // 盤面全体が要るのは描画・デバッグ・限定的な局所参照(特定の数マスを見る)だけ。
+    board: match.board,
+    // 最後に触れた陣営(0=誰も触れていない / 1=side0 / 2=side1)。これも参照渡し。
+    lastToucherSide: match.lastToucherSide,
+    // 列ごとの非白セル数(長さ WIDTH の Int32Array・参照渡し)。増分更新なので O(1)。
+    // 「発射列をどこにするか」を盤面から決めるための、実用上いちばん重要な信号。
+    columnNonWhite: match.nonWhiteColumn,
   };
 }
 
@@ -621,8 +679,12 @@ export function fire(match, sideIndex, action) {
   const antId = match.nextAntId++;
   for (const cell of cells) {
     const [x, y] = cell;
-    const j = idx(x, toGlobalY(sideIndex, y));
-    match.board[j] = cellState(cell);
+    const gy = toGlobalY(sideIndex, y);
+    const j = idx(x, gy);
+    const wasZero = match.board[j] === 0;
+    const newVal = cellState(cell);
+    bumpCounters(match, x, gy, wasZero, newVal === 0);
+    match.board[j] = newVal;
     match.lastToucher[j] = antId;
     match.lastToucherSide[j] = sideIndex + 1;
   }
@@ -664,19 +726,46 @@ export function scheduleFire(match, sideIndex, action, atStep) {
 function moveSide(match, side) {
   const survivors = [];
   for (const ant of side.ants) {
-    stepAnt(match.board, match.lastToucher, match.lastToucherSide, ant);
+    stepAnt(match.board, match.lastToucher, match.lastToucherSide, ant, match);
     const { dead, scored } = resolveAnt(ant);
     if (dead) {
       if (scored) {
         side.score++;
         side.scoredAnts++;
       }
-      cleanupAnt(match.board, match.lastToucher, match.lastToucherSide, ant);
+      cleanupAnt(match.board, match.lastToucher, match.lastToucherSide, ant, match);
     } else {
       survivors.push(ant);
     }
   }
   side.ants = survivors;
+}
+
+/**
+ * 飛行中の自分のアリを自爆できるか。
+ * 敵陣営のアリIDは対象にできない(自分の side.ants に無ければ false)。
+ */
+export function canSelfDestruct(match, sideIndex, antId) {
+  if (match.phase === 'finished') return false;
+  const side = match.sides[sideIndex];
+  if (!side) return false;
+  const ant = side.ants.find((a) => a.id === antId);
+  if (!ant) return false;
+  return side.tokens >= C.SELF_DESTRUCT_COST;
+}
+
+/**
+ * 飛行中の自分のアリを任意のタイミングで消す。得点しない。
+ * 跡の消し方は通常の消滅(cleanupAnt)と完全に同じにする(新しい経路を作らない)。
+ */
+export function selfDestruct(match, sideIndex, antId) {
+  if (!canSelfDestruct(match, sideIndex, antId)) return false;
+  const side = match.sides[sideIndex];
+  const ant = side.ants.find((a) => a.id === antId);
+  side.tokens -= C.SELF_DESTRUCT_COST;
+  cleanupAnt(match.board, match.lastToucher, match.lastToucherSide, ant, match);
+  side.ants = side.ants.filter((a) => a.id !== antId);
+  return true;
 }
 
 export function stepMatch(match) {
@@ -701,12 +790,31 @@ export function stepMatch(match) {
   // 移動用の order（s の偶奇）をそのまま使うと判断フェーズは永久に side0 が先のままで、
   // side0 が毎秒必ず先に迎撃・攻撃を決められる構造的優位が残る
   // （実測: 攻撃の得点率 side0=28.7% 対 side1=14.8%、勝率 100%対0%）。
+  //
+  // ⚠️ v5.2: 予約発射フェーズも同じ入れ替えを使う。予約発射が走るステップは
+  // 「判断ステップ(DECISION_INTERVAL_STEPS=670 の倍数) + FIRE_TIMINGS(1400 の倍数)」なので
+  // **常に偶数**になり、移動用の order をそのまま使うと予約発射は永久に side0 が先になる。
+  // ただし配置マスは陣営ごとに別の帯(side0 は上端32行 / side1 は下端32行)へ書くので、
+  // **この順序自体は結果に影響しない**ことを実測で確認した(先手勝率 69.3% → 69.0%、変化なし)。
+  // それでも order ではなく decisionOrder を使うのは、「常に片側が先」という退化した状態を
+  // コード上に残さないため(将来 FIRE_TIMINGS が奇数になれば order は意味を持ってしまう)。
+  //
+  // 🚧 v5.2 で観測された先手勝率 69% の真因はここではない(順序は無関係)。
+  // 「防御を使うほど先手が有利になる」相関は実在する
+  // (同一方策どうし600試合: defendBias 0→0.2→0.5→1.0 で side0 勝率 0.548→0.623→0.742→0.729)。
+  //
+  // ⚠️ v5.2 ではこれを「カウンター表のキラリティ(干渉評価が攻撃=side0/妨害=side1 の一方向でしか
+  // 行われない)」と診断していたが、**v5.3 の直接検証で反証した**。各攻撃の最良カウンターを
+  // 実試合で両方の向きに走らせると 9件中8件が両向きで阻止でき、唯一の非対称例はむしろ鏡像側で
+  // だけ成立した(キラリティ仮説と逆)。向き依存はほぼ無い。
+  // 現時点で「防御が機能しない」直接原因は**迎撃の照準窓の狭さ**(阻止できる発射列は平均 17/256
+  // = 6.6%、最狭で1列)。docs/spec.md「未決定事項 (a)」参照。
   const decisionOrder =
     C.ALTERNATE_STEP_ORDER && Math.floor(s / C.DECISION_INTERVAL_STEPS) % 2 === 1 ? [1, 0] : [0, 1];
 
   // 2. 予約発射(fireAtStep ちょうどに実行する)
   const remaining = [];
-  for (const i of order) {
+  for (const i of decisionOrder) {
     for (const sch of match.scheduled) {
       if (sch.sideIndex === i && sch.atStep === s) {
         fire(match, i, sch.action);

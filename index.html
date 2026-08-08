@@ -37,7 +37,11 @@
           </div>
           <div class="hud-row">得点 <span id="score1" class="num">0</span> / 5</div>
           <div class="hud-row">トークン <span id="tokens1" class="num">0</span> / <span id="tokens1-cap" class="num"></span></div>
+          <div class="token-bar" id="token-bar1" aria-hidden="true"><div class="token-bar-fill" id="token-bar1-fill"></div></div>
           <div class="hud-row">飛行中 <span id="flying1" class="num">0</span> / <span id="flying1-cap" class="num"></span></div>
+          <div class="flying-pips" id="flying-pips1" aria-hidden="true">
+            <span class="flying-pip side1-slot0"></span><span class="flying-pip side1-slot1"></span><span class="flying-pip side1-slot2"></span><span class="flying-pip side1-slot3"></span>
+          </div>
         </div>
         <div class="hud-center">
           <div class="hud-time">残り <span id="time-left" class="num">--</span> 秒</div>
@@ -49,7 +53,11 @@
           </div>
           <div class="hud-row">得点 <span id="score2" class="num">0</span> / 5</div>
           <div class="hud-row">トークン <span id="tokens2" class="num">0</span> / <span id="tokens2-cap" class="num"></span></div>
+          <div class="token-bar" id="token-bar2" aria-hidden="true"><div class="token-bar-fill" id="token-bar2-fill"></div></div>
           <div class="hud-row">飛行中 <span id="flying2" class="num">0</span> / <span id="flying2-cap" class="num"></span></div>
+          <div class="flying-pips" id="flying-pips2" aria-hidden="true">
+            <span class="flying-pip side2-slot0"></span><span class="flying-pip side2-slot1"></span><span class="flying-pip side2-slot2"></span><span class="flying-pip side2-slot3"></span>
+          </div>
         </div>
       </div>
 
@@ -66,6 +74,24 @@
               </div>
             </div>
           </div>
+          <div class="board-legend">
+            <span class="legend-item">
+              寒色＝あなた
+              <span class="swatch swatch--side1-slot0" aria-hidden="true"></span>
+              <span class="swatch swatch--side1-slot1" aria-hidden="true"></span>
+              <span class="swatch swatch--side1-slot2" aria-hidden="true"></span>
+              <span class="swatch swatch--side1-slot3" aria-hidden="true"></span>
+            </span>
+            <span class="legend-item">
+              暖色＝敵
+              <span class="swatch swatch--side2-slot0" aria-hidden="true"></span>
+              <span class="swatch swatch--side2-slot1" aria-hidden="true"></span>
+              <span class="swatch swatch--side2-slot2" aria-hidden="true"></span>
+              <span class="swatch swatch--side2-slot3" aria-hidden="true"></span>
+            </span>
+            <span class="legend-item"><span class="legend-glyph" aria-hidden="true">▲</span>攻撃</span>
+            <span class="legend-item"><span class="legend-glyph" aria-hidden="true">○</span>妨害</span>
+          </div>
         </div>
 
         <div class="control-panel" id="control-panel">
@@ -73,6 +99,14 @@
             <h3>飛来中の敵の攻撃</h3>
             <div id="threat-items" class="threat-items"></div>
             <div id="threat-detail" class="threat-detail"></div>
+          </div>
+          <div class="self-destruct-panel">
+            <h3>飛行中の自分のアリ</h3>
+            <div id="self-destruct-items" class="threat-items"></div>
+            <div class="fire-row">
+              <button id="btn-self-destruct" class="btn btn-secondary" disabled>自爆</button>
+              <span id="self-destruct-reason" class="fire-reason" role="status" aria-live="polite"></span>
+            </div>
           </div>
           <div class="tabs" role="tablist">
             <button data-tab="attack" class="tab active" role="tab" aria-selected="true">攻撃</button>
@@ -84,7 +118,9 @@
             <div class="hud-row">予測到達列 x=<span id="launch-entry" class="num">-</span></div>
             <p id="launch-gate-warning" class="fire-reason" role="status" aria-live="polite"></p>
           </div>
-          <div class="fire-row">
+          <!-- 画面の主アクション。パネルが画面外まで伸びるときは下端に貼り付ける
+               (fire-row--pinned)。自爆側の .fire-row は貼り付けない。 -->
+          <div class="fire-row fire-row--pinned">
             <button id="btn-fire" class="btn btn-primary" disabled>発射</button>
             <span id="fire-reason" class="fire-reason" role="status" aria-live="polite"></span>
           </div>

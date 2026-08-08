@@ -69,3 +69,55 @@ export function launchColumnScores(template, antX) {
   if (e == null) return false;
   return C.isInScoreGate(wrapX(antX + e));
 }
+
+/**
+ * `(startX, startY)` から `(startX + totalDx, endY)` への直線を、UI 上で発射ガイドとして
+ * 描ける線分の配列に分解する。
+ *
+ * 盤面は左右がトーラスなので、`totalDx` の絶対値が大きい(あるいは負の)進路をそのまま
+ * 1本の直線として描くと、盤面の反対側まで一直線に引かれてしまい「盤面を逆走する線」に
+ * 見えてしまう。実際のアリは x=WIDTH(または x=0)で折り返して反対側から現れるので、
+ * 描画もその境界(x が 0 または WIDTH をまたぐ点)で線分を分割し、それぞれを
+ * `0 <= x <= WIDTH` に収まる形で返す必要がある。
+ *
+ * @param {number} startX 発射列(0..WIDTH-1)
+ * @param {number} startY 発射行
+ * @param {number} totalDx ラップしていない横方向の総移動量(負もありうる)
+ * @param {number} endY 終端の行
+ * @returns {{x1:number, y1:number, x2:number, y2:number}[]} 線分の配列。
+ *   `endY <= startY` なら空配列(前進しないので描くものが無い)。
+ */
+export function launchPathSegments(startX, startY, totalDx, endY) {
+  if (endY <= startY) return [];
+  const dy = endY - startY;
+  if (totalDx === 0) {
+    return [{ x1: startX, y1: startY, x2: startX, y2: endY }];
+  }
+  const endX = startX + totalDx;
+  const lowX = Math.min(startX, endX);
+  const highX = Math.max(startX, endX);
+  // startX と endX の間(端は含まない)にある WIDTH の倍数が、盤面の左右端をまたぐ分割点。
+  const kMin = Math.floor(lowX / C.WIDTH);
+  const kMax = Math.ceil(highX / C.WIDTH);
+  const crossings = [];
+  for (let k = kMin; k <= kMax; k++) {
+    const m = k * C.WIDTH;
+    if (m > lowX && m < highX) crossings.push((m - startX) / totalDx);
+  }
+  crossings.sort((a, b) => a - b);
+  const ts = [0, ...crossings, 1];
+  const segments = [];
+  for (let i = 0; i < ts.length - 1; i++) {
+    const ta = ts[i];
+    const tb = ts[i + 1];
+    const xa = startX + ta * totalDx;
+    const xb = startX + tb * totalDx;
+    const ya = startY + ta * dy;
+    const yb = startY + tb * dy;
+    // 分割された各区間の中点が属する WIDTH ブロックを求め、そのブロック分だけ引き戻して
+    // 0..WIDTH に収める(区間の端は境界の分割点そのものなので、中点で判定すれば安全)。
+    const k = Math.floor((xa + xb) / 2 / C.WIDTH);
+    segments.push({ x1: xa - k * C.WIDTH, y1: ya, x2: xb - k * C.WIDTH, y2: yb });
+  }
+  return segments;
+}

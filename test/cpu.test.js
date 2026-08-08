@@ -117,6 +117,10 @@ function basePolicy(overrides = {}) {
   };
 }
 
+// ⚠️ 実物の createSideView が返すフィールドを漏らさないこと。
+// v5.2 で盤面の派生スカラー、v5.3 で列ごとの非白セル数(columnNonWhite)が増えた。
+// fixture がこれらを欠くと cpu.js 側で undefined を掴んで NaN になり、
+// 「テストは通るのに実戦で壊れる」逆パターンになる。
 function baseView(overrides = {}) {
   return {
     step: 0,
@@ -126,6 +130,10 @@ function baseView(overrides = {}) {
     flyingCount: 0,
     myAnts: [],
     enemyAnts: [],
+    boardPollution: 0,
+    myZonePollution: 0,
+    enemyZonePollution: 0,
+    columnNonWhite: new Int32Array(C.WIDTH),
     ...overrides,
   };
 }
@@ -188,7 +196,7 @@ test('敵の攻撃をidentifyTableで特定しcounterTableの妨害を選ぶ(成
     step: 0,
     tokens: 30,
     enemyAnts: [
-      { id: 1, kind: 'attack', spawnX: 14, spawnY: 23, spawnDir: 1, ownerX: 14, ownerY: 23, ownerDir: 1, firedAtStep: 100 },
+      { id: 1, kind: 'attack', x: 40, spawnX: 14, spawnY: 23, spawnDir: 1, ownerX: 40, ownerY: 23, ownerDir: 1, firedAtStep: 100 },
     ],
   });
   const action = agent.decide(view);
@@ -197,8 +205,93 @@ test('敵の攻撃をidentifyTableで特定しcounterTableの妨害を選ぶ(成
   assert.equal(scheduled[0].action.templateId, 'D2'); // successRate 1.0 が優先される
   assert.equal(scheduled[0].atStep, 100 + 600); // 敵の firedAtStep からの相対
   assert.equal(scheduled[0].action.rule, 'RRL'); // D2 の rule がそのまま載る
-  // 迎撃の発射列 = wrapX(threat.spawnX + deltaX)
-  assert.equal(scheduled[0].action.antX, wrapX(14 + 5));
+});
+
+// ---------------------------------------------------------------------------
+// v5.4 §10.1〜§10.3: 迎撃の発射列はテーブル照準(spawnX + counterTable.deltaX)
+// ---------------------------------------------------------------------------
+
+test('§10.1 迎撃の発射列はwrapX(threat.spawnX + counter.deltaX)', () => {
+  const templates = makeTemplates();
+  templates.counterTable.A1 = [{ disruptId: 'D2', deltaX: 12, fireAtStep: 600, successRate: 1.0 }];
+  const policy = basePolicy({ defendBias: 1, fireThreshold: 999 });
+  const agent = createCpuAgent({ templates, policy, rng: createRng(1) });
+  const view = baseView({
+    step: 600, // firedAtStep(0) + fireAtStep(600) = ちょうど今 → 予約せず即座に返る
+    tokens: 30,
+    enemyAnts: [
+      { id: 1, kind: 'attack', x: 100, spawnX: 100, spawnY: 23, spawnDir: 1, ownerX: 100, ownerY: 23, ownerDir: 1, firedAtStep: 0 },
+    ],
+  });
+  const action = agent.decide(view);
+  assert.equal(action?.templateId, 'D2');
+  assert.equal(action.antX, 112); // wrapX(100 + 12)
+});
+
+test('§10.2 迎撃の発射列はトーラスでwrapする(spawnX + deltaX が WIDTH を超える場合)', () => {
+  const templates = makeTemplates();
+  templates.counterTable.A1 = [{ disruptId: 'D2', deltaX: 12, fireAtStep: 600, successRate: 1.0 }];
+  const policy = basePolicy({ defendBias: 1, fireThreshold: 999 });
+  const agent = createCpuAgent({ templates, policy, rng: createRng(1) });
+  const view = baseView({
+    step: 600,
+    tokens: 30,
+    enemyAnts: [
+      { id: 1, kind: 'attack', x: 250, spawnX: 250, spawnY: 23, spawnDir: 1, ownerX: 250, ownerY: 23, ownerDir: 1, firedAtStep: 0 },
+    ],
+  });
+  const action = agent.decide(view);
+  assert.equal(action?.templateId, 'D2');
+  assert.equal(action.antX, 6); // wrapX(250 + 12) = 262 - 256 = 6
+});
+
+test('§10.3 迎撃は現在位置(x)ではなくspawnXを基準にする', () => {
+  const templates = makeTemplates();
+  templates.counterTable.A1 = [{ disruptId: 'D2', deltaX: 12, fireAtStep: 600, successRate: 1.0 }];
+  const policy = basePolicy({ defendBias: 1, fireThreshold: 999 });
+  const agent = createCpuAgent({ templates, policy, rng: createRng(1) });
+  const view = baseView({
+    step: 600,
+    tokens: 30,
+    enemyAnts: [
+      // spawnX(発射列=100)と x(現在列=180)をわざと変えてある。
+      { id: 1, kind: 'attack', x: 180, spawnX: 100, spawnY: 23, spawnDir: 1, ownerX: 180, ownerY: 23, ownerDir: 1, firedAtStep: 0 },
+    ],
+  });
+  const action = agent.decide(view);
+  assert.equal(action?.templateId, 'D2');
+  assert.equal(action.antX, 112); // wrapX(100 + 12)。x(180)を使うと192になってしまうがそれは誤り
+  assert.notEqual(action.antX, 192);
+});
+
+test('迎撃候補が複数あるとき、実際に選ばれた候補のdeltaXが使われる(先頭候補のdeltaXを使い回すバグの検出)', () => {
+  const templates = makeTemplates();
+  // successRate降順で先頭は D2(deltaX=12) だが、そのfireAtStepは現在ステップより過去なので
+  // スキップされ、2番目の D1(deltaX=30) が選ばれるはず。列も D1 のdeltaXで計算されないと壊れている。
+  templates.counterTable.A1 = [
+    { disruptId: 'D2', deltaX: 12, fireAtStep: 50, successRate: 1.0 },
+    { disruptId: 'D1', deltaX: 30, fireAtStep: 600, successRate: 0.5 },
+  ];
+  const policy = basePolicy({ defendBias: 1, fireThreshold: 999 });
+  const scheduled = [];
+  const agent = createCpuAgent({
+    templates,
+    policy,
+    rng: createRng(1),
+    scheduleFire: (action, atStep) => scheduled.push({ action, atStep }),
+  });
+  const view = baseView({
+    step: 700, // firedAtStep(0)+D2(50)=50 < 700 なのでスキップ。firedAtStep(0)+D1(600)=600 も実は過去…
+    tokens: 30,
+    enemyAnts: [
+      { id: 1, kind: 'attack', x: 100, spawnX: 100, spawnY: 23, spawnDir: 1, ownerX: 100, ownerY: 23, ownerDir: 1, firedAtStep: 100 },
+    ],
+  });
+  const action = agent.decide(view);
+  // firedAtStep(100)+D2(50)=150 < 700 → スキップ。firedAtStep(100)+D1(600)=700 == 現在ステップ → 今すぐ発火。
+  assert.equal(action?.templateId, 'D1');
+  assert.equal(action.antX, 130); // wrapX(100 + 30)。12を使い回していたら112になってしまう
+  assert.equal(scheduled.length, 0);
 });
 
 test('counterTableのfireAtStepがすべて過去なら迎撃しない', () => {
@@ -250,10 +343,33 @@ test('escortBiasで護衛を選ぶ: 敵の迎撃を観測しなくても、自�
   assert.equal(scheduled.length, 1);
   assert.equal(scheduled[0].action.templateId, 'D3');
   assert.equal(scheduled[0].atStep, 0 + 300); // 自分が撃った今このステップ(0)からの相対
-  // 護衛の発射列 = wrapX(自分の攻撃の antX + escortDeltaX)
-  assert.equal(scheduled[0].action.antX, wrapX(action.antX + 2));
+  // v5.4: 護衛の発射列はescortTableのescortDeltaXが決める(テーブル照準復帰)。
+  // 基準は自分が撃った攻撃の発射列(antX)。
+  assert.equal(scheduled[0].action.antX, wrapX(action.antX + 2)); // escortDeltaX=2(makeTemplates参照)
   // 攻撃自体の発射列は、得点ゲートに届く区間の中にある
   assert.ok(launchColumnScores(templates.attack.find((a) => a.id === 'A1'), action.antX));
+});
+
+test('§10.4 護衛の発射列はwrapX(myAttack.spawnX + escort.escortDeltaX)', () => {
+  const templates = makeTemplates();
+  // counterTable[A1]の予測迎撃(D2)に対応するescortTable[A1][D2]を、escortDeltaX=10・
+  // fireAtStep=50に差し替える(spec §10.4の固定値どおりに検証するため)。
+  templates.counterTable.A1 = [{ disruptId: 'D2', deltaX: 5, fireAtStep: 600, successRate: 1.0 }];
+  templates.escortTable.A1.D2 = [
+    { interceptDeltaX: 5, interceptFireAtStep: 600, escortDisruptId: 'D3', escortDeltaX: 10, fireAtStep: 50 },
+  ];
+  const policy = basePolicy({ escortBias: 1, fireThreshold: 999 }); // 攻撃はしない、既に飛んでいる攻撃だけを護衛する
+  const agent = createCpuAgent({ templates, policy, rng: createRng(1) });
+  const view = baseView({
+    step: 50, // myAnt.firedAtStep(0) + fireAtStep(50) = ちょうど今 → 予約せず即座に返る
+    tokens: 30,
+    myAnts: [
+      { id: 2, kind: 'attack', templateId: 'A1', spawnX: 250, firedAtStep: 0 },
+    ],
+  });
+  const action = agent.decide(view);
+  assert.equal(action?.templateId, 'D3');
+  assert.equal(action.antX, 4); // wrapX(250 + 10) = 260 - 256 = 4
 });
 
 test('counterTableに攻撃のエントリが無ければ護衛を予約しない(攻撃自体は撃つ)', () => {
@@ -318,6 +434,184 @@ test('攻撃選択は同じシードで再現し、決定は完全に再現す�
   const r1 = run();
   const r2 = run();
   assert.deepEqual(r1, r2);
+});
+
+// ---------------------------------------------------------------------------
+// 自爆(selfDestruct) v5.4: 候補条件が「寿命の消化割合」から「残り判断tick数」に変わった
+// ---------------------------------------------------------------------------
+
+test('§10.5 自爆: 残り1tickのアリは閾値1で候補になる', () => {
+  const templates = makeTemplates();
+  // life=20000, steps=19330 → remainingSteps=670 → remainingTicks=ceil(670/670)=1
+  const policy = basePolicy({
+    fireThreshold: 999, // 攻撃はしない
+    defendBias: 0,
+    escortBias: 0,
+    selfDestructRemainingTicks: 1,
+    selfDestructBias: 1,
+  });
+  const destroyedIds = [];
+  const agent = createCpuAgent({
+    templates,
+    policy,
+    rng: createRng(1),
+    selfDestruct: (id) => destroyedIds.push(id),
+  });
+  const view = baseView({
+    step: 0,
+    tokens: 0,
+    flyingCount: 1,
+    myAnts: [{ id: 9, kind: 'attack', life: 20000, steps: 19330 }],
+  });
+  agent.decide(view);
+  assert.deepEqual(destroyedIds, [9]);
+});
+
+// docs/spec.md 機能6 受け入れ条件「selfDestructRemainingTicks=5 の場合、残り3,350ステップ
+// 以下のアリが候補になる」。§10.5/§10.6 は閾値1・2しか触っていないので境界を1点足す。
+test('自爆: 閾値5では残り3,350ステップちょうどが候補、3,351ステップは候補外', () => {
+  const templates = makeTemplates();
+  const makeAgent = (destroyedIds) =>
+    createCpuAgent({
+      templates,
+      policy: basePolicy({
+        fireThreshold: 999,
+        defendBias: 0,
+        escortBias: 0,
+        selfDestructRemainingTicks: 5,
+        selfDestructBias: 1,
+      }),
+      rng: createRng(1),
+      selfDestruct: (id) => destroyedIds.push(id),
+    });
+  // 5 tick = 5 * DECISION_INTERVAL_STEPS = 3,350 ステップ。
+  const boundary = 5 * C.DECISION_INTERVAL_STEPS;
+  assert.equal(boundary, 3350); // 前提が崩れたら気づけるように明示する
+
+  // 残り3,350 → ceil(3350/670)=5 → 候補
+  const inRange = [];
+  makeAgent(inRange).decide(
+    baseView({
+      step: 0,
+      tokens: 0,
+      flyingCount: 1,
+      myAnts: [{ id: 9, kind: 'attack', life: 20000, steps: 20000 - boundary }],
+    }),
+  );
+  assert.deepEqual(inRange, [9]);
+
+  // 残り3,351 → ceil(3351/670)=6 → 候補外(selfDestructBias=1 でも消えない)
+  const outOfRange = [];
+  makeAgent(outOfRange).decide(
+    baseView({
+      step: 0,
+      tokens: 0,
+      flyingCount: 1,
+      myAnts: [{ id: 9, kind: 'attack', life: 20000, steps: 20000 - boundary - 1 }],
+    }),
+  );
+  assert.deepEqual(outOfRange, []);
+});
+
+test('§10.6 自爆: 残り2tickのアリは閾値1では候補外、閾値2では候補になる', () => {
+  const templates = makeTemplates();
+  // life=20000, steps=19329 → remainingSteps=671 → remainingTicks=ceil(671/670)=2
+  const makeView = () =>
+    baseView({
+      step: 0,
+      tokens: 0,
+      flyingCount: 1,
+      myAnts: [{ id: 9, kind: 'attack', life: 20000, steps: 19329 }],
+    });
+
+  const policyOff = basePolicy({
+    fireThreshold: 999,
+    defendBias: 0,
+    escortBias: 0,
+    selfDestructRemainingTicks: 1,
+    selfDestructBias: 1,
+  });
+  const destroyedOff = [];
+  createCpuAgent({
+    templates,
+    policy: policyOff,
+    rng: createRng(1),
+    selfDestruct: (id) => destroyedOff.push(id),
+  }).decide(makeView());
+  assert.deepEqual(destroyedOff, [], '閾値1では候補外のはず');
+
+  const policyOn = basePolicy({
+    fireThreshold: 999,
+    defendBias: 0,
+    escortBias: 0,
+    selfDestructRemainingTicks: 2,
+    selfDestructBias: 1,
+  });
+  const destroyedOn = [];
+  createCpuAgent({
+    templates,
+    policy: policyOn,
+    rng: createRng(1),
+    selfDestruct: (id) => destroyedOn.push(id),
+  }).decide(makeView());
+  assert.deepEqual(destroyedOn, [9], '閾値2では候補になるはず');
+});
+
+test('§10.7 妨害アリの境界: life=6000,steps=0 → remainingTicks=ceil(6000/670)=9', () => {
+  const templates = makeTemplates();
+  const makeView = () =>
+    baseView({
+      step: 0,
+      tokens: 0,
+      flyingCount: 1,
+      myAnts: [{ id: 9, kind: 'disrupt', life: 6000, steps: 0 }],
+    });
+  const runWith = (selfDestructRemainingTicks) => {
+    const destroyed = [];
+    const policy = basePolicy({
+      fireThreshold: 999,
+      defendBias: 0,
+      escortBias: 0,
+      selfDestructRemainingTicks,
+      selfDestructBias: 1,
+    });
+    createCpuAgent({
+      templates,
+      policy,
+      rng: createRng(1),
+      selfDestruct: (id) => destroyed.push(id),
+    }).decide(makeView());
+    return destroyed;
+  };
+  assert.deepEqual(runWith(8), [], '閾値8では候補外のはず');
+  assert.deepEqual(runWith(9), [9], '閾値9では候補になるはず');
+  assert.deepEqual(runWith(10), [9], '閾値10でも候補になるはず');
+});
+
+test('自爆候補が0匹ならselfDestructBias=1でも自爆しない(乱数を消費せず即return)', () => {
+  const templates = makeTemplates();
+  // remainingTicks は必ず1以上なので、selfDestructRemainingTicks の既定値(0)なら候補ゼロ。
+  const policy = basePolicy({
+    fireThreshold: 999,
+    defendBias: 0,
+    escortBias: 0,
+    selfDestructBias: 1, // selfDestructRemainingTicks は未指定(既定0=候補なし)
+  });
+  const destroyed = [];
+  const agent = createCpuAgent({
+    templates,
+    policy,
+    rng: createRng(1),
+    selfDestruct: (id) => destroyed.push(id),
+  });
+  const view = baseView({
+    step: 0,
+    tokens: 0,
+    flyingCount: 1,
+    myAnts: [{ id: 9, kind: 'attack', life: 20000, steps: 19330 }],
+  });
+  agent.decide(view);
+  assert.deepEqual(destroyed, []);
 });
 
 // ---------------------------------------------------------------------------

@@ -1,12 +1,12 @@
 {
   "seed": 1,
   "quick": false,
-  "workers": 20,
+  "workers": 22,
   "budgetMin": 180,
   "archive1Iterations": 6032400,
   "reproduceCommand": "node scripts/generate-templates.mjs --seed 1 --iterations 6032400",
   "rounds": 3,
-  "evaluations": 2263295,
+  "evaluations": 2195199,
   "generatedAt": "2026-08-08T00:00:00.000Z",
   "selectionOk": true,
   "distillStats": {
@@ -160813,8 +160813,8 @@
           },
           "quality": 2.7071067811865475,
           "meta": {
-            "robustness": 1,
-            "counterCount": 0
+            "robustness": 0.9883928571428572,
+            "counterCount": 13
           }
         }
       ],
@@ -160887,8 +160887,8 @@
           },
           "quality": 2.97119140625,
           "meta": {
-            "robustness": 1,
-            "counterCount": 0
+            "robustness": 0.9723214285714286,
+            "counterCount": 31
           }
         }
       ],
@@ -160916,8 +160916,8 @@
           },
           "quality": 2.896193063675514,
           "meta": {
-            "robustness": 0.9991071428571429,
-            "counterCount": 1
+            "robustness": 0.9830357142857142,
+            "counterCount": 19
           }
         }
       ],
@@ -160989,8 +160989,8 @@
           },
           "quality": 2.7071067811865475,
           "meta": {
-            "robustness": 1,
-            "counterCount": 0
+            "robustness": 0.9973214285714286,
+            "counterCount": 3
           }
         }
       ],
@@ -161018,8 +161018,8 @@
           },
           "quality": 2.903076171875,
           "meta": {
-            "robustness": 1,
-            "counterCount": 0
+            "robustness": 0.9785714285714285,
+            "counterCount": 24
           }
         }
       ],
@@ -161092,8 +161092,8 @@
           },
           "quality": 2.7071067811865475,
           "meta": {
-            "robustness": 0.9991071428571429,
-            "counterCount": 1
+            "robustness": 0.9901785714285715,
+            "counterCount": 11
           }
         }
       ],
@@ -161131,8 +161131,8 @@
           },
           "quality": 2.7071067811865475,
           "meta": {
-            "robustness": 1,
-            "counterCount": 0
+            "robustness": 0.9964285714285714,
+            "counterCount": 4
           }
         }
       ]
@@ -161151,142 +161151,11 @@
     ],
     "cells": [
       [
-        "0,1",
-        {
-          "genome": {
-            "rule": "LLRRLLLRRRLRLLR",
-            "antY": 31,
-            "antDir": 1,
-            "cells": [
-              {
-                "dx": -1,
-                "dy": -1,
-                "state": 9
-              }
-            ],
-            "origin": "mutation",
-            "parentGenomeId": null
-          },
-          "descriptor": {
-            "reachTier": 0,
-            "endDirTier": 1
-          },
-          "quality": 0.4,
-          "meta": {
-            "coverage": 0.4,
-            "reachRows": 0
-          }
-        }
-      ],
-      [
-        "0,2",
-        {
-          "genome": {
-            "rule": "LRLLLRRLRRRL",
-            "antY": 31,
-            "antDir": 2,
-            "cells": [
-              {
-                "dx": -2,
-                "dy": -1,
-                "state": 11
-              },
-              {
-                "dx": -6,
-                "dy": -4,
-                "state": 9
-              },
-              {
-                "dx": -2,
-                "dy": -2,
-                "state": 2
-              },
-              {
-                "dx": 8,
-                "dy": -7,
-                "state": 9
-              },
-              {
-                "dx": 2,
-                "dy": -5,
-                "state": 0
-              },
-              {
-                "dx": 2,
-                "dy": -4,
-                "state": 6
-              },
-              {
-                "dx": -8,
-                "dy": -4,
-                "state": 0
-              },
-              {
-                "dx": 4,
-                "dy": -3,
-                "state": 0
-              },
-              {
-                "dx": 0,
-                "dy": -7,
-                "state": 0
-              },
-              {
-                "dx": -3,
-                "dy": -4,
-                "state": 11
-              },
-              {
-                "dx": -5,
-                "dy": -7,
-                "state": 4
-              },
-              {
-                "dx": -7,
-                "dy": -5,
-                "state": 0
-              },
-              {
-                "dx": 2,
-                "dy": -1,
-                "state": 0
-              },
-              {
-                "dx": -1,
-                "dy": -3,
-                "state": 4
-              },
-              {
-                "dx": -3,
-                "dy": -1,
-                "state": 4
-              },
-              {
-                "dx": -8,
-                "dy": -8,
-                "state": 4
-              }
-            ],
-            "origin": "mutation",
-            "parentGenomeId": null
-          },
-          "descriptor": {
-            "reachTier": 0,
-            "endDirTier": 2
-          },
-          "quality": 0.5,
-          "meta": {
-            "coverage": 0.5,
-            "reachRows": 4
-          }
-        }
-      ],
-      [
-        "1,0",
+        "0,0",
         {
           "genome": {
             "rule": "RRLRLLRR",
-            "antY": 25,
+            "antY": 26,
             "antDir": 2,
             "cells": [
               {
@@ -161296,8 +161165,13 @@
               },
               {
                 "dx": 1,
+                "dy": 2,
+                "state": 1
+              },
+              {
+                "dx": 1,
                 "dy": 3,
-                "state": 3
+                "state": 7
               },
               {
                 "dx": 1,
@@ -161313,16 +161187,6 @@
                 "dx": 3,
                 "dy": 4,
                 "state": 6
-              },
-              {
-                "dx": 0,
-                "dy": 5,
-                "state": 1
-              },
-              {
-                "dx": 1,
-                "dy": 5,
-                "state": 7
               },
               {
                 "dx": 2,
@@ -161337,36 +161201,41 @@
               {
                 "dx": 8,
                 "dy": 3,
-                "state": 0
-              },
-              {
-                "dx": 8,
-                "dy": -5,
-                "state": 4
-              },
-              {
-                "dx": -4,
-                "dy": 5,
-                "state": 5
-              },
-              {
-                "dx": 7,
-                "dy": -4,
-                "state": 4
-              },
-              {
-                "dx": -8,
-                "dy": 1,
-                "state": 4
-              },
-              {
-                "dx": -8,
-                "dy": -1,
                 "state": 3
               },
               {
-                "dx": 8,
+                "dx": 4,
+                "dy": 3,
+                "state": 6
+              },
+              {
+                "dx": -7,
                 "dy": -2,
+                "state": 5
+              },
+              {
+                "dx": 1,
+                "dy": -6,
+                "state": 5
+              },
+              {
+                "dx": 2,
+                "dy": -6,
+                "state": 7
+              },
+              {
+                "dx": -5,
+                "dy": -6,
+                "state": 3
+              },
+              {
+                "dx": -3,
+                "dy": -6,
+                "state": 4
+              },
+              {
+                "dx": -6,
+                "dy": -6,
                 "state": 6
               }
             ],
@@ -161374,71 +161243,13 @@
             "parentGenomeId": null
           },
           "descriptor": {
-            "reachTier": 1,
+            "reachTier": 0,
             "endDirTier": 0
           },
-          "quality": 0.4,
+          "quality": 1,
           "meta": {
-            "coverage": 0.4,
-            "reachRows": 12
-          }
-        }
-      ],
-      [
-        "1,3",
-        {
-          "genome": {
-            "rule": "RRRRLLRLR",
-            "antY": 27,
-            "antDir": 1,
-            "cells": [
-              {
-                "dx": -1,
-                "dy": 1,
-                "state": 4
-              },
-              {
-                "dx": -1,
-                "dy": 2,
-                "state": 4
-              },
-              {
-                "dx": 1,
-                "dy": 2,
-                "state": 3
-              },
-              {
-                "dx": -1,
-                "dy": 3,
-                "state": 7
-              },
-              {
-                "dx": 0,
-                "dy": 3,
-                "state": 7
-              },
-              {
-                "dx": 8,
-                "dy": -6,
-                "state": 2
-              },
-              {
-                "dx": 5,
-                "dy": -3,
-                "state": 2
-              }
-            ],
-            "origin": "mutation",
-            "parentGenomeId": null
-          },
-          "descriptor": {
-            "reachTier": 1,
-            "endDirTier": 3
-          },
-          "quality": 0.3,
-          "meta": {
-            "coverage": 0.3,
-            "reachRows": 20
+            "coverage": 1,
+            "reachRows": 32
           }
         }
       ],
@@ -161446,19 +161257,19 @@
         "1,2",
         {
           "genome": {
-            "rule": "LRLRLRRLLLRR",
-            "antY": 27,
-            "antDir": 2,
+            "rule": "RRRRL",
+            "antY": 30,
+            "antDir": 3,
             "cells": [
               {
-                "dx": 3,
+                "dx": -1,
                 "dy": 0,
-                "state": 9
+                "state": 2
               },
               {
-                "dx": -2,
-                "dy": -6,
-                "state": 1
+                "dx": -1,
+                "dy": 1,
+                "state": 3
               }
             ],
             "origin": "mutation",
@@ -161468,10 +161279,43 @@
             "reachTier": 1,
             "endDirTier": 2
           },
-          "quality": 0.2,
+          "quality": 1,
           "meta": {
-            "coverage": 0.2,
-            "reachRows": 14
+            "coverage": 1,
+            "reachRows": 98
+          }
+        }
+      ],
+      [
+        "1,3",
+        {
+          "genome": {
+            "rule": "LLLLLRRR",
+            "antY": 14,
+            "antDir": 3,
+            "cells": [
+              {
+                "dx": 0,
+                "dy": -1,
+                "state": 4
+              },
+              {
+                "dx": 5,
+                "dy": -1,
+                "state": 3
+              }
+            ],
+            "origin": "mutation",
+            "parentGenomeId": null
+          },
+          "descriptor": {
+            "reachTier": 1,
+            "endDirTier": 3
+          },
+          "quality": 1,
+          "meta": {
+            "coverage": 1,
+            "reachRows": 110
           }
         }
       ],
@@ -161479,14 +161323,14 @@
         "0,3",
         {
           "genome": {
-            "rule": "LLRRLLLRRLRLLR",
+            "rule": "RRLLLRLLLRRRR",
             "antY": 31,
             "antDir": 1,
             "cells": [
               {
-                "dx": 0,
-                "dy": -1,
-                "state": 9
+                "dx": 5,
+                "dy": -3,
+                "state": 1
               }
             ],
             "origin": "mutation",
@@ -161496,637 +161340,136 @@
             "reachTier": 0,
             "endDirTier": 3
           },
-          "quality": 0.4,
+          "quality": 1,
           "meta": {
-            "coverage": 0.4,
-            "reachRows": 0
+            "coverage": 1,
+            "reachRows": 16
           }
         }
       ],
       [
-        "0,0",
+        "0,1",
         {
           "genome": {
-            "rule": "LRLRLRLLLLRLRLR",
-            "antY": 27,
-            "antDir": 0,
-            "cells": [
-              {
-                "dx": 0,
-                "dy": 0,
-                "state": 5
-              },
-              {
-                "dx": -4,
-                "dy": 2,
-                "state": 1
-              },
-              {
-                "dx": -3,
-                "dy": 2,
-                "state": 8
-              },
-              {
-                "dx": -2,
-                "dy": 2,
-                "state": 4
-              },
-              {
-                "dx": -1,
-                "dy": 2,
-                "state": 1
-              },
-              {
-                "dx": 0,
-                "dy": 2,
-                "state": 1
-              },
-              {
-                "dx": 1,
-                "dy": 2,
-                "state": 3
-              },
-              {
-                "dx": -3,
-                "dy": 3,
-                "state": 1
-              },
-              {
-                "dx": -2,
-                "dy": 3,
-                "state": 1
-              },
-              {
-                "dx": 3,
-                "dy": 3,
-                "state": 4
-              },
-              {
-                "dx": -3,
-                "dy": -1,
-                "state": 8
-              },
-              {
-                "dx": 4,
-                "dy": -4,
-                "state": 0
-              },
-              {
-                "dx": 3,
-                "dy": -2,
-                "state": 11
-              },
-              {
-                "dx": -2,
-                "dy": -4,
-                "state": 10
-              }
-            ],
-            "origin": "mutation",
-            "parentGenomeId": null
-          },
-          "descriptor": {
-            "reachTier": 0,
-            "endDirTier": 0
-          },
-          "quality": 0.4,
-          "meta": {
-            "coverage": 0.4,
-            "reachRows": 0
-          }
-        }
-      ],
-      [
-        "5,3",
-        {
-          "genome": {
-            "rule": "LLRLLRL",
-            "antY": 29,
-            "antDir": 3,
-            "cells": [
-              {
-                "dx": 0,
-                "dy": 1,
-                "state": 4
-              },
-              {
-                "dx": 1,
-                "dy": 1,
-                "state": 4
-              },
-              {
-                "dx": 0,
-                "dy": 2,
-                "state": 4
-              },
-              {
-                "dx": -1,
-                "dy": 0,
-                "state": 1
-              }
-            ],
-            "origin": "mutation",
-            "parentGenomeId": null
-          },
-          "descriptor": {
-            "reachTier": 5,
-            "endDirTier": 3
-          },
-          "quality": 0.7,
-          "meta": {
-            "coverage": 0.7,
-            "reachRows": 52
-          }
-        }
-      ],
-      [
-        "2,2",
-        {
-          "genome": {
-            "rule": "LRLRLRLLLLRLRLR",
-            "antY": 27,
-            "antDir": 0,
-            "cells": [
-              {
-                "dx": 0,
-                "dy": 0,
-                "state": 5
-              },
-              {
-                "dx": -3,
-                "dy": 2,
-                "state": 4
-              },
-              {
-                "dx": -2,
-                "dy": 2,
-                "state": 4
-              },
-              {
-                "dx": -1,
-                "dy": 2,
-                "state": 1
-              },
-              {
-                "dx": 0,
-                "dy": 2,
-                "state": 1
-              },
-              {
-                "dx": 1,
-                "dy": 2,
-                "state": 3
-              },
-              {
-                "dx": -3,
-                "dy": 3,
-                "state": 1
-              },
-              {
-                "dx": -2,
-                "dy": 3,
-                "state": 1
-              },
-              {
-                "dx": 3,
-                "dy": 3,
-                "state": 4
-              },
-              {
-                "dx": -3,
-                "dy": -1,
-                "state": 8
-              },
-              {
-                "dx": 4,
-                "dy": -4,
-                "state": 0
-              },
-              {
-                "dx": 3,
-                "dy": -2,
-                "state": 11
-              },
-              {
-                "dx": -2,
-                "dy": -4,
-                "state": 10
-              }
-            ],
-            "origin": "mutation",
-            "parentGenomeId": null
-          },
-          "descriptor": {
-            "reachTier": 2,
-            "endDirTier": 2
-          },
-          "quality": 0.4,
-          "meta": {
-            "coverage": 0.4,
-            "reachRows": 22
-          }
-        }
-      ],
-      [
-        "2,1",
-        {
-          "genome": {
-            "rule": "RRRRL",
+            "rule": "LLRLRRLLLLRR",
             "antY": 28,
-            "antDir": 3,
+            "antDir": 1,
             "cells": [
               {
                 "dx": -1,
-                "dy": 0,
-                "state": 2
-              },
-              {
-                "dx": -1,
-                "dy": 1,
-                "state": 3
-              }
-            ],
-            "origin": "mutation",
-            "parentGenomeId": null
-          },
-          "descriptor": {
-            "reachTier": 2,
-            "endDirTier": 1
-          },
-          "quality": 0.5,
-          "meta": {
-            "coverage": 0.5,
-            "reachRows": 30
-          }
-        }
-      ],
-      [
-        "3,2",
-        {
-          "genome": {
-            "rule": "LLLRLLLRRLRLLRL",
-            "antY": 29,
-            "antDir": 2,
-            "cells": [
-              {
-                "dx": -1,
-                "dy": -1,
-                "state": 8
-              },
-              {
-                "dx": -1,
-                "dy": 0,
-                "state": 2
+                "dy": 3,
+                "state": 1
               },
               {
                 "dx": 7,
-                "dy": -6,
-                "state": 1
-              }
-            ],
-            "origin": "mutation",
-            "parentGenomeId": null
-          },
-          "descriptor": {
-            "reachTier": 3,
-            "endDirTier": 2
-          },
-          "quality": 0.4,
-          "meta": {
-            "coverage": 0.4,
-            "reachRows": 38
-          }
-        }
-      ],
-      [
-        "2,0",
-        {
-          "genome": {
-            "rule": "LLLLLR",
-            "antY": 29,
-            "antDir": 2,
-            "cells": [
-              {
-                "dx": 1,
                 "dy": 0,
-                "state": 5
+                "state": 10
               },
               {
-                "dx": 1,
-                "dy": 1,
-                "state": 4
-              },
-              {
-                "dx": 2,
-                "dy": 1,
-                "state": 4
-              },
-              {
-                "dx": 1,
-                "dy": 2,
-                "state": 4
-              }
-            ],
-            "origin": "mutation",
-            "parentGenomeId": null
-          },
-          "descriptor": {
-            "reachTier": 2,
-            "endDirTier": 0
-          },
-          "quality": 0.4,
-          "meta": {
-            "coverage": 0.4,
-            "reachRows": 26
-          }
-        }
-      ],
-      [
-        "3,3",
-        {
-          "genome": {
-            "rule": "RRRL",
-            "antY": 30,
-            "antDir": 3,
-            "cells": [
-              {
-                "dx": -2,
-                "dy": 0,
-                "state": 1
-              },
-              {
-                "dx": -1,
-                "dy": 1,
+                "dx": 8,
+                "dy": -3,
                 "state": 3
-              }
-            ],
-            "origin": "mutation",
-            "parentGenomeId": null
-          },
-          "descriptor": {
-            "reachTier": 3,
-            "endDirTier": 3
-          },
-          "quality": 0.4,
-          "meta": {
-            "coverage": 0.4,
-            "reachRows": 40
-          }
-        }
-      ],
-      [
-        "3,0",
-        {
-          "genome": {
-            "rule": "LLLRLLLRRRLRLLR",
-            "antY": 30,
-            "antDir": 2,
-            "cells": [
+              },
               {
-                "dx": -1,
-                "dy": -1,
+                "dx": 7,
+                "dy": -5,
                 "state": 8
               },
               {
-                "dx": -2,
-                "dy": 0,
-                "state": 2
-              }
-            ],
-            "origin": "mutation",
-            "parentGenomeId": null
-          },
-          "descriptor": {
-            "reachTier": 3,
-            "endDirTier": 0
-          },
-          "quality": 0.7,
-          "meta": {
-            "coverage": 0.7,
-            "reachRows": 36
-          }
-        }
-      ],
-      [
-        "2,3",
-        {
-          "genome": {
-            "rule": "LLLRLLLRRRLRLLR",
-            "antY": 31,
-            "antDir": 1,
-            "cells": [
+                "dx": 4,
+                "dy": -7,
+                "state": 10
+              },
               {
-                "dx": -1,
-                "dy": -1,
+                "dx": 2,
+                "dy": -2,
                 "state": 9
               },
               {
                 "dx": -6,
-                "dy": -7,
-                "state": 8
-              }
-            ],
-            "origin": "mutation",
-            "parentGenomeId": null
-          },
-          "descriptor": {
-            "reachTier": 2,
-            "endDirTier": 3
-          },
-          "quality": 0.4,
-          "meta": {
-            "coverage": 0.4,
-            "reachRows": 30
-          }
-        }
-      ],
-      [
-        "5,1",
-        {
-          "genome": {
-            "rule": "LLRLLRRL",
-            "antY": 29,
-            "antDir": 3,
-            "cells": [
-              {
-                "dx": 0,
-                "dy": 1,
-                "state": 4
+                "dy": -8,
+                "state": 3
               },
               {
-                "dx": 1,
-                "dy": 1,
-                "state": 4
-              },
-              {
-                "dx": 0,
-                "dy": 2,
-                "state": 6
-              },
-              {
-                "dx": -7,
+                "dx": 8,
                 "dy": -6,
-                "state": 4
-              }
-            ],
-            "origin": "mutation",
-            "parentGenomeId": null
-          },
-          "descriptor": {
-            "reachTier": 5,
-            "endDirTier": 1
-          },
-          "quality": 0.8,
-          "meta": {
-            "coverage": 0.8,
-            "reachRows": 54
-          }
-        }
-      ],
-      [
-        "5,0",
-        {
-          "genome": {
-            "rule": "LLRLLRR",
-            "antY": 28,
-            "antDir": 2,
-            "cells": [
-              {
-                "dx": 0,
-                "dy": 1,
-                "state": 4
+                "state": 5
               },
               {
-                "dx": 1,
-                "dy": 1,
-                "state": 2
+                "dx": -4,
+                "dy": -8,
+                "state": 10
               },
               {
-                "dx": 0,
-                "dy": 2,
-                "state": 4
-              }
-            ],
-            "origin": "mutation",
-            "parentGenomeId": null
-          },
-          "descriptor": {
-            "reachTier": 5,
-            "endDirTier": 0
-          },
-          "quality": 0.9,
-          "meta": {
-            "coverage": 0.9,
-            "reachRows": 54
-          }
-        }
-      ],
-      [
-        "3,1",
-        {
-          "genome": {
-            "rule": "LLLRLLLRLRRLRLLR",
-            "antY": 31,
-            "antDir": 1,
-            "cells": [
+                "dx": 3,
+                "dy": -8,
+                "state": 0
+              },
               {
-                "dx": -1,
-                "dy": -1,
+                "dx": -2,
+                "dy": -3,
+                "state": 0
+              },
+              {
+                "dx": 8,
+                "dy": -4,
+                "state": 0
+              },
+              {
+                "dx": -3,
+                "dy": 3,
                 "state": 9
               },
               {
+                "dx": 6,
+                "dy": 3,
+                "state": 10
+              },
+              {
                 "dx": 1,
-                "dy": -4,
-                "state": 11
+                "dy": -5,
+                "state": 6
               }
             ],
             "origin": "mutation",
             "parentGenomeId": null
           },
           "descriptor": {
-            "reachTier": 3,
+            "reachTier": 0,
             "endDirTier": 1
           },
-          "quality": 0.4,
+          "quality": 1,
           "meta": {
-            "coverage": 0.4,
-            "reachRows": 34
+            "coverage": 1,
+            "reachRows": 28
           }
         }
       ],
       [
-        "4,1",
+        "0,2",
         {
           "genome": {
-            "rule": "LLRLLRRL",
-            "antY": 29,
-            "antDir": 3,
-            "cells": [
-              {
-                "dx": 0,
-                "dy": 1,
-                "state": 4
-              },
-              {
-                "dx": 1,
-                "dy": 1,
-                "state": 4
-              },
-              {
-                "dx": 0,
-                "dy": 2,
-                "state": 4
-              }
-            ],
-            "origin": "mutation",
-            "parentGenomeId": null
-          },
-          "descriptor": {
-            "reachTier": 4,
-            "endDirTier": 1
-          },
-          "quality": 0.7,
-          "meta": {
-            "coverage": 0.7,
-            "reachRows": 50
-          }
-        }
-      ],
-      [
-        "5,2",
-        {
-          "genome": {
-            "rule": "LLRLLRR",
-            "antY": 29,
+            "rule": "RRLLLRLLLRRRR",
+            "antY": 31,
             "antDir": 0,
             "cells": [
               {
-                "dx": 0,
-                "dy": 1,
-                "state": 4
-              },
-              {
-                "dx": 1,
-                "dy": 1,
-                "state": 2
-              },
-              {
-                "dx": 0,
-                "dy": 2,
-                "state": 4
+                "dx": 5,
+                "dy": -3,
+                "state": 1
               }
             ],
             "origin": "mutation",
             "parentGenomeId": null
           },
           "descriptor": {
-            "reachTier": 5,
+            "reachTier": 0,
             "endDirTier": 2
           },
-          "quality": 0.7,
+          "quality": 1,
           "meta": {
-            "coverage": 0.7,
-            "reachRows": 56
+            "coverage": 1,
+            "reachRows": 24
           }
         }
       ],
@@ -162134,19 +161477,24 @@
         "1,1",
         {
           "genome": {
-            "rule": "LLLRLLLRRRLRLRR",
-            "antY": 30,
+            "rule": "LLLLLRRR",
+            "antY": 15,
             "antDir": 1,
             "cells": [
               {
-                "dx": -1,
+                "dx": 0,
                 "dy": -1,
-                "state": 9
+                "state": 4
               },
               {
-                "dx": -6,
-                "dy": -7,
-                "state": 8
+                "dx": 5,
+                "dy": -1,
+                "state": 3
+              },
+              {
+                "dx": 4,
+                "dy": -6,
+                "state": 3
               }
             ],
             "origin": "mutation",
@@ -162156,48 +161504,38 @@
             "reachTier": 1,
             "endDirTier": 1
           },
-          "quality": 0.2,
+          "quality": 1,
           "meta": {
-            "coverage": 0.2,
-            "reachRows": 14
+            "coverage": 1,
+            "reachRows": 110
           }
         }
       ],
       [
-        "4,3",
+        "1,0",
         {
           "genome": {
-            "rule": "LLRLLRRL",
-            "antY": 29,
-            "antDir": 3,
+            "rule": "RLRLRLRRRRRLL",
+            "antY": 17,
+            "antDir": 0,
             "cells": [
               {
-                "dx": 0,
-                "dy": 1,
-                "state": 4
-              },
-              {
-                "dx": 0,
-                "dy": 2,
-                "state": 6
-              },
-              {
-                "dx": -7,
-                "dy": -7,
-                "state": 4
+                "dx": -5,
+                "dy": -2,
+                "state": 8
               }
             ],
             "origin": "mutation",
             "parentGenomeId": null
           },
           "descriptor": {
-            "reachTier": 4,
-            "endDirTier": 3
+            "reachTier": 1,
+            "endDirTier": 0
           },
-          "quality": 0.5,
+          "quality": 0.8,
           "meta": {
-            "coverage": 0.5,
-            "reachRows": 50
+            "coverage": 0.8,
+            "reachRows": 88
           }
         }
       ]

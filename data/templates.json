@@ -14,44 +14,13 @@
     "attackCost": 5,
     "attackLife": 20000,
     "disruptCost": 3,
-    "disruptLife": 1000,
+    "disruptLife": 6000,
     "maxCells": 16,
     "templateCellRadius": 8
   },
   "attack": [
     {
       "id": "A1",
-      "kind": "attack",
-      "rule": "LLLRRRLLLRL",
-      "colorCount": 11,
-      "cells": [
-        [
-          1,
-          1,
-          4
-        ]
-      ],
-      "antY": 20,
-      "antDir": 2,
-      "cost": 6,
-      "arrivalStep": 7712,
-      "entryXAt0": 200,
-      "robustness": 0.9995039682539683,
-      "costTier": 6,
-      "featureTier": 4,
-      "highway": {
-        "trajectoryPeriodic": true,
-        "fingerprintVerified": true,
-        "formationStep": 129,
-        "period": 38,
-        "driftX": 1,
-        "driftY": 1,
-        "speed": 0.03721614637823935,
-        "verifiedCycles": 786
-      }
-    },
-    {
-      "id": "A2",
       "kind": "attack",
       "rule": "RRRRLLRLR",
       "colorCount": 9,
@@ -107,7 +76,7 @@
       "cost": 14,
       "arrivalStep": 11115,
       "entryXAt0": 193,
-      "robustness": 0.9988219246031746,
+      "robustness": 0.9872462606837606,
       "costTier": 14,
       "featureTier": 4,
       "highway": {
@@ -122,88 +91,206 @@
       }
     },
     {
-      "id": "A3",
+      "id": "A2",
       "kind": "attack",
-      "rule": "RRLLLRL",
-      "colorCount": 7,
+      "rule": "RRRLRRRLLLRR",
+      "colorCount": 12,
       "cells": [
         [
           -1,
-          1,
-          2
+          0,
+          7
         ],
         [
-          -2,
-          2,
-          1
+          0,
+          0,
+          3
         ],
         [
           -1,
-          2,
-          4
+          1,
+          7
         ],
         [
+          0,
           1,
-          2,
           6
         ],
         [
-          -2,
-          3,
-          1
-        ],
-        [
-          -1,
-          3,
-          4
-        ],
-        [
-          0,
-          3,
-          4
-        ],
-        [
           1,
-          3,
+          1,
           2
         ],
         [
-          -2,
-          4,
-          1
+          0,
+          2,
+          3
+        ],
+        [
+          -4,
+          -4,
+          9
+        ],
+        [
+          -7,
+          -7,
+          0
+        ],
+        [
+          3,
+          -3,
+          9
         ],
         [
           -1,
-          4,
-          1
+          2,
+          10
         ],
         [
+          -6,
           0,
-          4,
-          1
+          4
         ]
       ],
-      "antY": 27,
-      "antDir": 1,
+      "antY": 29,
+      "antDir": 0,
       "cost": 16,
-      "arrivalStep": 8085,
-      "entryXAt0": 64,
-      "robustness": 0.9995039682539683,
+      "arrivalStep": 4998,
+      "entryXAt0": 193,
+      "robustness": 0.9930555555555556,
       "costTier": 16,
+      "featureTier": 4,
+      "highway": {
+        "trajectoryPeriodic": true,
+        "fingerprintVerified": true,
+        "formationStep": 0,
+        "period": 52,
+        "driftX": 2,
+        "driftY": 2,
+        "speed": 0.05439282932204212,
+        "verifiedCycles": 576
+      }
+    },
+    {
+      "id": "A3",
+      "kind": "attack",
+      "rule": "LLLRRRLLLRL",
+      "colorCount": 11,
+      "cells": [
+        [
+          1,
+          1,
+          4
+        ]
+      ],
+      "antY": 20,
+      "antDir": 2,
+      "cost": 6,
+      "arrivalStep": 7712,
+      "entryXAt0": 200,
+      "robustness": 0.9842414529914529,
+      "costTier": 6,
+      "featureTier": 4,
+      "highway": {
+        "trajectoryPeriodic": true,
+        "fingerprintVerified": true,
+        "formationStep": 129,
+        "period": 38,
+        "driftX": 1,
+        "driftY": 1,
+        "speed": 0.03721614637823935,
+        "verifiedCycles": 786
+      }
+    },
+    {
+      "id": "A4",
+      "kind": "attack",
+      "rule": "RRRRL",
+      "colorCount": 5,
+      "cells": [
+        [
+          -1,
+          0,
+          4
+        ],
+        [
+          -2,
+          1,
+          4
+        ],
+        [
+          -1,
+          1,
+          3
+        ],
+        [
+          -1,
+          2,
+          3
+        ]
+      ],
+      "antY": 29,
+      "antDir": 2,
+      "cost": 9,
+      "arrivalStep": 6550,
+      "entryXAt0": 63,
+      "robustness": 0.992721688034188,
+      "costTier": 9,
       "featureTier": 1,
       "highway": {
         "trajectoryPeriodic": true,
         "fingerprintVerified": true,
         "formationStep": 0,
-        "period": 42,
-        "driftX": -1,
-        "driftY": 1,
-        "speed": 0.033671751485073696,
-        "verifiedCycles": 714
+        "period": 68,
+        "driftX": -2,
+        "driftY": 2,
+        "speed": 0.04159451654038515,
+        "verifiedCycles": 441
       }
     },
     {
-      "id": "A4",
+      "id": "A5",
+      "kind": "attack",
+      "rule": "RRLLLRLRRLRRRLL",
+      "colorCount": 15,
+      "cells": [
+        [
+          2,
+          -2,
+          12
+        ],
+        [
+          2,
+          -1,
+          7
+        ],
+        [
+          1,
+          0,
+          9
+        ]
+      ],
+      "antY": 31,
+      "antDir": 1,
+      "cost": 8,
+      "arrivalStep": 8965,
+      "entryXAt0": 194,
+      "robustness": 0.992454594017094,
+      "costTier": 8,
+      "featureTier": 4,
+      "highway": {
+        "trajectoryPeriodic": true,
+        "fingerprintVerified": true,
+        "formationStep": 129,
+        "period": 326,
+        "driftX": 7,
+        "driftY": 7,
+        "speed": 0.030366548885311855,
+        "verifiedCycles": 91
+      }
+    },
+    {
+      "id": "A6",
       "kind": "attack",
       "rule": "RRRLRRRLL",
       "colorCount": 9,
@@ -264,7 +351,7 @@
       "cost": 15,
       "arrivalStep": 5045,
       "entryXAt0": 62,
-      "robustness": 0.9996279761904762,
+      "robustness": 0.9983974358974359,
       "costTier": 15,
       "featureTier": 1,
       "highway": {
@@ -279,349 +366,192 @@
       }
     },
     {
-      "id": "A5",
+      "id": "A7",
       "kind": "attack",
-      "rule": "LRLRRLRRLLLRRLR",
-      "colorCount": 15,
+      "rule": "RRLLLRL",
+      "colorCount": 7,
       "cells": [
         [
-          -1,
-          -1,
-          7
+          2,
+          0,
+          6
+        ],
+        [
+          3,
+          0,
+          2
         ],
         [
           0,
-          0,
-          7
+          1,
+          4
+        ],
+        [
+          3,
+          1,
+          4
+        ],
+        [
+          4,
+          1,
+          1
+        ],
+        [
+          1,
+          2,
+          2
+        ],
+        [
+          2,
+          2,
+          4
+        ],
+        [
+          3,
+          2,
+          4
+        ],
+        [
+          4,
+          2,
+          1
+        ],
+        [
+          2,
+          3,
+          1
+        ],
+        [
+          3,
+          3,
+          1
+        ],
+        [
+          4,
+          3,
+          1
         ],
         [
           -3,
-          1,
+          -7,
           3
         ],
         [
-          -4,
-          2,
-          1
-        ],
-        [
-          -3,
-          2,
-          4
-        ],
-        [
-          0,
-          2,
-          7
-        ],
-        [
-          -3,
-          3,
-          1
-        ],
-        [
-          -2,
-          3,
-          1
-        ],
-        [
-          1,
-          3,
-          1
-        ],
-        [
-          4,
-          -8,
-          12
-        ],
-        [
-          1,
-          -6,
-          14
-        ],
-        [
-          7,
-          -4,
-          5
-        ],
-        [
           4,
           -5,
-          12
-        ]
-      ],
-      "antY": 28,
-      "antDir": 0,
-      "cost": 18,
-      "arrivalStep": 10492,
-      "entryXAt0": 194,
-      "robustness": 0.9978918650793651,
-      "costTier": 18,
-      "featureTier": 4,
-      "highway": {
-        "trajectoryPeriodic": true,
-        "fingerprintVerified": true,
-        "formationStep": 1025,
-        "period": 100,
-        "driftX": 2,
-        "driftY": 2,
-        "speed": 0.0282842712474619,
-        "verifiedCycles": 289
-      }
-    },
-    {
-      "id": "A6",
-      "kind": "attack",
-      "rule": "RL",
-      "colorCount": 2,
-      "cells": [
-        [
-          0,
-          1,
-          0
-        ],
-        [
-          2,
-          7,
           1
-        ],
-        [
-          -4,
-          -3,
-          0
-        ],
-        [
-          0,
-          -1,
-          1
-        ],
-        [
-          3,
-          3,
-          0
-        ],
-        [
-          0,
-          -3,
-          0
-        ],
-        [
-          0,
-          -7,
-          0
-        ],
-        [
-          -4,
-          -1,
-          0
-        ],
-        [
-          1,
-          0,
-          0
-        ],
-        [
-          -1,
-          1,
-          0
         ],
         [
           6,
-          -1,
-          0
+          -4,
+          4
         ],
         [
-          -6,
-          -2,
-          0
-        ],
-        [
-          -6,
-          2,
-          1
-        ],
-        [
+          -8,
           -3,
-          -5,
-          0
-        ],
-        [
-          7,
-          0,
-          0
-        ],
-        [
-          -7,
-          -7,
-          1
+          2
         ]
       ],
-      "antY": 21,
-      "antDir": 3,
+      "antY": 26,
+      "antDir": 1,
       "cost": 21,
-      "arrivalStep": 11185,
-      "entryXAt0": 52,
-      "robustness": 0.9995659722222222,
+      "arrivalStep": 8175,
+      "entryXAt0": 199,
+      "robustness": 0.9954594017094017,
       "costTier": 21,
-      "featureTier": 1,
-      "highway": {
-        "trajectoryPeriodic": true,
-        "fingerprintVerified": true,
-        "formationStep": 1025,
-        "period": 104,
-        "driftX": -2,
-        "driftY": 2,
-        "speed": 0.02719641466102106,
-        "verifiedCycles": 278
-      }
-    },
-    {
-      "id": "A7",
-      "kind": "attack",
-      "rule": "LLLLLR",
-      "colorCount": 6,
-      "cells": [
-        [
-          1,
-          0,
-          5
-        ],
-        [
-          1,
-          1,
-          4
-        ],
-        [
-          2,
-          1,
-          5
-        ],
-        [
-          1,
-          2,
-          4
-        ]
-      ],
-      "antY": 29,
-      "antDir": 2,
-      "cost": 9,
-      "arrivalStep": 8090,
-      "entryXAt0": 193,
-      "robustness": 0.9997519841269841,
-      "costTier": 9,
       "featureTier": 4,
       "highway": {
         "trajectoryPeriodic": true,
         "fingerprintVerified": true,
         "formationStep": 0,
-        "period": 84,
-        "driftX": 2,
-        "driftY": 2,
+        "period": 42,
+        "driftX": 1,
+        "driftY": 1,
         "speed": 0.033671751485073696,
-        "verifiedCycles": 357
+        "verifiedCycles": 714
       }
     },
     {
       "id": "A8",
       "kind": "attack",
-      "rule": "RLRLRLRLRRLRRLRL",
+      "rule": "RRLLLRLRRLRRRLLL",
       "colorCount": 16,
       "cells": [
         [
-          -2,
-          1,
-          7
-        ],
-        [
+          2,
           -1,
-          3,
-          3
+          5
         ],
         [
           3,
-          3,
-          3
-        ],
-        [
-          5,
-          3,
+          -1,
           1
         ],
         [
-          -1,
-          4,
-          3
-        ],
-        [
+          1,
           0,
-          4,
-          1
-        ],
-        [
-          1,
-          4,
-          1
-        ],
-        [
-          4,
-          4,
-          1
-        ],
-        [
-          -1,
-          5,
-          1
+          3
         ],
         [
           2,
-          5,
-          1
-        ],
-        [
-          3,
-          5,
-          1
-        ],
-        [
           0,
-          -1,
-          9
+          4
+        ],
+        [
+          2,
+          1,
+          1
+        ],
+        [
+          -2,
+          -3,
+          6
+        ],
+        [
+          -8,
+          -2,
+          0
+        ],
+        [
+          4,
+          -6,
+          13
         ]
       ],
-      "antY": 26,
-      "antDir": 0,
-      "cost": 17,
-      "arrivalStep": 10404,
-      "entryXAt0": 192,
-      "robustness": 0.9978918650793651,
-      "costTier": 17,
-      "featureTier": 4,
+      "antY": 30,
+      "antDir": 1,
+      "cost": 13,
+      "arrivalStep": 10695,
+      "entryXAt0": 67,
+      "robustness": 0.9973958333333334,
+      "costTier": 13,
+      "featureTier": 1,
       "highway": {
         "trajectoryPeriodic": true,
         "fingerprintVerified": true,
-        "formationStep": 129,
-        "period": 108,
-        "driftX": 2,
-        "driftY": 2,
-        "speed": 0.026189140043946207,
-        "verifiedCycles": 276
+        "formationStep": 257,
+        "period": 386,
+        "driftX": -7,
+        "driftY": 7,
+        "speed": 0.025646359939408458,
+        "verifiedCycles": 77
       }
     },
     {
       "id": "A9",
       "kind": "attack",
-      "rule": "LLRLLRR",
-      "colorCount": 7,
+      "rule": "RRLRRLLLR",
+      "colorCount": 9,
       "cells": [
+        [
+          -1,
+          1,
+          2
+        ],
         [
           0,
           1,
           4
-        ],
-        [
-          1,
-          1,
-          2
         ],
         [
           0,
@@ -630,19 +560,19 @@
         ]
       ],
       "antY": 29,
-      "antDir": 3,
+      "antDir": 1,
       "cost": 8,
       "arrivalStep": 3469,
-      "entryXAt0": 192,
-      "robustness": 0.9994419642857143,
+      "entryXAt0": 64,
+      "robustness": 0.9985977564102564,
       "costTier": 8,
-      "featureTier": 4,
+      "featureTier": 1,
       "highway": {
         "trajectoryPeriodic": true,
         "fingerprintVerified": true,
         "formationStep": 0,
         "period": 18,
-        "driftX": 1,
+        "driftX": -1,
         "driftY": 1,
         "speed": 0.07856742013183862,
         "verifiedCycles": 1666
@@ -653,1102 +583,999 @@
     {
       "id": "D1",
       "kind": "disrupt",
-      "rule": "RRLRLLRR",
-      "colorCount": 8,
-      "cells": [
-        [
-          0,
-          1,
-          1
-        ],
-        [
-          1,
-          3,
-          3
-        ],
-        [
-          1,
-          4,
-          5
-        ],
-        [
-          2,
-          4,
-          5
-        ],
-        [
-          3,
-          4,
-          6
-        ],
-        [
-          0,
-          5,
-          1
-        ],
-        [
-          1,
-          5,
-          7
-        ],
-        [
-          2,
-          5,
-          6
-        ],
-        [
-          6,
-          1,
-          3
-        ],
-        [
-          8,
-          3,
-          0
-        ],
-        [
-          8,
-          -5,
-          4
-        ],
-        [
-          -4,
-          5,
-          5
-        ],
-        [
-          7,
-          -4,
-          4
-        ],
-        [
-          -8,
-          1,
-          4
-        ],
-        [
-          -8,
-          -1,
-          3
-        ],
-        [
-          8,
-          -2,
-          6
-        ]
-      ],
-      "antY": 25,
-      "antDir": 2,
-      "cost": 19,
-      "reachRows": 12,
-      "endDirection": 0,
-      "coverage": 0.5555555555555556,
-      "costTier": 19,
-      "featureTier": 1
-    },
-    {
-      "id": "D2",
-      "kind": "disrupt",
-      "rule": "LLLRLLLRRLRLLRL",
+      "rule": "LRLRRLRRLRRLLRR",
       "colorCount": 15,
       "cells": [
         [
+          1,
+          -2,
+          1
+        ],
+        [
+          2,
+          -2,
+          1
+        ],
+        [
+          -2,
           -1,
+          1
+        ],
+        [
+          0,
+          -1,
+          2
+        ],
+        [
+          1,
+          -1,
+          12
+        ],
+        [
+          -1,
+          0,
+          13
+        ],
+        [
+          5,
+          -3,
+          11
+        ],
+        [
+          5,
           -1,
           8
         ],
         [
           -1,
+          -2,
+          11
+        ],
+        [
+          1,
           0,
+          11
+        ]
+      ],
+      "antY": 30,
+      "antDir": 2,
+      "cost": 13,
+      "reachRows": 0,
+      "endDirection": 0,
+      "coverage": 0.1111111111111111,
+      "costTier": 13,
+      "featureTier": 0
+    },
+    {
+      "id": "D2",
+      "kind": "disrupt",
+      "rule": "LLLLLRRR",
+      "colorCount": 8,
+      "cells": [
+        [
+          0,
+          -1,
+          4
+        ],
+        [
+          5,
+          -1,
+          3
+        ],
+        [
+          4,
+          -6,
+          3
+        ]
+      ],
+      "antY": 15,
+      "antDir": 1,
+      "cost": 6,
+      "reachRows": 110,
+      "endDirection": 1,
+      "coverage": 0.8888888888888888,
+      "costTier": 6,
+      "featureTier": 1
+    },
+    {
+      "id": "D3",
+      "kind": "disrupt",
+      "rule": "LLLLRLRLLRL",
+      "colorCount": 11,
+      "cells": [
+        [
+          1,
+          1,
+          2
+        ]
+      ],
+      "antY": 30,
+      "antDir": 3,
+      "cost": 4,
+      "reachRows": 0,
+      "endDirection": 0,
+      "coverage": 0.5555555555555556,
+      "costTier": 4,
+      "featureTier": 0
+    },
+    {
+      "id": "D4",
+      "kind": "disrupt",
+      "rule": "LRLRRLRRLRRLLRR",
+      "colorCount": 15,
+      "cells": [
+        [
+          -1,
+          0,
+          1
+        ]
+      ],
+      "antY": 22,
+      "antDir": 2,
+      "cost": 4,
+      "reachRows": 0,
+      "endDirection": 0,
+      "coverage": 0.3333333333333333,
+      "costTier": 4,
+      "featureTier": 0
+    },
+    {
+      "id": "D5",
+      "kind": "disrupt",
+      "rule": "LRLRRLRRLRRLLRR",
+      "colorCount": 15,
+      "cells": [
+        [
+          -1,
+          0,
+          1
+        ],
+        [
+          2,
+          8,
+          13
+        ],
+        [
+          -3,
+          -3,
+          5
+        ],
+        [
+          0,
+          -4,
+          0
+        ],
+        [
+          6,
+          3,
+          5
+        ],
+        [
+          3,
+          -7,
           2
         ],
         [
+          -7,
+          8,
+          14
+        ],
+        [
           7,
+          -6,
+          5
+        ]
+      ],
+      "antY": 21,
+      "antDir": 2,
+      "cost": 11,
+      "reachRows": 0,
+      "endDirection": 0,
+      "coverage": 0.2222222222222222,
+      "costTier": 11,
+      "featureTier": 0
+    },
+    {
+      "id": "D6",
+      "kind": "disrupt",
+      "rule": "LLLRLLLRLRRL",
+      "colorCount": 12,
+      "cells": [
+        [
+          0,
+          0,
+          7
+        ],
+        [
+          2,
+          0,
+          3
+        ],
+        [
+          0,
+          1,
+          6
+        ]
+      ],
+      "antY": 30,
+      "antDir": 3,
+      "cost": 6,
+      "reachRows": 98,
+      "endDirection": 2,
+      "coverage": 0.8888888888888888,
+      "costTier": 6,
+      "featureTier": 1
+    },
+    {
+      "id": "D7",
+      "kind": "disrupt",
+      "rule": "RLRLRLRRRRRLL",
+      "colorCount": 13,
+      "cells": [
+        [
+          -5,
+          -2,
+          8
+        ]
+      ],
+      "antY": 17,
+      "antDir": 0,
+      "cost": 4,
+      "reachRows": 88,
+      "endDirection": 0,
+      "coverage": 0.8888888888888888,
+      "costTier": 4,
+      "featureTier": 1
+    },
+    {
+      "id": "D8",
+      "kind": "disrupt",
+      "rule": "LRLRLRRRLLR",
+      "colorCount": 11,
+      "cells": [
+        [
+          -4,
           -6,
           1
         ]
       ],
       "antY": 29,
       "antDir": 2,
-      "cost": 6,
-      "reachRows": 38,
-      "endDirection": 2,
-      "coverage": 0.4444444444444444,
-      "costTier": 6,
-      "featureTier": 3
-    },
-    {
-      "id": "D3",
-      "kind": "disrupt",
-      "rule": "LLLRLLLRRRLRLLR",
-      "colorCount": 15,
-      "cells": [
-        [
-          -1,
-          -1,
-          8
-        ],
-        [
-          -2,
-          0,
-          2
-        ]
-      ],
-      "antY": 30,
-      "antDir": 2,
-      "cost": 5,
-      "reachRows": 36,
-      "endDirection": 0,
-      "coverage": 0.6666666666666666,
-      "costTier": 5,
-      "featureTier": 3
-    },
-    {
-      "id": "D4",
-      "kind": "disrupt",
-      "rule": "RRRRLLRLR",
-      "colorCount": 9,
-      "cells": [
-        [
-          -1,
-          1,
-          4
-        ],
-        [
-          -1,
-          2,
-          4
-        ],
-        [
-          1,
-          2,
-          3
-        ],
-        [
-          -1,
-          3,
-          7
-        ],
-        [
-          0,
-          3,
-          7
-        ],
-        [
-          8,
-          -6,
-          2
-        ],
-        [
-          5,
-          -3,
-          2
-        ]
-      ],
-      "antY": 27,
-      "antDir": 1,
-      "cost": 10,
-      "reachRows": 20,
-      "endDirection": 3,
-      "coverage": 0.5555555555555556,
-      "costTier": 10,
-      "featureTier": 1
-    },
-    {
-      "id": "D5",
-      "kind": "disrupt",
-      "rule": "RLRLRLRLRRLRRLRL",
-      "colorCount": 16,
-      "cells": [
-        [
-          -2,
-          1,
-          7
-        ],
-        [
-          -1,
-          3,
-          3
-        ],
-        [
-          3,
-          3,
-          3
-        ],
-        [
-          5,
-          3,
-          1
-        ],
-        [
-          -1,
-          4,
-          3
-        ],
-        [
-          0,
-          4,
-          1
-        ],
-        [
-          1,
-          4,
-          1
-        ],
-        [
-          4,
-          4,
-          1
-        ],
-        [
-          -1,
-          5,
-          1
-        ],
-        [
-          2,
-          5,
-          1
-        ],
-        [
-          3,
-          5,
-          1
-        ],
-        [
-          0,
-          -1,
-          9
-        ]
-      ],
-      "antY": 26,
-      "antDir": 0,
-      "cost": 15,
-      "reachRows": 22,
-      "endDirection": 2,
-      "coverage": 0.7777777777777778,
-      "costTier": 15,
-      "featureTier": 2
-    },
-    {
-      "id": "D6",
-      "kind": "disrupt",
-      "rule": "LLLRLLLRRRLRLRR",
-      "colorCount": 15,
-      "cells": [
-        [
-          -1,
-          -1,
-          9
-        ],
-        [
-          -6,
-          -7,
-          8
-        ]
-      ],
-      "antY": 30,
-      "antDir": 1,
-      "cost": 5,
-      "reachRows": 14,
-      "endDirection": 1,
-      "coverage": 0.4444444444444444,
-      "costTier": 5,
-      "featureTier": 1
-    },
-    {
-      "id": "D7",
-      "kind": "disrupt",
-      "rule": "RRLLLRL",
-      "colorCount": 7,
-      "cells": [
-        [
-          -1,
-          1,
-          3
-        ],
-        [
-          -2,
-          1,
-          2
-        ],
-        [
-          -3,
-          2,
-          1
-        ],
-        [
-          -2,
-          2,
-          4
-        ],
-        [
-          0,
-          2,
-          6
-        ],
-        [
-          -3,
-          3,
-          1
-        ],
-        [
-          -2,
-          3,
-          4
-        ],
-        [
-          -1,
-          3,
-          4
-        ],
-        [
-          0,
-          3,
-          2
-        ],
-        [
-          -3,
-          4,
-          1
-        ],
-        [
-          -2,
-          4,
-          1
-        ],
-        [
-          -1,
-          4,
-          1
-        ],
-        [
-          1,
-          1,
-          1
-        ],
-        [
-          4,
-          -8,
-          2
-        ],
-        [
-          3,
-          -4,
-          6
-        ]
-      ],
-      "antY": 26,
-      "antDir": 2,
-      "cost": 18,
-      "reachRows": 16,
-      "endDirection": 0,
-      "coverage": 0.5555555555555556,
-      "costTier": 18,
-      "featureTier": 1
-    },
-    {
-      "id": "D8",
-      "kind": "disrupt",
-      "rule": "LRLRLRLLLLRLRLR",
-      "colorCount": 15,
-      "cells": [
-        [
-          0,
-          0,
-          5
-        ],
-        [
-          -4,
-          2,
-          1
-        ],
-        [
-          -3,
-          2,
-          8
-        ],
-        [
-          -2,
-          2,
-          4
-        ],
-        [
-          -1,
-          2,
-          1
-        ],
-        [
-          0,
-          2,
-          1
-        ],
-        [
-          1,
-          2,
-          3
-        ],
-        [
-          -3,
-          3,
-          1
-        ],
-        [
-          -2,
-          3,
-          1
-        ],
-        [
-          3,
-          3,
-          4
-        ],
-        [
-          -3,
-          -1,
-          8
-        ],
-        [
-          4,
-          -4,
-          0
-        ],
-        [
-          3,
-          -2,
-          11
-        ],
-        [
-          -2,
-          -4,
-          10
-        ]
-      ],
-      "antY": 27,
-      "antDir": 0,
-      "cost": 17,
+      "cost": 4,
       "reachRows": 0,
       "endDirection": 0,
       "coverage": 0.3333333333333333,
-      "costTier": 17,
+      "costTier": 4,
       "featureTier": 0
     },
     {
       "id": "D9",
       "kind": "disrupt",
-      "rule": "RLRLRLRLRRLRRLRL",
-      "colorCount": 16,
+      "rule": "LRLRRLRRLRRLLRR",
+      "colorCount": 15,
       "cells": [
         [
+          1,
           -2,
-          1,
-          7
-        ],
-        [
-          -1,
-          3,
-          3
-        ],
-        [
-          3,
-          3,
-          3
-        ],
-        [
-          5,
-          3,
-          1
-        ],
-        [
-          -1,
-          4,
-          3
-        ],
-        [
-          0,
-          4,
-          1
-        ],
-        [
-          1,
-          4,
-          1
-        ],
-        [
-          4,
-          4,
-          1
-        ],
-        [
-          -1,
-          5,
           1
         ],
         [
           2,
-          5,
+          -2,
           1
         ],
         [
-          3,
-          5,
+          -2,
+          -1,
           1
+        ],
+        [
+          0,
+          -1,
+          2
+        ],
+        [
+          1,
+          -1,
+          12
+        ],
+        [
+          -1,
+          0,
+          13
+        ],
+        [
+          5,
+          -3,
+          11
+        ],
+        [
+          5,
+          -1,
+          8
+        ],
+        [
+          -1,
+          -2,
+          11
+        ],
+        [
+          6,
+          -2,
+          6
+        ],
+        [
+          1,
+          0,
+          11
+        ],
+        [
+          0,
+          1,
+          7
+        ],
+        [
+          -2,
+          -2,
+          14
         ]
       ],
-      "antY": 26,
-      "antDir": 0,
-      "cost": 14,
-      "reachRows": 22,
-      "endDirection": 2,
-      "coverage": 0.7777777777777778,
-      "costTier": 14,
-      "featureTier": 2
+      "antY": 30,
+      "antDir": 2,
+      "cost": 16,
+      "reachRows": 0,
+      "endDirection": 0,
+      "coverage": 0.1111111111111111,
+      "costTier": 16,
+      "featureTier": 0
     }
   ],
   "identifyTable": {
-    "20,2": "A1",
-    "28,1": "A2",
-    "27,1": "A3",
-    "31,3": "A4",
-    "28,0": "A5",
-    "21,3": "A6",
-    "29,2": "A7",
-    "26,0": "A8",
-    "29,3": "A9"
+    "28,1": "A1",
+    "29,0": "A2",
+    "20,2": "A3",
+    "29,2": "A4",
+    "31,1": "A5",
+    "31,3": "A6",
+    "26,1": "A7",
+    "30,1": "A8",
+    "29,1": "A9"
   },
   "counterTable": {
     "A1": [
       {
         "disruptId": "D2",
-        "deltaX": 132,
-        "fireAtStep": 5600,
-        "successRate": 0.07142857142857142
+        "deltaX": 40,
+        "fireAtStep": 1700,
+        "successRate": 0.15384615384615385
       },
       {
-        "disruptId": "D4",
-        "deltaX": 198,
-        "fireAtStep": 7000,
-        "successRate": 0.07142857142857142
+        "disruptId": "D2",
+        "deltaX": 66,
+        "fireAtStep": 2550,
+        "successRate": 0.15384615384615385
       },
       {
-        "disruptId": "D4",
-        "deltaX": 200,
-        "fireAtStep": 7000,
-        "successRate": 0.07142857142857142
+        "disruptId": "D2",
+        "deltaX": 96,
+        "fireAtStep": 3400,
+        "successRate": 0.15384615384615385
       },
       {
-        "disruptId": "D4",
-        "deltaX": 202,
-        "fireAtStep": 7000,
-        "successRate": 0.07142857142857142
+        "disruptId": "D6",
+        "deltaX": 154,
+        "fireAtStep": 7650,
+        "successRate": 0.23076923076923078
       },
       {
-        "disruptId": "D5",
-        "deltaX": 190,
-        "fireAtStep": 7000,
-        "successRate": 0.07142857142857142
+        "disruptId": "D6",
+        "deltaX": 174,
+        "fireAtStep": 8500,
+        "successRate": 0.23076923076923078
       },
       {
-        "disruptId": "D9",
-        "deltaX": 190,
-        "fireAtStep": 7000,
-        "successRate": 0.07142857142857142
+        "disruptId": "D6",
+        "deltaX": 92,
+        "fireAtStep": 5950,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 224,
+        "fireAtStep": 2550,
+        "successRate": 0.38461538461538464
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 208,
+        "fireAtStep": 4250,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 224,
+        "fireAtStep": 3400,
+        "successRate": 0.38461538461538464
       }
     ],
     "A2": [
       {
-        "disruptId": "D1",
-        "deltaX": 180,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
-      },
-      {
-        "disruptId": "D1",
-        "deltaX": 186,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
+        "disruptId": "D2",
+        "deltaX": 172,
+        "fireAtStep": 0,
+        "successRate": 0.3076923076923077
       },
       {
         "disruptId": "D2",
-        "deltaX": 130,
-        "fireAtStep": 8400,
-        "successRate": 0.07142857142857142
+        "deltaX": 136,
+        "fireAtStep": 0,
+        "successRate": 0.23076923076923078
       },
       {
         "disruptId": "D2",
-        "deltaX": 158,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
-      },
-      {
-        "disruptId": "D2",
-        "deltaX": 174,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
+        "deltaX": 156,
+        "fireAtStep": 0,
+        "successRate": 0.23076923076923078
       },
       {
         "disruptId": "D3",
+        "deltaX": 186,
+        "fireAtStep": 3400,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 178,
+        "fireAtStep": 0,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D4",
         "deltaX": 194,
-        "fireAtStep": 8400,
-        "successRate": 0.07142857142857142
+        "fireAtStep": 850,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 178,
+        "fireAtStep": 850,
+        "successRate": 0.23076923076923078
       },
       {
         "disruptId": "D6",
-        "deltaX": 172,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
+        "deltaX": 58,
+        "fireAtStep": 850,
+        "successRate": 0.07692307692307693
       },
       {
         "disruptId": "D6",
-        "deltaX": 174,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
+        "deltaX": 94,
+        "fireAtStep": 1700,
+        "successRate": 0.07692307692307693
       },
       {
         "disruptId": "D6",
-        "deltaX": 176,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
+        "deltaX": 110,
+        "fireAtStep": 1700,
+        "successRate": 0.07692307692307693
       },
       {
         "disruptId": "D7",
-        "deltaX": 168,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
-      },
-      {
-        "disruptId": "D7",
-        "deltaX": 170,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
-      },
-      {
-        "disruptId": "D7",
-        "deltaX": 180,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
+        "deltaX": 214,
+        "fireAtStep": 0,
+        "successRate": 0.07692307692307693
       }
     ],
     "A3": [
       {
-        "disruptId": "D1",
-        "deltaX": 62,
-        "fireAtStep": 7000,
-        "successRate": 0.07142857142857142
+        "disruptId": "D2",
+        "deltaX": 166,
+        "fireAtStep": 1700,
+        "successRate": 0.46153846153846156
       },
       {
-        "disruptId": "D1",
-        "deltaX": 66,
-        "fireAtStep": 7000,
-        "successRate": 0.07142857142857142
+        "disruptId": "D2",
+        "deltaX": 128,
+        "fireAtStep": 850,
+        "successRate": 0.38461538461538464
       },
       {
-        "disruptId": "D3",
-        "deltaX": 98,
-        "fireAtStep": 7000,
-        "successRate": 0.07142857142857142
-      },
-      {
-        "disruptId": "D4",
-        "deltaX": 86,
-        "fireAtStep": 7000,
-        "successRate": 0.07142857142857142
-      },
-      {
-        "disruptId": "D4",
-        "deltaX": 90,
-        "fireAtStep": 7000,
-        "successRate": 0.07142857142857142
+        "disruptId": "D2",
+        "deltaX": 146,
+        "fireAtStep": 1700,
+        "successRate": 0.38461538461538464
       },
       {
         "disruptId": "D6",
-        "deltaX": 56,
-        "fireAtStep": 7000,
-        "successRate": 0.07142857142857142
+        "deltaX": 12,
+        "fireAtStep": 1700,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 92,
+        "fireAtStep": 4250,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 148,
+        "fireAtStep": 4250,
+        "successRate": 0.07692307692307693
       },
       {
         "disruptId": "D7",
-        "deltaX": 60,
-        "fireAtStep": 7000,
-        "successRate": 0.07142857142857142
-      },
-      {
-        "disruptId": "D7",
-        "deltaX": 62,
-        "fireAtStep": 7000,
-        "successRate": 0.07142857142857142
+        "deltaX": 222,
+        "fireAtStep": 0,
+        "successRate": 0.07692307692307693
       }
     ],
     "A4": [
       {
         "disruptId": "D1",
+        "deltaX": 60,
+        "fireAtStep": 4250,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 60,
+        "fireAtStep": 5100,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D1",
+        "deltaX": 60,
+        "fireAtStep": 5950,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 44,
+        "fireAtStep": 3400,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 44,
+        "fireAtStep": 5100,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D3",
         "deltaX": 64,
-        "fireAtStep": 4200,
-        "successRate": 0.07142857142857142
+        "fireAtStep": 3400,
+        "successRate": 0.23076923076923078
       },
       {
-        "disruptId": "D5",
-        "deltaX": 54,
-        "fireAtStep": 4200,
-        "successRate": 0.07142857142857142
+        "disruptId": "D3",
+        "deltaX": 64,
+        "fireAtStep": 4250,
+        "successRate": 0.23076923076923078
       },
       {
-        "disruptId": "D5",
-        "deltaX": 58,
-        "fireAtStep": 4200,
-        "successRate": 0.07142857142857142
+        "disruptId": "D3",
+        "deltaX": 64,
+        "fireAtStep": 5950,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 64,
+        "fireAtStep": 850,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 64,
+        "fireAtStep": 1700,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 64,
+        "fireAtStep": 2550,
+        "successRate": 0.23076923076923078
       },
       {
         "disruptId": "D7",
-        "deltaX": 56,
-        "fireAtStep": 4200,
-        "successRate": 0.07142857142857142
+        "deltaX": 82,
+        "fireAtStep": 850,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 98,
+        "fireAtStep": 850,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 114,
+        "fireAtStep": 850,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D8",
+        "deltaX": 60,
+        "fireAtStep": 2550,
+        "successRate": 0.38461538461538464
+      },
+      {
+        "disruptId": "D8",
+        "deltaX": 60,
+        "fireAtStep": 3400,
+        "successRate": 0.38461538461538464
+      },
+      {
+        "disruptId": "D8",
+        "deltaX": 60,
+        "fireAtStep": 4250,
+        "successRate": 0.38461538461538464
       },
       {
         "disruptId": "D9",
-        "deltaX": 54,
-        "fireAtStep": 4200,
-        "successRate": 0.07142857142857142
+        "deltaX": 60,
+        "fireAtStep": 5100,
+        "successRate": 0.15384615384615385
       },
       {
         "disruptId": "D9",
-        "deltaX": 58,
-        "fireAtStep": 4200,
-        "successRate": 0.07142857142857142
+        "deltaX": 60,
+        "fireAtStep": 5950,
+        "successRate": 0.15384615384615385
       }
     ],
     "A5": [
       {
-        "disruptId": "D1",
-        "deltaX": 190,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
+        "disruptId": "D2",
+        "deltaX": 156,
+        "fireAtStep": 2550,
+        "successRate": 0.3076923076923077
       },
       {
         "disruptId": "D2",
-        "deltaX": 132,
-        "fireAtStep": 8400,
-        "successRate": 0.07142857142857142
+        "deltaX": 86,
+        "fireAtStep": 1700,
+        "successRate": 0.23076923076923078
       },
       {
         "disruptId": "D2",
-        "deltaX": 148,
-        "fireAtStep": 8400,
-        "successRate": 0.07142857142857142
+        "deltaX": 112,
+        "fireAtStep": 1700,
+        "successRate": 0.23076923076923078
       },
       {
-        "disruptId": "D2",
-        "deltaX": 164,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
+        "disruptId": "D6",
+        "deltaX": 92,
+        "fireAtStep": 4250,
+        "successRate": 0.15384615384615385
       },
       {
-        "disruptId": "D3",
-        "deltaX": 194,
-        "fireAtStep": 8400,
-        "successRate": 0.14285714285714285
+        "disruptId": "D6",
+        "deltaX": 20,
+        "fireAtStep": 2550,
+        "successRate": 0.07692307692307693
       },
       {
-        "disruptId": "D3",
-        "deltaX": 194,
-        "fireAtStep": 9800,
-        "successRate": 0.14285714285714285
-      },
-      {
-        "disruptId": "D3",
-        "deltaX": 198,
-        "fireAtStep": 8400,
-        "successRate": 0.14285714285714285
-      },
-      {
-        "disruptId": "D4",
-        "deltaX": 198,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
-      },
-      {
-        "disruptId": "D5",
-        "deltaX": 182,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
-      },
-      {
-        "disruptId": "D5",
-        "deltaX": 186,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
-      },
-      {
-        "disruptId": "D5",
-        "deltaX": 190,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
+        "disruptId": "D6",
+        "deltaX": 50,
+        "fireAtStep": 3400,
+        "successRate": 0.07692307692307693
       },
       {
         "disruptId": "D7",
-        "deltaX": 194,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
+        "deltaX": 218,
+        "fireAtStep": 0,
+        "successRate": 0.15384615384615385
       },
       {
-        "disruptId": "D8",
-        "deltaX": 190,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
+        "disruptId": "D7",
+        "deltaX": 218,
+        "fireAtStep": 4250,
+        "successRate": 0.15384615384615385
       },
       {
-        "disruptId": "D8",
-        "deltaX": 192,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
-      },
-      {
-        "disruptId": "D9",
-        "deltaX": 182,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
-      },
-      {
-        "disruptId": "D9",
-        "deltaX": 186,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
-      },
-      {
-        "disruptId": "D9",
-        "deltaX": 190,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
+        "disruptId": "D7",
+        "deltaX": 222,
+        "fireAtStep": 3400,
+        "successRate": 0.07692307692307693
       }
     ],
     "A6": [
       {
         "disruptId": "D3",
-        "deltaX": 88,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
+        "deltaX": 56,
+        "fireAtStep": 1700,
+        "successRate": 0.23076923076923078
       },
       {
         "disruptId": "D3",
-        "deltaX": 90,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
+        "deltaX": 56,
+        "fireAtStep": 2550,
+        "successRate": 0.23076923076923078
       },
       {
-        "disruptId": "D4",
-        "deltaX": 68,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
-      },
-      {
-        "disruptId": "D5",
-        "deltaX": 36,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
+        "disruptId": "D3",
+        "deltaX": 56,
+        "fireAtStep": 4250,
+        "successRate": 0.23076923076923078
       },
       {
         "disruptId": "D5",
-        "deltaX": 44,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
+        "deltaX": 56,
+        "fireAtStep": 2550,
+        "successRate": 0.23076923076923078
       },
       {
-        "disruptId": "D9",
-        "deltaX": 36,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
+        "disruptId": "D5",
+        "deltaX": 56,
+        "fireAtStep": 3400,
+        "successRate": 0.23076923076923078
       },
       {
-        "disruptId": "D9",
-        "deltaX": 44,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
+        "disruptId": "D5",
+        "deltaX": 56,
+        "fireAtStep": 4250,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 56,
+        "fireAtStep": 3400,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 56,
+        "fireAtStep": 4250,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 60,
+        "fireAtStep": 0,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 126,
+        "fireAtStep": 850,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D8",
+        "deltaX": 70,
+        "fireAtStep": 850,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D8",
+        "deltaX": 70,
+        "fireAtStep": 1700,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D8",
+        "deltaX": 70,
+        "fireAtStep": 2550,
+        "successRate": 0.23076923076923078
       }
     ],
     "A7": [
       {
-        "disruptId": "D5",
-        "deltaX": 172,
-        "fireAtStep": 7000,
-        "successRate": 0.07142857142857142
+        "disruptId": "D2",
+        "deltaX": 118,
+        "fireAtStep": 850,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 52,
+        "fireAtStep": 0,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 70,
+        "fireAtStep": 0,
+        "successRate": 0.07692307692307693
       },
       {
         "disruptId": "D6",
-        "deltaX": 192,
-        "fireAtStep": 7000,
-        "successRate": 0.07142857142857142
+        "deltaX": 6,
+        "fireAtStep": 1700,
+        "successRate": 0.07692307692307693
       },
       {
-        "disruptId": "D8",
-        "deltaX": 192,
-        "fireAtStep": 7000,
-        "successRate": 0.07142857142857142
+        "disruptId": "D6",
+        "deltaX": 40,
+        "fireAtStep": 3400,
+        "successRate": 0.07692307692307693
       },
       {
-        "disruptId": "D9",
-        "deltaX": 172,
-        "fireAtStep": 7000,
-        "successRate": 0.07142857142857142
+        "disruptId": "D6",
+        "deltaX": 88,
+        "fireAtStep": 3400,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 230,
+        "fireAtStep": 0,
+        "successRate": 0.46153846153846156
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 214,
+        "fireAtStep": 0,
+        "successRate": 0.3076923076923077
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 230,
+        "fireAtStep": 850,
+        "successRate": 0.46153846153846156
       }
     ],
     "A8": [
       {
-        "disruptId": "D1",
-        "deltaX": 190,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
+        "disruptId": "D2",
+        "deltaX": 46,
+        "fireAtStep": 5100,
+        "successRate": 0.15384615384615385
       },
       {
         "disruptId": "D2",
-        "deltaX": 144,
-        "fireAtStep": 8400,
-        "successRate": 0.07142857142857142
+        "deltaX": 46,
+        "fireAtStep": 6800,
+        "successRate": 0.15384615384615385
       },
       {
         "disruptId": "D2",
-        "deltaX": 184,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
-      },
-      {
-        "disruptId": "D2",
-        "deltaX": 152,
-        "fireAtStep": 8400,
-        "successRate": 0.07142857142857142
+        "deltaX": 52,
+        "fireAtStep": 5100,
+        "successRate": 0.15384615384615385
       },
       {
         "disruptId": "D3",
-        "deltaX": 198,
-        "fireAtStep": 8400,
-        "successRate": 0.14285714285714285
+        "deltaX": 64,
+        "fireAtStep": 6800,
+        "successRate": 0.07692307692307693
       },
       {
         "disruptId": "D3",
-        "deltaX": 198,
-        "fireAtStep": 9800,
-        "successRate": 0.14285714285714285
+        "deltaX": 68,
+        "fireAtStep": 6800,
+        "successRate": 0.07692307692307693
       },
       {
         "disruptId": "D3",
-        "deltaX": 200,
-        "fireAtStep": 8400,
-        "successRate": 0.14285714285714285
-      },
-      {
-        "disruptId": "D5",
-        "deltaX": 176,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
-      },
-      {
-        "disruptId": "D5",
-        "deltaX": 192,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
-      },
-      {
-        "disruptId": "D5",
-        "deltaX": 178,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
+        "deltaX": 70,
+        "fireAtStep": 6800,
+        "successRate": 0.07692307692307693
       },
       {
         "disruptId": "D6",
-        "deltaX": 186,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
+        "deltaX": 64,
+        "fireAtStep": 3400,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 64,
+        "fireAtStep": 6800,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D6",
+        "deltaX": 66,
+        "fireAtStep": 5100,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D7",
+        "deltaX": 150,
+        "fireAtStep": 5100,
+        "successRate": 0.15384615384615385
       },
       {
         "disruptId": "D7",
         "deltaX": 198,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
+        "fireAtStep": 3400,
+        "successRate": 0.15384615384615385
       },
       {
-        "disruptId": "D8",
-        "deltaX": 194,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
-      },
-      {
-        "disruptId": "D8",
-        "deltaX": 202,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
-      },
-      {
-        "disruptId": "D9",
-        "deltaX": 176,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
-      },
-      {
-        "disruptId": "D9",
-        "deltaX": 192,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
-      },
-      {
-        "disruptId": "D9",
-        "deltaX": 178,
-        "fireAtStep": 9800,
-        "successRate": 0.07142857142857142
+        "disruptId": "D7",
+        "deltaX": 130,
+        "fireAtStep": 5950,
+        "successRate": 0.07692307692307693
       }
     ],
     "A9": [
       {
-        "disruptId": "D3",
-        "deltaX": 194,
-        "fireAtStep": 2800,
-        "successRate": 0.07142857142857142
+        "disruptId": "D2",
+        "deltaX": 42,
+        "fireAtStep": 0,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D2",
+        "deltaX": 46,
+        "fireAtStep": 1700,
+        "successRate": 0.07692307692307693
       },
       {
         "disruptId": "D3",
-        "deltaX": 196,
-        "fireAtStep": 2800,
-        "successRate": 0.07142857142857142
+        "deltaX": 56,
+        "fireAtStep": 0,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 56,
+        "fireAtStep": 850,
+        "successRate": 0.15384615384615385
+      },
+      {
+        "disruptId": "D3",
+        "deltaX": 60,
+        "fireAtStep": 0,
+        "successRate": 0.15384615384615385
       },
       {
         "disruptId": "D4",
-        "deltaX": 190,
-        "fireAtStep": 2800,
-        "successRate": 0.07142857142857142
+        "deltaX": 58,
+        "fireAtStep": 0,
+        "successRate": 0.07692307692307693
+      },
+      {
+        "disruptId": "D4",
+        "deltaX": 66,
+        "fireAtStep": 0,
+        "successRate": 0.07692307692307693
       },
       {
         "disruptId": "D5",
-        "deltaX": 184,
-        "fireAtStep": 2800,
-        "successRate": 0.07142857142857142
+        "deltaX": 60,
+        "fireAtStep": 850,
+        "successRate": 0.23076923076923078
       },
       {
         "disruptId": "D5",
-        "deltaX": 188,
-        "fireAtStep": 2800,
-        "successRate": 0.07142857142857142
+        "deltaX": 60,
+        "fireAtStep": 1700,
+        "successRate": 0.23076923076923078
       },
       {
         "disruptId": "D5",
-        "deltaX": 192,
-        "fireAtStep": 2800,
-        "successRate": 0.07142857142857142
+        "deltaX": 60,
+        "fireAtStep": 2550,
+        "successRate": 0.23076923076923078
       },
       {
-        "disruptId": "D9",
-        "deltaX": 184,
-        "fireAtStep": 2800,
-        "successRate": 0.07142857142857142
+        "disruptId": "D6",
+        "deltaX": 62,
+        "fireAtStep": 1700,
+        "successRate": 0.07692307692307693
       },
       {
-        "disruptId": "D9",
-        "deltaX": 188,
-        "fireAtStep": 2800,
-        "successRate": 0.07142857142857142
+        "disruptId": "D8",
+        "deltaX": 74,
+        "fireAtStep": 0,
+        "successRate": 0.23076923076923078
       },
       {
-        "disruptId": "D9",
-        "deltaX": 192,
-        "fireAtStep": 2800,
-        "successRate": 0.07142857142857142
+        "disruptId": "D8",
+        "deltaX": 74,
+        "fireAtStep": 850,
+        "successRate": 0.23076923076923078
+      },
+      {
+        "disruptId": "D8",
+        "deltaX": 74,
+        "fireAtStep": 1700,
+        "successRate": 0.23076923076923078
       }
     ]
   },
@@ -1756,99 +1583,22 @@
     "A1": {
       "D2": [
         {
-          "interceptDeltaX": 132,
-          "interceptFireAtStep": 5600,
-          "escortDisruptId": "D1",
-          "escortDeltaX": 0,
-          "fireAtStep": 1400
-        }
-      ],
-      "D4": [
-        {
-          "interceptDeltaX": 198,
-          "interceptFireAtStep": 7000,
-          "escortDisruptId": "D1",
-          "escortDeltaX": 0,
-          "fireAtStep": 1400
-        },
-        {
-          "interceptDeltaX": 200,
-          "interceptFireAtStep": 7000,
-          "escortDisruptId": "D1",
-          "escortDeltaX": 0,
-          "fireAtStep": 1400
-        },
-        {
-          "interceptDeltaX": 202,
-          "interceptFireAtStep": 7000,
-          "escortDisruptId": "D1",
-          "escortDeltaX": 0,
-          "fireAtStep": 1400
-        }
-      ],
-      "D5": [
-        {
-          "interceptDeltaX": 190,
-          "interceptFireAtStep": 7000,
-          "escortDisruptId": "D1",
-          "escortDeltaX": 0,
-          "fireAtStep": 1400
-        }
-      ],
-      "D9": [
-        {
-          "interceptDeltaX": 190,
-          "interceptFireAtStep": 7000,
-          "escortDisruptId": "D1",
-          "escortDeltaX": 0,
-          "fireAtStep": 1400
-        }
-      ]
-    },
-    "A2": {
-      "D1": [
-        {
-          "interceptDeltaX": 180,
-          "interceptFireAtStep": 9800,
+          "interceptDeltaX": 40,
+          "interceptFireAtStep": 1700,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
           "fireAtStep": 0
         },
         {
-          "interceptDeltaX": 186,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D1",
-          "escortDeltaX": 0,
-          "fireAtStep": 0
-        }
-      ],
-      "D2": [
-        {
-          "interceptDeltaX": 130,
-          "interceptFireAtStep": 8400,
+          "interceptDeltaX": 66,
+          "interceptFireAtStep": 2550,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
           "fireAtStep": 0
         },
         {
-          "interceptDeltaX": 158,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D1",
-          "escortDeltaX": 0,
-          "fireAtStep": 0
-        },
-        {
-          "interceptDeltaX": 174,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D1",
-          "escortDeltaX": 0,
-          "fireAtStep": 0
-        }
-      ],
-      "D3": [
-        {
-          "interceptDeltaX": 194,
-          "interceptFireAtStep": 8400,
+          "interceptDeltaX": 96,
+          "interceptFireAtStep": 3400,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
           "fireAtStep": 0
@@ -1856,22 +1606,22 @@
       ],
       "D6": [
         {
-          "interceptDeltaX": 172,
-          "interceptFireAtStep": 9800,
+          "interceptDeltaX": 154,
+          "interceptFireAtStep": 7650,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
           "fireAtStep": 0
         },
         {
           "interceptDeltaX": 174,
-          "interceptFireAtStep": 9800,
+          "interceptFireAtStep": 8500,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
           "fireAtStep": 0
         },
         {
-          "interceptDeltaX": 176,
-          "interceptFireAtStep": 9800,
+          "interceptDeltaX": 92,
+          "interceptFireAtStep": 5950,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
           "fireAtStep": 0
@@ -1879,22 +1629,111 @@
       ],
       "D7": [
         {
-          "interceptDeltaX": 168,
-          "interceptFireAtStep": 9800,
+          "interceptDeltaX": 224,
+          "interceptFireAtStep": 2550,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
           "fireAtStep": 0
         },
         {
-          "interceptDeltaX": 170,
-          "interceptFireAtStep": 9800,
+          "interceptDeltaX": 208,
+          "interceptFireAtStep": 4250,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
           "fireAtStep": 0
         },
         {
-          "interceptDeltaX": 180,
-          "interceptFireAtStep": 9800,
+          "interceptDeltaX": 224,
+          "interceptFireAtStep": 3400,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 96,
+          "fireAtStep": 6800
+        }
+      ]
+    },
+    "A2": {
+      "D2": [
+        {
+          "interceptDeltaX": 172,
+          "interceptFireAtStep": 0,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 128,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 136,
+          "interceptFireAtStep": 0,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 156,
+          "interceptFireAtStep": 0,
+          "escortDisruptId": "D3",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        }
+      ],
+      "D3": [
+        {
+          "interceptDeltaX": 186,
+          "interceptFireAtStep": 3400,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        }
+      ],
+      "D4": [
+        {
+          "interceptDeltaX": 178,
+          "interceptFireAtStep": 0,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 2550
+        },
+        {
+          "interceptDeltaX": 194,
+          "interceptFireAtStep": 850,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 178,
+          "interceptFireAtStep": 850,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 2550
+        }
+      ],
+      "D6": [
+        {
+          "interceptDeltaX": 58,
+          "interceptFireAtStep": 850,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 94,
+          "interceptFireAtStep": 1700,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 110,
+          "interceptFireAtStep": 1700,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        }
+      ],
+      "D7": [
+        {
+          "interceptDeltaX": 214,
+          "interceptFireAtStep": 0,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
           "fireAtStep": 0
@@ -1902,566 +1741,659 @@
       ]
     },
     "A3": {
-      "D1": [
+      "D2": [
         {
-          "interceptDeltaX": 62,
-          "interceptFireAtStep": 7000,
+          "interceptDeltaX": 166,
+          "interceptFireAtStep": 1700,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 2800
+          "fireAtStep": 0
         },
         {
-          "interceptDeltaX": 66,
-          "interceptFireAtStep": 7000,
+          "interceptDeltaX": 128,
+          "interceptFireAtStep": 850,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 2800
-        }
-      ],
-      "D3": [
-        {
-          "interceptDeltaX": 98,
-          "interceptFireAtStep": 7000,
-          "escortDisruptId": "D1",
-          "escortDeltaX": 0,
-          "fireAtStep": 2800
-        }
-      ],
-      "D4": [
-        {
-          "interceptDeltaX": 86,
-          "interceptFireAtStep": 7000,
-          "escortDisruptId": "D1",
-          "escortDeltaX": 0,
-          "fireAtStep": 2800
+          "fireAtStep": 0
         },
         {
-          "interceptDeltaX": 90,
-          "interceptFireAtStep": 7000,
+          "interceptDeltaX": 146,
+          "interceptFireAtStep": 1700,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 2800
+          "fireAtStep": 0
         }
       ],
       "D6": [
         {
-          "interceptDeltaX": 56,
-          "interceptFireAtStep": 7000,
+          "interceptDeltaX": 12,
+          "interceptFireAtStep": 1700,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 2800
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 92,
+          "interceptFireAtStep": 4250,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 148,
+          "interceptFireAtStep": 4250,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
         }
       ],
       "D7": [
         {
-          "interceptDeltaX": 60,
-          "interceptFireAtStep": 7000,
+          "interceptDeltaX": 222,
+          "interceptFireAtStep": 0,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 2800
-        },
-        {
-          "interceptDeltaX": 62,
-          "interceptFireAtStep": 7000,
-          "escortDisruptId": "D1",
-          "escortDeltaX": 0,
-          "fireAtStep": 2800
+          "fireAtStep": 0
         }
       ]
     },
     "A4": {
       "D1": [
         {
+          "interceptDeltaX": 60,
+          "interceptFireAtStep": 4250,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 60,
+          "interceptFireAtStep": 5100,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 96,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 60,
+          "interceptFireAtStep": 5950,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 96,
+          "fireAtStep": 0
+        }
+      ],
+      "D2": [
+        {
+          "interceptDeltaX": 44,
+          "interceptFireAtStep": 3400,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 44,
+          "interceptFireAtStep": 5100,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 96,
+          "fireAtStep": 7650
+        }
+      ],
+      "D3": [
+        {
           "interceptDeltaX": 64,
-          "interceptFireAtStep": 4200,
+          "interceptFireAtStep": 3400,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 96,
+          "fireAtStep": 6800
+        },
+        {
+          "interceptDeltaX": 64,
+          "interceptFireAtStep": 4250,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 96,
+          "fireAtStep": 6800
+        },
+        {
+          "interceptDeltaX": 64,
+          "interceptFireAtStep": 5950,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
           "fireAtStep": 0
         }
       ],
-      "D5": [
+      "D4": [
         {
-          "interceptDeltaX": 54,
-          "interceptFireAtStep": 4200,
+          "interceptDeltaX": 64,
+          "interceptFireAtStep": 850,
           "escortDisruptId": "D2",
-          "escortDeltaX": 0,
-          "fireAtStep": 0
+          "escortDeltaX": 96,
+          "fireAtStep": 5950
         },
         {
-          "interceptDeltaX": 58,
-          "interceptFireAtStep": 4200,
-          "escortDisruptId": "D1",
-          "escortDeltaX": 0,
+          "interceptDeltaX": 64,
+          "interceptFireAtStep": 1700,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 96,
+          "fireAtStep": 5950
+        },
+        {
+          "interceptDeltaX": 64,
+          "interceptFireAtStep": 2550,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 96,
           "fireAtStep": 0
         }
       ],
       "D7": [
         {
-          "interceptDeltaX": 56,
-          "interceptFireAtStep": 4200,
+          "interceptDeltaX": 82,
+          "interceptFireAtStep": 850,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 64,
+          "fireAtStep": 4250
+        },
+        {
+          "interceptDeltaX": 98,
+          "interceptFireAtStep": 850,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 96,
+          "fireAtStep": 4250
+        },
+        {
+          "interceptDeltaX": 114,
+          "interceptFireAtStep": 850,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
+          "fireAtStep": 10200
+        }
+      ],
+      "D8": [
+        {
+          "interceptDeltaX": 60,
+          "interceptFireAtStep": 2550,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 96,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 60,
+          "interceptFireAtStep": 3400,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 96,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 60,
+          "interceptFireAtStep": 4250,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 96,
           "fireAtStep": 0
         }
       ],
       "D9": [
         {
-          "interceptDeltaX": 54,
-          "interceptFireAtStep": 4200,
+          "interceptDeltaX": 60,
+          "interceptFireAtStep": 5100,
           "escortDisruptId": "D2",
-          "escortDeltaX": 0,
+          "escortDeltaX": 96,
           "fireAtStep": 0
         },
         {
-          "interceptDeltaX": 58,
-          "interceptFireAtStep": 4200,
-          "escortDisruptId": "D1",
-          "escortDeltaX": 0,
+          "interceptDeltaX": 60,
+          "interceptFireAtStep": 5950,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 96,
           "fireAtStep": 0
         }
       ]
     },
     "A5": {
-      "D1": [
-        {
-          "interceptDeltaX": 190,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D1",
-          "escortDeltaX": 0,
-          "fireAtStep": 2800
-        }
-      ],
       "D2": [
         {
-          "interceptDeltaX": 132,
-          "interceptFireAtStep": 8400,
+          "interceptDeltaX": 156,
+          "interceptFireAtStep": 2550,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 2800
+          "fireAtStep": 0
         },
         {
-          "interceptDeltaX": 148,
-          "interceptFireAtStep": 8400,
+          "interceptDeltaX": 86,
+          "interceptFireAtStep": 1700,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 2800
+          "fireAtStep": 0
         },
         {
-          "interceptDeltaX": 164,
-          "interceptFireAtStep": 9800,
+          "interceptDeltaX": 112,
+          "interceptFireAtStep": 1700,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 2800
+          "fireAtStep": 0
         }
       ],
-      "D3": [
+      "D6": [
         {
-          "interceptDeltaX": 194,
-          "interceptFireAtStep": 8400,
+          "interceptDeltaX": 92,
+          "interceptFireAtStep": 4250,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 2800
+          "fireAtStep": 0
         },
         {
-          "interceptDeltaX": 194,
-          "interceptFireAtStep": 9800,
+          "interceptDeltaX": 20,
+          "interceptFireAtStep": 2550,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 2800
+          "fireAtStep": 0
         },
         {
-          "interceptDeltaX": 198,
-          "interceptFireAtStep": 8400,
+          "interceptDeltaX": 50,
+          "interceptFireAtStep": 3400,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 2800
-        }
-      ],
-      "D4": [
-        {
-          "interceptDeltaX": 198,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D1",
-          "escortDeltaX": 0,
-          "fireAtStep": 2800
-        }
-      ],
-      "D5": [
-        {
-          "interceptDeltaX": 182,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D1",
-          "escortDeltaX": 0,
-          "fireAtStep": 2800
-        },
-        {
-          "interceptDeltaX": 186,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D1",
-          "escortDeltaX": 0,
-          "fireAtStep": 2800
-        },
-        {
-          "interceptDeltaX": 190,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D1",
-          "escortDeltaX": 0,
-          "fireAtStep": 2800
+          "fireAtStep": 0
         }
       ],
       "D7": [
         {
-          "interceptDeltaX": 194,
-          "interceptFireAtStep": 9800,
+          "interceptDeltaX": 218,
+          "interceptFireAtStep": 0,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 2800
-        }
-      ],
-      "D8": [
-        {
-          "interceptDeltaX": 190,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D1",
-          "escortDeltaX": 0,
-          "fireAtStep": 2800
+          "fireAtStep": 0
         },
         {
-          "interceptDeltaX": 192,
-          "interceptFireAtStep": 9800,
+          "interceptDeltaX": 218,
+          "interceptFireAtStep": 4250,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 2800
-        }
-      ],
-      "D9": [
-        {
-          "interceptDeltaX": 182,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D1",
-          "escortDeltaX": 0,
-          "fireAtStep": 2800
+          "fireAtStep": 0
         },
         {
-          "interceptDeltaX": 186,
-          "interceptFireAtStep": 9800,
+          "interceptDeltaX": 222,
+          "interceptFireAtStep": 3400,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 2800
-        },
-        {
-          "interceptDeltaX": 190,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D1",
-          "escortDeltaX": 0,
-          "fireAtStep": 2800
+          "fireAtStep": 0
         }
       ]
     },
     "A6": {
       "D3": [
         {
-          "interceptDeltaX": 88,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D2",
+          "interceptDeltaX": 56,
+          "interceptFireAtStep": 1700,
+          "escortDisruptId": "D1",
           "escortDeltaX": 0,
           "fireAtStep": 0
         },
         {
-          "interceptDeltaX": 90,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D2",
-          "escortDeltaX": 224,
-          "fireAtStep": 1400
-        }
-      ],
-      "D4": [
+          "interceptDeltaX": 56,
+          "interceptFireAtStep": 2550,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
         {
-          "interceptDeltaX": 68,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D2",
-          "escortDeltaX": 224,
-          "fireAtStep": 1400
+          "interceptDeltaX": 56,
+          "interceptFireAtStep": 4250,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
         }
       ],
       "D5": [
         {
-          "interceptDeltaX": 36,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D2",
-          "escortDeltaX": 224,
-          "fireAtStep": 1400
+          "interceptDeltaX": 56,
+          "interceptFireAtStep": 2550,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
         },
         {
-          "interceptDeltaX": 44,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D2",
+          "interceptDeltaX": 56,
+          "interceptFireAtStep": 3400,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 56,
+          "interceptFireAtStep": 4250,
+          "escortDisruptId": "D1",
           "escortDeltaX": 0,
           "fireAtStep": 0
         }
       ],
-      "D9": [
+      "D6": [
         {
-          "interceptDeltaX": 36,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D2",
-          "escortDeltaX": 224,
-          "fireAtStep": 1400
+          "interceptDeltaX": 56,
+          "interceptFireAtStep": 3400,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
         },
         {
-          "interceptDeltaX": 44,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D2",
+          "interceptDeltaX": 56,
+          "interceptFireAtStep": 4250,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 60,
+          "interceptFireAtStep": 0,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        }
+      ],
+      "D7": [
+        {
+          "interceptDeltaX": 126,
+          "interceptFireAtStep": 850,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        }
+      ],
+      "D8": [
+        {
+          "interceptDeltaX": 70,
+          "interceptFireAtStep": 850,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 70,
+          "interceptFireAtStep": 1700,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 70,
+          "interceptFireAtStep": 2550,
+          "escortDisruptId": "D1",
           "escortDeltaX": 0,
           "fireAtStep": 0
         }
       ]
     },
     "A7": {
-      "D5": [
+      "D2": [
         {
-          "interceptDeltaX": 172,
-          "interceptFireAtStep": 7000,
-          "escortDisruptId": "D1",
+          "interceptDeltaX": 118,
+          "interceptFireAtStep": 850,
+          "escortDisruptId": "D3",
           "escortDeltaX": 0,
-          "fireAtStep": 0
+          "fireAtStep": 850
+        },
+        {
+          "interceptDeltaX": 52,
+          "interceptFireAtStep": 0,
+          "escortDisruptId": "D3",
+          "escortDeltaX": 0,
+          "fireAtStep": 850
+        },
+        {
+          "interceptDeltaX": 70,
+          "interceptFireAtStep": 0,
+          "escortDisruptId": "D3",
+          "escortDeltaX": 0,
+          "fireAtStep": 850
         }
       ],
       "D6": [
         {
-          "interceptDeltaX": 192,
-          "interceptFireAtStep": 7000,
+          "interceptDeltaX": 6,
+          "interceptFireAtStep": 1700,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 0,
+          "fireAtStep": 5100
+        },
+        {
+          "interceptDeltaX": 40,
+          "interceptFireAtStep": 3400,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 0
+          "fireAtStep": 850
+        },
+        {
+          "interceptDeltaX": 88,
+          "interceptFireAtStep": 3400,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 160,
+          "fireAtStep": 4250
         }
       ],
-      "D8": [
+      "D7": [
         {
-          "interceptDeltaX": 192,
-          "interceptFireAtStep": 7000,
+          "interceptDeltaX": 230,
+          "interceptFireAtStep": 0,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 0
-        }
-      ],
-      "D9": [
+          "fireAtStep": 850
+        },
         {
-          "interceptDeltaX": 172,
-          "interceptFireAtStep": 7000,
+          "interceptDeltaX": 214,
+          "interceptFireAtStep": 0,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 0
+          "fireAtStep": 850
+        },
+        {
+          "interceptDeltaX": 230,
+          "interceptFireAtStep": 850,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 850
         }
       ]
     },
     "A8": {
-      "D1": [
-        {
-          "interceptDeltaX": 190,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D3",
-          "escortDeltaX": 32,
-          "fireAtStep": 0
-        }
-      ],
       "D2": [
         {
-          "interceptDeltaX": 144,
-          "interceptFireAtStep": 8400,
-          "escortDisruptId": "D3",
-          "escortDeltaX": 32,
-          "fireAtStep": 4200
+          "interceptDeltaX": 46,
+          "interceptFireAtStep": 5100,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
         },
         {
-          "interceptDeltaX": 184,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D3",
-          "escortDeltaX": 32,
-          "fireAtStep": 4200
+          "interceptDeltaX": 46,
+          "interceptFireAtStep": 6800,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
         },
         {
-          "interceptDeltaX": 152,
-          "interceptFireAtStep": 8400,
-          "escortDisruptId": "D3",
-          "escortDeltaX": 32,
+          "interceptDeltaX": 52,
+          "interceptFireAtStep": 5100,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
           "fireAtStep": 0
         }
       ],
       "D3": [
         {
-          "interceptDeltaX": 198,
-          "interceptFireAtStep": 8400,
-          "escortDisruptId": "D2",
+          "interceptDeltaX": 64,
+          "interceptFireAtStep": 6800,
+          "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 16800
+          "fireAtStep": 0
         },
         {
-          "interceptDeltaX": 198,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D3",
+          "interceptDeltaX": 68,
+          "interceptFireAtStep": 6800,
+          "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 9800
+          "fireAtStep": 0
         },
         {
-          "interceptDeltaX": 200,
-          "interceptFireAtStep": 8400,
-          "escortDisruptId": "D3",
+          "interceptDeltaX": 70,
+          "interceptFireAtStep": 6800,
+          "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 11200
-        }
-      ],
-      "D5": [
-        {
-          "interceptDeltaX": 176,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D3",
-          "escortDeltaX": 0,
-          "fireAtStep": 9800
-        },
-        {
-          "interceptDeltaX": 192,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D3",
-          "escortDeltaX": 32,
-          "fireAtStep": 4200
-        },
-        {
-          "interceptDeltaX": 178,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D3",
-          "escortDeltaX": 32,
           "fireAtStep": 0
         }
       ],
       "D6": [
         {
-          "interceptDeltaX": 186,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D3",
+          "interceptDeltaX": 64,
+          "interceptFireAtStep": 3400,
+          "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 9800
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 64,
+          "interceptFireAtStep": 6800,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
+          "interceptDeltaX": 66,
+          "interceptFireAtStep": 5100,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
         }
       ],
       "D7": [
         {
+          "interceptDeltaX": 150,
+          "interceptFireAtStep": 5100,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 0
+        },
+        {
           "interceptDeltaX": 198,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D3",
-          "escortDeltaX": 32,
-          "fireAtStep": 0
-        }
-      ],
-      "D8": [
-        {
-          "interceptDeltaX": 194,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D2",
+          "interceptFireAtStep": 3400,
+          "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 11200
-        },
-        {
-          "interceptDeltaX": 202,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D3",
-          "escortDeltaX": 32,
           "fireAtStep": 0
-        }
-      ],
-      "D9": [
+        },
         {
-          "interceptDeltaX": 176,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D3",
+          "interceptDeltaX": 130,
+          "interceptFireAtStep": 5950,
+          "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 9800
-        },
-        {
-          "interceptDeltaX": 192,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D3",
-          "escortDeltaX": 32,
-          "fireAtStep": 4200
-        },
-        {
-          "interceptDeltaX": 178,
-          "interceptFireAtStep": 9800,
-          "escortDisruptId": "D3",
-          "escortDeltaX": 32,
           "fireAtStep": 0
         }
       ]
     },
     "A9": {
-      "D3": [
+      "D2": [
         {
-          "interceptDeltaX": 194,
-          "interceptFireAtStep": 2800,
+          "interceptDeltaX": 42,
+          "interceptFireAtStep": 0,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 0
+          "fireAtStep": 5100
         },
         {
-          "interceptDeltaX": 196,
-          "interceptFireAtStep": 2800,
+          "interceptDeltaX": 46,
+          "interceptFireAtStep": 1700,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 0
+          "fireAtStep": 850
+        }
+      ],
+      "D3": [
+        {
+          "interceptDeltaX": 56,
+          "interceptFireAtStep": 0,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 2550
+        },
+        {
+          "interceptDeltaX": 56,
+          "interceptFireAtStep": 850,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 2550
+        },
+        {
+          "interceptDeltaX": 60,
+          "interceptFireAtStep": 0,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 3400
         }
       ],
       "D4": [
         {
-          "interceptDeltaX": 190,
-          "interceptFireAtStep": 2800,
+          "interceptDeltaX": 58,
+          "interceptFireAtStep": 0,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 0
+          "fireAtStep": 9350
+        },
+        {
+          "interceptDeltaX": 66,
+          "interceptFireAtStep": 0,
+          "escortDisruptId": "D1",
+          "escortDeltaX": 0,
+          "fireAtStep": 2550
         }
       ],
       "D5": [
         {
-          "interceptDeltaX": 184,
-          "interceptFireAtStep": 2800,
+          "interceptDeltaX": 60,
+          "interceptFireAtStep": 850,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 0
+          "fireAtStep": 4250
         },
         {
-          "interceptDeltaX": 188,
-          "interceptFireAtStep": 2800,
+          "interceptDeltaX": 60,
+          "interceptFireAtStep": 1700,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 0
+          "fireAtStep": 4250
         },
         {
-          "interceptDeltaX": 192,
-          "interceptFireAtStep": 2800,
-          "escortDisruptId": "D3",
+          "interceptDeltaX": 60,
+          "interceptFireAtStep": 2550,
+          "escortDisruptId": "D1",
           "escortDeltaX": 0,
+          "fireAtStep": 4250
+        }
+      ],
+      "D6": [
+        {
+          "interceptDeltaX": 62,
+          "interceptFireAtStep": 1700,
+          "escortDisruptId": "D2",
+          "escortDeltaX": 224,
           "fireAtStep": 0
         }
       ],
-      "D9": [
+      "D8": [
         {
-          "interceptDeltaX": 184,
-          "interceptFireAtStep": 2800,
+          "interceptDeltaX": 74,
+          "interceptFireAtStep": 0,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 0
+          "fireAtStep": 5100
         },
         {
-          "interceptDeltaX": 188,
-          "interceptFireAtStep": 2800,
+          "interceptDeltaX": 74,
+          "interceptFireAtStep": 850,
           "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 0
+          "fireAtStep": 5100
         },
         {
-          "interceptDeltaX": 192,
-          "interceptFireAtStep": 2800,
-          "escortDisruptId": "D3",
+          "interceptDeltaX": 74,
+          "interceptFireAtStep": 1700,
+          "escortDisruptId": "D1",
           "escortDeltaX": 0,
-          "fireAtStep": 0
+          "fireAtStep": 5100
         }
       ]
     }

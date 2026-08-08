@@ -34,12 +34,16 @@ node scripts/generate-templates.mjs --resume-archive data/search-archive.json  #
 node scripts/train-policy.mjs                # CPU同士の自己対戦で方策を学習 → data/policy.json
 node scripts/simulate-matches.mjs --games 5000            # バランス検証(得点率・HW割合・盤面汚染度・先手勝率)
 node scripts/simulate-matches.mjs --games 100 --seed 1    # シード固定で再現性を確認(2回実行して出力一致)
+node scripts/verify-v54.mjs --games 300                   # CPUの行動内訳(攻撃/迎撃/護衛/自爆の発射数・迎撃の効果を対照群つきで測る)
+node scripts/verify-v54.mjs --compare-ticks --games 200   # selfDestructRemainingTicks を 1/5/10 に固定してCRNで比較
 ```
 
 **探索の再現性について(v5)**: 探索は worker_threads で並列化してあるが、**乱数はメインスレッドだけが持ち、ワーカーは純粋関数**で、結果は完了順ではなく**投入した添字順**にアーカイブへ入る。バッチ幅もワーカー数から導出せず固定値にしてある。したがって `--seed` と `--iterations` が同じなら**ワーカー数を変えても成果物は一致する**。
 `--budget-min`(実時間で打ち切る)を使った場合だけはマシンの速さで反復回数が変わるので、実行後にログと `data/search-archive.json` の `reproduceCommand` に「その回の反復回数」が残る。再生成するときはそれを `--iterations` に渡す。
 
-**`ATTACK_LIFE` を変えるときに探索をやり直さない**: 段階①(ハイウェイ発見)は仮想盤面を `SEARCH_LIFE` まで走らせるので寿命に依存せず、ゲーム射影も `GAME_LIFE_SEARCH_CAP` で走らせて個体ごとの `arrivalStep` を記録している。つまり寿命を変えて必要なのは②以降だけ。`--resume-archive data/search-archive.json` で①を丸ごと省略して数分で作り直せる。**寿命を変えたら必ずこれで再生成すること**(古い寿命で選んだ9×9を残さない)。
+**`ATTACK_LIFE` を変えるときに探索をやり直さない**: 段階①(ハイウェイ発見)は仮想盤面を `SEARCH_LIFE` まで走らせるので寿命に依存せず、ゲーム射影も `GAME_LIFE_SEARCH_CAP` で走らせて個体ごとの `arrivalStep` を記録している。つまり寿命を変えて必要なのは②以降だけ。`--resume-archive data/search-archive.json` で①を丸ごと省略して作り直せる。**寿命を変えたら必ずこれで再生成すること**(古い寿命で選んだ9×9を残さない)。
+
+⚠️ **所要時間は `DISRUPT_LIFE` にほぼ比例する。**「数分」は `DISRUPT_LIFE=1,000` のときの値。段階⑤のカウンター行列は (攻撃 × 妨害 × deltaX × タイミング) の直積を実シミュレーションで回すので、妨害の寿命がそのまま1評価のコストになる。実測: **`DISRUPT_LIFE=6,000` で 48.2分**(累計 2,195,199 評価)。寿命を上げるときは待ち時間も同じ倍率で増えると見積もること。
 
 ## Verification Loop(検証ループ)
 **機能を実装したら、完了宣言の前に必ず回す。** 最重要の規約。
@@ -69,7 +73,7 @@ node scripts/simulate-matches.mjs --games 100 --seed 1    # シード固定で�
 - 特に **得点弾のハイウェイ割合(95%以上)**、**カウンターを持たない攻撃テンプレートの数(0件)**、**攻撃＋護衛の突破率(60〜100%)** は、この作品の面白さそのものなので毎回見る
 - 数値は `src/config.js` に一元化し、ハードコードしない
 - 以下の制約は**外すと壊れることが実測済み**。外したくなったら先に `REVIEW.md` を読み、理由を `docs/spec.md` の決定事項に書いてから変える
-  - **アリの寿命(攻撃2,400 / 妨害400)** — これが「ハイウェイ以外を落とす」唯一の仕組み。緩めると成立しなくなる
+  - **アリの寿命(攻撃 `ATTACK_LIFE`=20,000 / 妨害 `DISRUPT_LIFE`=6,000)** — 攻撃側はこれが「ハイウェイ以外を落とす」唯一の仕組みなので緩めると成立しなくなる。⚠️ **妨害側は v5.3 で寿命による担保をやめ、`DISRUPT_MAX_LOCAL_Y`(=盤面中央)を超えたら死ぬ空間制約に置き換えた**ため、妨害の寿命は「敵陣に到達させない」ための値ではなくなっている(数値は `src/config.js` が正)
   - **配置可能域を自陣の端16列に限定** — 広げると横断距離が縮み、ハイウェイが不要になる
   - **RRL(3色)ルール** — 古典RL(2色)に戻すと、ハイウェイ形成に9,976ステップかかり寿命内に届かない
   - **`lastToucher` によるクリーンアップ** — 単純な一括クリアにすると他のアリの軌跡を壊す

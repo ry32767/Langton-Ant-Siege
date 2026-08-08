@@ -88,10 +88,21 @@ test('攻撃アリの寿命が、最も浅い配置帯からの縦断に足り�
   void minSteps;
 });
 
-test('妨害アリの寿命では敵陣に到達できない(LEGACY_RULE基準)', () => {
-  const reachRows = Math.ceil(C.DISRUPT_LIFE / C.LEGACY_HIGHWAY_PERIOD);
-  const nearestRows = C.SCORE_LINE_Y - (C.ZONE_DEPTH - 1);
-  assert.ok(reachRows < nearestRows, '妨害が得点できてしまう寿命になっている');
+// ⚠️ v5.3 で担保の方式が変わった。
+// v5.2 まではここで「寿命 × 最速ハイウェイ速度 < 敵陣までの距離」を検査していたが、
+// その不等式が保証するのは寿命が 3,474 ステップ未満のときだけで、しかも
+// 「同梱の妨害9種が到達しない」ことと「どんなテンプレートでも到達しない」ことは別物だった
+// (テンプレートを再生成すると9種は入れ替わる。実測で寿命4,000なら乱数配置の43%が到達した)。
+// v5.3 は妨害を**空間**で縛る(DISRUPT_MAX_LOCAL_Y で消滅)ので、寿命がいくつでも
+// 敵陣到達は原理的に不可能になった。検査すべき不変条件もそちらに移す。
+test('妨害アリは盤面中央で消滅するので、寿命によらず敵陣に到達できない', () => {
+  assert.ok(
+    C.DISRUPT_MAX_LOCAL_Y <= C.SCORE_LINE_Y,
+    '妨害の消滅ラインが得点ラインより奥にあると、妨害が得点できてしまう',
+  );
+  // 中央で消える設計なので、配置可能帯より奥・得点ラインより手前にあること。
+  assert.ok(C.DISRUPT_MAX_LOCAL_Y > C.ZONE_DEPTH, '消滅ラインが自陣の配置帯より手前だと妨害が飛べない');
+  assert.equal(C.DISRUPT_MAX_LOCAL_Y, C.HEIGHT / 2, '盤面中央であること(両陣営で対称になる)');
 });
 
 test('コストがトークン上限の範囲に収まる', () => {

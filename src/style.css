@@ -308,6 +308,101 @@ body {
   }
 }
 
+/* 得点した瞬間、その升目に「インクが染み込む」演出。一度だけ再生され(class は
+   張りっぱなしでよい。キーフレーム終端は .pip.filled と同じ見た目になるので害がない)、
+   prefers-reduced-motion: reduce では上のベース層の規則が animation-duration を
+   強制的に潰すので自動的に無効化される。 */
+@keyframes pip-soak {
+  from {
+    transform: scale(1.35);
+    opacity: 0.4;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.pip.just-filled {
+  animation: pip-soak var(--dur-pip-soak) var(--ease);
+}
+
+/* トークン(0..cap) = 紙に染みたインクの水位。升目にはせず連続バーにする
+   (30個の升目はノイズになるため)。塗りの幅は app.js が --fill(0..1) を
+   代入し、ここは scaleX で描くだけ(数値文字列を style に直接積まない)。 */
+.token-bar {
+  position: relative;
+  width: 100%;
+  height: var(--sp-2);
+  background: var(--paper-sunk);
+  border: var(--border-fine);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.token-bar-fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transform: scaleX(var(--fill, 0));
+}
+
+.hud-side1 .token-bar-fill {
+  background: var(--ai);
+}
+
+.hud-side2 .token-bar-fill {
+  background: var(--shu);
+}
+
+/* 5トークンごとの目盛り(方眼の太線と同じ語彙)。位置は app.js が起動時に一度だけ
+   --pos(0..1) を代入する(静的なので毎フレームは触らない)。 */
+.token-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--rule-major);
+  left: calc(var(--pos, 0) * 100%);
+}
+
+/* 飛行中(0..MAX_FLYING) = 4升目。個数だけでなく「どの個体が飛んでいるか」を
+   slot 色で示す(盤面の #1〜#4 バッジと同じ語彙)。升目自体は静的に slot に
+   固定対応させ(HTML側で side{1,2}-slotN クラスを付与済み)、JS は filled の
+   付け外しだけを行う。 */
+.flying-pips {
+  display: flex;
+  gap: var(--sp-1);
+}
+
+.hud-side2 .flying-pips {
+  justify-content: flex-end;
+}
+
+.flying-pip {
+  width: var(--sp-2);
+  height: var(--sp-2);
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+
+.flying-pip.side1-slot0.filled { background: var(--ai); border-color: var(--ai); }
+.flying-pip.side1-slot1.filled { background: var(--hanada); border-color: var(--hanada); }
+.flying-pip.side1-slot2.filled { background: var(--sumire); border-color: var(--sumire); }
+.flying-pip.side1-slot3.filled { background: var(--seiheki); border-color: var(--seiheki); }
+.flying-pip.side2-slot0.filled { background: var(--shu); border-color: var(--shu); }
+.flying-pip.side2-slot1.filled { background: var(--daidai); border-color: var(--daidai); }
+.flying-pip.side2-slot2.filled { background: var(--kurenai); border-color: var(--kurenai); }
+.flying-pip.side2-slot3.filled { background: var(--enji); border-color: var(--enji); }
+
+@media (min-width: 640px) {
+  .flying-pip {
+    width: var(--sp-3);
+    height: var(--sp-3);
+  }
+}
+
 /* ---------------------------------------------------------------------------
    3. 対戦画面 — レイアウト(盤面 + 操作パネル)
    狭幅: 1カラム(盤面が上、幅基準で縮小)。広幅: 2カラム(盤面が高さ基準)。
@@ -322,8 +417,74 @@ body {
 
 .board-column {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  /* justify-content: center にしない。高さが足りないときに中央寄せは上下**両方**へ
+     あふれ、上にある HUD へ静かに重なる。上詰めなら、あふれても下にしか出ない。 */
+  justify-content: flex-start;
 }
+
+/* 記号の意味を示す最小限の凡例。盤面には重ねず、盤面の下(狭幅)/上(広幅とも下)に置く。 */
+.board-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  padding: var(--sp-1) var(--sp-2);
+  background: var(--paper-raised);
+  border: var(--border-fine);
+  border-radius: var(--radius);
+  color: var(--sumi-soft);
+  font-size: var(--fs-sm);
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.legend-swatch {
+  display: inline-block;
+  width: var(--sp-3);
+  height: var(--sp-3);
+  border-radius: var(--radius);
+}
+
+.legend-swatch--ai {
+  background: var(--ai);
+}
+
+.legend-swatch--shu {
+  background: var(--shu);
+}
+
+.legend-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--sp-3);
+  line-height: 1;
+}
+
+/* 個体色(slot)のスウォッチ。盤面のアリ・軌跡・自爆パネルの行を色で対応させる。
+   陣営 = 色相の帯(side1=寒色/side2=暖色)、個体 = 帯の中の枠。 */
+.swatch {
+  display: inline-block;
+  width: var(--sp-3);
+  height: var(--sp-3);
+  border-radius: var(--radius);
+  flex-shrink: 0;
+}
+
+.swatch--side1-slot0 { background: var(--ai); }
+.swatch--side1-slot1 { background: var(--hanada); }
+.swatch--side1-slot2 { background: var(--sumire); }
+.swatch--side1-slot3 { background: var(--seiheki); }
+.swatch--side2-slot0 { background: var(--shu); }
+.swatch--side2-slot1 { background: var(--daidai); }
+.swatch--side2-slot2 { background: var(--kurenai); }
+.swatch--side2-slot3 { background: var(--enji); }
 
 .battle-area {
   position: relative;
@@ -353,20 +514,37 @@ body {
   }
 
   .board-column {
-    flex: 0 1 auto;
-    max-height: var(--board-max-h);
+    /* 残り幅を全部取る。shrink-to-fit(0 1 auto)だと、列の幅が中身(凡例)の
+       max-content 幅で決まり、その幅に盤面が従属して不必要に小さくなる
+       (実測: 使える幅547pxに対し盤面が408pxまで縮んでいた)。 */
+    flex: 1 1 auto;
+    min-width: 0;
+    /* ⚠️ ここに max-height を掛けてはいけない。子の合計(盤面+凡例)が上限を超えると
+       justify-content:center が **上方向にも** あふれ、盤面が HUD に重なる
+       (実測: 列716px に対し子が758px、HUD と21px重複 = 不変条件2違反)。
+       高さの上限は .battle-area 側だけが持つ。 */
   }
 
   .battle-area {
-    width: auto;
-    height: var(--board-max-h);
+    flex: 0 0 auto;
+    /* 正方形を保ったまま「使える幅」と「使える高さ」の小さい方に収める。
+       height を固定して width を別に決めると aspect-ratio が負けて引き伸ばされる
+       (実測 530×714。盤面の下に空白が残っていた)。一辺を min() で決め、比はここで持つ。 */
+    width: min(100%, var(--board-max-h));
+    height: auto;
+    aspect-ratio: var(--board-aspect);
     max-width: 100%;
   }
 
+  .board-legend {
+    flex: 0 0 auto;
+  }
+
   #board {
-    width: auto;
+    /* 一辺は .battle-area が決めるので、ここは満たすだけ。
+       width:auto + height:100% + max-width:100% の組み合わせは aspect-ratio を殺す。 */
+    width: 100%;
     height: 100%;
-    max-width: 100%;
   }
 
   .control-panel {
@@ -470,6 +648,13 @@ body {
   gap: var(--sp-2);
   max-height: 40vh;
   overflow-y: auto;
+  /* max-height が「確定した高さ」になると、既定の auto 行がその高さに**押し込められる**。
+     実測: 必要123pxの中身が67pxの行に潰され、「コスト」行がカードの外へはみ出して
+     隣のカードに重なっていた(ユーザー報告「コストが書かれていない」の実体)。
+     行を min-content で明示すると中身の高さを保ち、あふれた分はここがスクロールする。
+     align-content:start は、余白ができたときに行が伸びて間延びするのを防ぐ。 */
+  grid-auto-rows: min-content;
+  align-content: start;
 }
 
 .template-card {
@@ -500,12 +685,21 @@ body {
   border-color: var(--kin);
 }
 
+/* 今すぐ撃てる札は左端にインクの筋を1本入れる。試合開始直後は全札が買えないので、
+   トークンが貯まって「撃てるようになった」瞬間が一覧の中で目に飛び込む必要がある。
+   影ではなく塗り(inset)なので「影を使わない」方針とは矛盾しない。地・枠線・バッジと
+   合わせて4つの手段で区別しているので、色だけに頼っていない(不変条件6)。 */
+.template-card:not(.disabled) {
+  box-shadow: inset 3px 0 0 var(--ai);
+}
+
 .template-card.disabled {
   cursor: not-allowed;
   background: var(--paper-sunk);
   border-color: var(--rule-fine);
   border-style: dashed;
 }
+
 
 .template-card.disabled .card-header,
 .template-card.disabled .card-body {
@@ -531,8 +725,12 @@ body {
   border: 1px solid currentColor;
 }
 
+/* 「あと N」は「いつ撃てるか」を読む値なので、補助テキスト扱いにしない。
+   --sumi-soft は沈んだ地(--paper-sunk)の上では 4.20:1 しかなく、11px の小さな文字の
+   基準(4.5:1)を割る。--sumi なら 11.5:1(実測)。 */
 .card-badge.badge-disabled {
-  color: var(--sumi-soft);
+  color: var(--sumi);
+  font-variant-numeric: tabular-nums;
 }
 
 .card-badge.badge-highlight {
@@ -544,6 +742,10 @@ body {
   font-size: var(--fs-sm);
   color: var(--sumi-soft);
   line-height: var(--lh-tight);
+  /* v5 のルール文字列(RRLLLRLRRLRRRLL(15色) 等)は空白の無い長い1トークンなので、
+     既定では折り返せずカードから溢れ、後ろに続く「コスト」行を押し出して見えなくする。
+     ユーザーから「コストが書かれていない」と報告された症状の実体はこれ。 */
+  overflow-wrap: anywhere;
 }
 
 .card-body div {
@@ -552,6 +754,31 @@ body {
 
 .card-body div:last-child {
   margin-bottom: 0;
+}
+
+/* 情報階層: コストを最も強く(先頭・大きく・太く)、ルール文字列を最も弱く
+   (末尾・小さく・2行まで)。カウンター/カバーはその中間。 */
+.card-cost {
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--sumi);
+}
+
+.template-card.disabled .card-cost {
+  color: var(--sumi-soft);
+}
+
+.card-counter {
+  color: var(--sumi-soft);
+}
+
+.card-rule {
+  color: var(--sumi-soft);
+  font-size: 0.85rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .list-empty {
@@ -578,6 +805,29 @@ body {
   gap: var(--sp-2);
 }
 
+/*
+ * 「発射」は画面の主アクションなので、常に押せる位置に無ければならない。
+ * 実測: 操作パネルが画面外まで伸びるとき #btn-fire がビューポート下端の79px下にあり、
+ * スクロールしないと押せなかった。
+ *
+ * スクロールしているのは**ページ**(操作パネル自身ではない)。position:sticky は
+ * 「スクロールする祖先」に対して効くので、ページスクロールでも bottom:0 で
+ * ビューポート下端に貼り付く。貼り付く範囲は containing block(.control-panel)の
+ * 内側に限られるため、パネルが画面外にある間は出てこないし、盤面に重なることもない
+ * (不変条件2)。自爆側の .fire-row には付けない(主アクションは1つに絞る)。
+ */
+.fire-row--pinned {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  /* 下に流れる一覧が透けないよう地を敷き、上辺に罫線を1本引いて浮きを示す */
+  background-color: var(--paper-raised);
+  border-top: var(--border);
+  margin: 0 calc(-1 * var(--sp-2)) calc(-1 * var(--sp-2));
+  padding: var(--sp-2);
+  padding-bottom: calc(var(--sp-2) + env(safe-area-inset-bottom));
+}
+
 .fire-row .btn {
   flex-shrink: 0;
 }
@@ -588,10 +838,15 @@ body {
   font-weight: 600;
 }
 
-.threat-panel h3 {
+.threat-panel h3,
+.self-destruct-panel h3 {
   margin: 0 0 var(--sp-1);
   font-size: var(--fs-sm);
   color: var(--sumi);
+}
+
+.self-destruct-panel {
+  margin-bottom: var(--sp-2);
 }
 
 .threat-items {
@@ -623,6 +878,29 @@ body {
 .threat-item.selected {
   border-width: 2px;
   border-color: var(--shu);
+  background: var(--paper-raised);
+}
+
+.self-destruct-item {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  line-height: 1.3;
+  padding: var(--sp-1) var(--sp-2);
+  font-family: var(--font-numeric);
+  font-size: var(--fs-sm);
+}
+
+.self-destruct-line1 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.self-destruct-item.selected {
+  border-width: 2px;
+  border-color: var(--ai);
   background: var(--paper-raised);
 }
 

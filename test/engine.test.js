@@ -588,6 +588,35 @@ test('妨害アリは寿命DISRUPT_LIFEでは敵陣に到達できない(乱数�
   assert.equal(scoredCount, 0);
 });
 
+// v5.3: 担保が「寿命」から「空間(盤面中央での消滅)」に変わったことの回帰テスト。
+// 寿命を極端に伸ばしても敵陣に到達しないことを確認する。v5.2 の寿命ベースの担保では
+// これは必ず失敗する(実測で寿命4,000のとき乱数配置の43%が到達していた)。
+test('妨害アリは寿命を50,000にしても敵陣に到達しない(空間で縛られているため)', () => {
+  const rng = E.createRng(999);
+  let reachedCount = 0;
+  let maxLocalY = 0;
+  for (let i = 0; i < 1000; i++) {
+    const r = E.simulateSolo(
+      {
+        cells: [],
+        antX: rng.int(C.WIDTH),
+        antY: rng.int(C.ZONE_DEPTH),
+        antDir: rng.int(4),
+        kind: 'disrupt',
+        rule: C.LEGACY_RULE,
+      },
+      { life: 50000 },
+    );
+    if (r.reached || r.scored) reachedCount++;
+    if (r.endY != null && r.endY > maxLocalY) maxLocalY = r.endY;
+  }
+  assert.equal(reachedCount, 0, '妨害が敵陣に到達している');
+  assert.ok(
+    maxLocalY <= C.DISRUPT_MAX_LOCAL_Y,
+    `妨害が消滅ライン(${C.DISRUPT_MAX_LOCAL_Y})を越えている: 最深 ${maxLocalY}`,
+  );
+});
+
 // ---------------------------------------------------------------------------
 // ステップ順序の再現性・同時判断
 // ---------------------------------------------------------------------------
@@ -701,4 +730,182 @@ test('runMatchはphaseがfinishedになるまで進める', () => {
   E.runMatch(match);
   assert.equal(match.phase, 'finished');
   assert.equal(match.result, 'side1');
+});
+
+// ---------------------------------------------------------------------------
+// 自爆(selfDestruct)
+// ---------------------------------------------------------------------------
+
+test('selfDestruct: 発射して数ステップ進めたアリを消せる(戻り値true・side.antsから消える・scoreは増えない)', () => {
+  const match = E.createMatch({ seed: 1 });
+  match.sides[0].tokens = 100;
+  const id = E.fire(match, 0, {
+    kind: 'attack',
+    cells: [[3, 3]],
+    antX: 5,
+    antY: 5,
+    antDir: C.DIR_RIGHT,
+    rule: 'RRL',
+  });
+  for (let i = 0; i < 5; i++) E.stepMatch(match);
+  const scoreBefore = match.sides[0].score;
+  assert.equal(E.canSelfDestruct(match, 0, id), true);
+  const ok = E.selfDestruct(match, 0, id);
+  assert.equal(ok, true);
+  assert.equal(match.sides[0].ants.some((a) => a.id === id), false);
+  assert.equal(match.sides[0].score, scoreBefore);
+});
+
+test('selfDestruct: 配置マスと踏んだマスが白(0)に戻る(lastToucherが自分のままのマス)', () => {
+  const match = E.createMatch({ seed: 1 });
+  match.sides[0].tokens = 100;
+  const placedCell = cellIndex(3, 3);
+  const id = E.fire(match, 0, {
+    kind: 'attack',
+    cells: [[3, 3]],
+    antX: 5,
+    antY: 5,
+    antDir: C.DIR_RIGHT,
+    rule: 'RRL',
+  });
+  assert.notEqual(match.board[placedCell], 0);
+  for (let i = 0; i < 5; i++) E.stepMatch(match);
+  const ant = match.sides[0].ants.find((a) => a.id === id);
+  const touchedCells = [...ant.touched];
+  const ok = E.selfDestruct(match, 0, id);
+  assert.equal(ok, true);
+  assert.equal(match.board[placedCell], 0);
+  assert.equal(match.lastToucher[placedCell], -1);
+  for (const q of touchedCells) {
+    assert.equal(match.board[q], 0);
+    assert.equal(match.lastToucher[q], -1);
+  }
+});
+
+test('selfDestruct: 敵陣営のアリIDを渡すとfalseを返し、盤面もアリ配列も一切変化しない', () => {
+  const match = E.createMatch({ seed: 1 });
+  match.sides[0].tokens = 100;
+  match.sides[1].tokens = 100;
+  const enemyId = E.fire(match, 1, {
+    kind: 'attack',
+    cells: [[3, 3]],
+    antX: 5,
+    antY: 5,
+    antDir: C.DIR_RIGHT,
+    rule: 'RRL',
+  });
+  for (let i = 0; i < 3; i++) E.stepMatch(match);
+  const boardSnapshot = Array.from(match.board);
+  const antsSnapshot = match.sides[1].ants.map((a) => a.id);
+  assert.equal(E.canSelfDestruct(match, 0, enemyId), false);
+  const ok = E.selfDestruct(match, 0, enemyId);
+  assert.equal(ok, false);
+  assert.deepEqual(Array.from(match.board), boardSnapshot);
+  assert.deepEqual(
+    match.sides[1].ants.map((a) => a.id),
+    antsSnapshot,
+  );
+});
+
+test('selfDestruct: 存在しないアリID・phase==="finished" ではfalseを返す', () => {
+  const match = E.createMatch({ seed: 1 });
+  match.sides[0].tokens = 100;
+  const id = E.fire(match, 0, { kind: 'attack', cells: [], antX: 5, antY: 5, antDir: C.DIR_UP, rule: 'RRL' });
+  assert.equal(E.canSelfDestruct(match, 0, 9999), false);
+  assert.equal(E.selfDestruct(match, 0, 9999), false);
+
+  match.phase = 'finished';
+  assert.equal(E.canSelfDestruct(match, 0, id), false);
+  assert.equal(E.selfDestruct(match, 0, id), false);
+});
+
+// ---------------------------------------------------------------------------
+// 盤面汚染の増分カウンタ(nonWhiteTotal / nonWhiteZone)と createSideView の pollution
+// ---------------------------------------------------------------------------
+
+/** 盤面を全走査して汚染セル数(全体・両陣営の配置可能帯)を数える(検証用のground truth)。 */
+function countPollutionGroundTruth(match) {
+  let total = 0;
+  const zone = [0, 0];
+  for (let y = 0; y < C.HEIGHT; y++) {
+    for (let x = 0; x < C.WIDTH; x++) {
+      if (match.board[y * C.WIDTH + x] !== 0) {
+        total++;
+        if (y < C.ZONE_DEPTH) zone[0]++;
+        else if (y >= C.HEIGHT - C.ZONE_DEPTH) zone[1]++;
+      }
+    }
+  }
+  return { total, zone };
+}
+
+/** 決定論的な乱数でランダムに発射する検証用エージェント。 */
+function makeRandomFiringAgent(rng, kind) {
+  return {
+    decide(view) {
+      if (view.flyingCount >= C.MAX_FLYING) return null;
+      const cost = (kind === 'attack' ? C.ATTACK_COST : C.DISRUPT_COST) + 1;
+      if (view.tokens < cost || rng.next() < 0.4) return null;
+      const cellCount = 1 + rng.int(4);
+      const cells = [];
+      for (let i = 0; i < cellCount; i++) {
+        cells.push([rng.int(C.WIDTH), rng.int(C.ZONE_DEPTH)]);
+      }
+      return {
+        kind,
+        cells,
+        antX: rng.int(C.WIDTH),
+        antY: rng.int(C.ZONE_DEPTH),
+        antDir: rng.int(4),
+        rule: 'RRL',
+      };
+    },
+  };
+}
+
+test('増分カウンタ(nonWhiteTotal/nonWhiteZone)は数千ステップ走らせた複数時点で全走査の実測値と完全に一致する(自爆を挟んでも一致)', () => {
+  const rng = E.createRng(12345);
+  const agent0 = makeRandomFiringAgent(rng, 'attack');
+  const agent1 = makeRandomFiringAgent(rng, 'disrupt');
+  const match = E.createMatch({ seed: 2, agents: [agent0, agent1] });
+  match.sides[0].tokens = C.TOKEN_CAP;
+  match.sides[1].tokens = C.TOKEN_CAP;
+
+  const checkpoints = [200, 800, 1500, 2500, 4000];
+  let selfDestructed = false;
+  for (let i = 0; i < 4000; i++) {
+    E.stepMatch(match);
+    // 途中で1回、飛行中の自分のアリを自爆させてカウンタの整合性を確認する。
+    if (!selfDestructed && i >= 500 && match.sides[0].ants.length > 0) {
+      E.selfDestruct(match, 0, match.sides[0].ants[0].id);
+      selfDestructed = true;
+    }
+    if (checkpoints.includes(i)) {
+      const truth = countPollutionGroundTruth(match);
+      assert.equal(match.nonWhiteTotal, truth.total, `step=${i} nonWhiteTotal 不一致`);
+      assert.deepEqual(match.nonWhiteZone, truth.zone, `step=${i} nonWhiteZone 不一致`);
+    }
+  }
+  assert.equal(selfDestructed, true, '検証中に自爆できる状況が発生しなかった(テスト条件を見直す)');
+});
+
+test('createSideView の boardPollution / myZonePollution / enemyZonePollution は 0..1 で全走査の値と一致する', () => {
+  const rng = E.createRng(999);
+  const agent0 = makeRandomFiringAgent(rng, 'attack');
+  const agent1 = makeRandomFiringAgent(rng, 'disrupt');
+  const match = E.createMatch({ seed: 3, agents: [agent0, agent1] });
+  match.sides[0].tokens = C.TOKEN_CAP;
+  match.sides[1].tokens = C.TOKEN_CAP;
+  for (let i = 0; i < 1500; i++) E.stepMatch(match);
+
+  const truth = countPollutionGroundTruth(match);
+  for (const sideIndex of [0, 1]) {
+    const view = E.createSideView(match, sideIndex);
+    assert.ok(view.boardPollution >= 0 && view.boardPollution <= 1);
+    assert.ok(view.myZonePollution >= 0 && view.myZonePollution <= 1);
+    assert.ok(view.enemyZonePollution >= 0 && view.enemyZonePollution <= 1);
+    assert.equal(view.boardPollution, truth.total / C.CELL_COUNT);
+    assert.equal(view.myZonePollution, truth.zone[sideIndex] / (C.WIDTH * C.ZONE_DEPTH));
+    assert.equal(view.enemyZonePollution, truth.zone[1 - sideIndex] / (C.WIDTH * C.ZONE_DEPTH));
+  }
 });
