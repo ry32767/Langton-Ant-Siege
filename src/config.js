@@ -86,6 +86,18 @@ export const TOKEN_PER_TICK = 1;
 export const TOKEN_TICK_STEPS = STEPS_PER_SECOND; // 1秒ごとに +1
 export const TOKEN_CAP = 30; // 上限。アリ飛行中も蓄積する
 
+// ---- CPU の判断周期 --------------------------------------------------------
+// ⚠️ FIRE_TIMINGS の導出がこの値を参照するので、ここで先に定義しておく
+// (ESM の const は巻き上げられても TDZ に入るため、後ろで定義すると参照できない)。
+/**
+ * CPU が「新しい判断」をする間隔。1秒に1回(トークンが増えるのと同じ周期)。
+ *
+ * ⚠️ 予約した発射(counterTable / escortTable の fireAtStep)はこの周期に縛られない。
+ * FIRE_TIMINGS のうち120の倍数は 0/600/1200 の3つだけなので、周期に丸めると
+ * 記録されたカウンターの7割が撃てなくなる。docs/spec.md「共有盤面とステップ順序」参照。
+ */
+export const DECISION_INTERVAL_STEPS = STEPS_PER_SECOND;
+
 // ---- アリ -----------------------------------------------------------------
 export const MAX_FLYING = 4; // 1陣営の同時飛行数(攻撃・妨害の合計)
 
@@ -93,33 +105,36 @@ export const ATTACK_COST = 5; // 実コスト = ATTACK_COST + 配置マス数 �
 /**
  * 攻撃アリの寿命(ステップ)。§7 の GAME_PROJECTILE_LIFE。
  *
- * 🚧 **この値は暫定。本探索の結果から実測で確定させる**(docs/spec.md 未決定事項)。
- * 「複雑なハイウェイには 6,000 でも足りないかもしれない」という指摘に対しては、
- * **探索をやり直さずに後から決められる**構造にしてある:
- *   - 第1アーカイブ(ハイウェイ発見)は仮想盤面 SEARCH_BOARD_HEIGHT を SEARCH_LIFE まで
- *     走らせるので ATTACK_LIFE に依存しない
- *   - 探索中のゲーム射影は ATTACK_LIFE ではなく GAME_LIFE_SEARCH_CAP(=12,000)で行い、
- *     個体ごとの **実到達ステップ数(arrivalStep)** を記録する
- *   - 探索後に scripts/tune-attack-life.mjs で arrivalStep の分布を掃引し、
- *     「viable件数 / 到達時間の分散 / 速度クラス被覆」から ATTACK_LIFE を決める
- * 決めたら必ずこのコメントを実測値の根拠に置き換えること。
+ * **v5 の確定値。1,014万評価の探索アーカイブを scripts/tune-attack-life.mjs で掃引して決めた。**
  *
- * ⚠️ v5 で 3,600 → 6,000 に引き上げた。盤面が 60×120 → 256×256 になり、
- * 最深発射位置(y=ZONE_DEPTH-1=31)から得点ライン(y=224)までが **193行**になったため
- * (v4 は88行)。速度クラスごとの必要ステップ数は次のとおり:
- *   v_y = 0.0556 (period 18 / drift 1)  →  3,471 step (11.6秒)
- *   v_y = 0.0385 (period 52 / drift 2)  →  5,018 step (16.7秒)
- *   v_y = 0.0327 (下限)                 →  5,900 step (19.7秒)
- *   v_y = 0.0294 (period 34 / drift 1)  →  6,562 step ← **寿命内に届かない**
+ * 最深発射位置(y=ZONE_DEPTH-1=31)から得点ライン(y=224)までは **193行**(v4 は88行)。
+ * 掃引の実測(到達した elite 356件。「署名種」= 周期と並進の組の異なり数):
  *
- * つまり ZONE_DEPTH=32 では最低速クラスが落ちる。到達可能な v_y は 0.033〜0.056 で、
- * 到達時間に 11.6〜19.7秒 の差が出る(v4 は 13.5〜28.7秒)。ここは読み合いの軸なので
- * `ARCHIVE2.speedClassBins` をこの範囲に合わせて切り直してある。
+ *   寿命    viable  署名種  到達時間の幅
+ *    6,000     49      2     5.4秒
+ *    7,500     65      5    13.3秒
+ *    9,000    128      9    18.3秒
+ *   12,000    356     18    28.4秒
  *
- * ⚠️ 「寿命がハイウェイ以外を落とすフィルタ」という設計原則は v4 同様に弱まっている。
- * `BALANCE.highwayShareOfScoring`(95%以上)を必ず再測定して確認すること。
+ * **弾種の多様性は寿命に対して単調に増える**。上限を決めるのは物理ではなくテンポ:
+ * 1発が盤面に居座る最大時間は `ATTACK_LIFE / STEPS_PER_SECOND` 秒で、20,000 なら
+ * 300 step/s で **66.7秒**(240秒の試合の約1/4)になる。ここは設計判断として選んだ値。
+ *
+ * ⚠️ 「寿命がハイウェイ以外を落とすフィルタ」という設計原則(AGENTS.md が
+ * 「外すと壊れる」としている制約)は**壊れない**ことを実測で確認済み。乱数候補4,000件で
+ * 「敵陣に到達した弾のうちハイウェイと判定された割合」を寿命別に測ると:
+ *   寿命 6,000 → 100.0% / 8,000 → 100.0% / 9,000 → 100.0% / 12,000 → 100.0%
+ * 193行の**正味の**縦方向変位はカオス的な運動では時間をいくらかけても達成できない
+ * (正味変位がほぼゼロなため)。寿命を延ばして増えるのは「遅いハイウェイ」であって
+ * 「ハイウェイでないもの」ではない。それでも `BALANCE.highwayShareOfScoring`(95%以上)は
+ * テンプレート再生成のたびに必ず再測定すること。
+ *
+ * ⚠️ この値を変えたら **`GAME_LIFE_SEARCH_CAP` も追随する**(下の定義参照)。探索中の
+ * ゲーム射影はそのキャップで走らせて `arrivalStep` を記録しており、記録の上限より
+ * 長い寿命へは再射影できない(その場合はアーカイブに対してゲーム射影をやり直す。
+ * scripts/generate-templates.mjs の --resume-archive がそれを行う)。
  */
-export const ATTACK_LIFE = 6000;
+export const ATTACK_LIFE = 20000;
 export const DISRUPT_COST = 3; // 実コスト = DISRUPT_COST + 配置マス数 → 4..19
 /**
  * 妨害アリの寿命(ステップ)。
@@ -180,8 +195,25 @@ export const TEMPLATE_COUNT_DISRUPT = 9;
  * 末尾を `ATTACK_LIFE - DISRUPT_LIFE * 1.5` までにしているのは、消滅間際に撃っても
  * 干渉する時間が無いため(v4 の 600 = DISRUPT_LIFE 400 × 1.5 と同じ比率)。
  */
-export const FIRE_TIMING_INTERVAL = Math.round(STEPS_PER_SECOND * 1.25); // 375
-export const FIRE_TIMING_LAST = ATTACK_LIFE - Math.round(DISRUPT_LIFE * 1.5); // 4,500
+/**
+ * ⚠️ 間隔を「秒数の定数倍」で決めてはいけない(v5.1 の修正)。
+ * v5 では `STEPS_PER_SECOND * 1.25` = 375 としていたが、ATTACK_LIFE を 20,000 に
+ * 引き上げると候補が **50点**に増える。カウンター表は
+ * (攻撃 × 妨害 × deltaX × タイミング) の直積なので、タイミングが 13 → 50 になるだけで
+ * 最終選抜の計算量が3.8倍(約3時間)になり、探索本体より選抜の方が長くなる。
+ *
+ * そこで **候補の「本数」を寿命によらず一定に保つ**。守る側にとって意味があるのは
+ * 「妨害の寿命ぶんズラした別の手」なので、本数を固定して間隔を寿命に比例させる方が
+ * 表現として素直でもある。
+ * 制約: 間隔が DECISION_INTERVAL_STEPS の倍数だと記録した迎撃の大半が実際には
+ * 撃てなくなる(docs/spec.md の警告)。倍数になったら 50 ずらして避ける。
+ */
+export const FIRE_TIMING_COUNT = 14;
+export const FIRE_TIMING_LAST = ATTACK_LIFE - Math.round(DISRUPT_LIFE * 1.5);
+export const FIRE_TIMING_INTERVAL = (() => {
+  const raw = Math.max(50, Math.round(FIRE_TIMING_LAST / (FIRE_TIMING_COUNT - 1) / 50) * 50);
+  return raw % DECISION_INTERVAL_STEPS === 0 ? raw + 50 : raw;
+})();
 export const FIRE_TIMINGS = Object.freeze(
   Array.from({ length: Math.floor(FIRE_TIMING_LAST / FIRE_TIMING_INTERVAL) + 1 }, (_, i) => i * FIRE_TIMING_INTERVAL),
 );
@@ -201,7 +233,7 @@ export const COEVO_DELTA_X_STRIDE = 16; // 共進化中の deltaX 掃引の刻�
 
 // ---- 探索(MAP-Elites) -----------------------------------------------------
 /** ハイウェイ探索時のシミュレーション上限(§7)。ゲーム採用評価とは別。 */
-export const SEARCH_LIFE = 20000;
+export const SEARCH_LIFE = 30000;
 
 /**
  * 探索中のゲーム射影に使う寿命の**上限キャップ**。ATTACK_LIFE ではなくこの値で走らせ、
@@ -212,7 +244,7 @@ export const SEARCH_LIFE = 20000;
  * 値は「採用しうる ATTACK_LIFE の上限」として決める。193行 ÷ 最低速の実用ハイウェイ
  * (v_y≈0.017)= 11,350 step なので、余裕を見て 12,000。
  */
-export const GAME_LIFE_SEARCH_CAP = 12000;
+export const GAME_LIFE_SEARCH_CAP = ATTACK_LIFE;
 
 /**
  * 探索評価用の仮想盤面の高さ。実ゲーム盤面(HEIGHT=120)は上下端でアリが死ぬため
@@ -266,10 +298,11 @@ export const ARCHIVE1_QUALITY = Object.freeze({
 export const ARCHIVE2 = Object.freeze({
   entryPositionBins: 6, // 敵陣へ侵入した x 座標(旧仕様の entryY から変更)
   robustnessBins: Object.freeze([0.5, 1.0]),
-  // v_y の境界値。v5 で到達可能になる範囲は 193行 / (ATTACK_LIFE - 形成) なので
-  // おおよそ 0.033〜0.056。その間を3等分する位置に境界を置く。
-  // 🚧 ATTACK_LIFE を実測で確定させたら、この境界も同じ根拠で切り直すこと。
-  speedClassBins: Object.freeze([0.04, 0.048, 1.0]),
+  // v_y(=|driftY|/period)の境界値。到達可能な下限は 193行 / ATTACK_LIFE、上限は
+  // 実測で最速のハイウェイ 1/18 = 0.0556。ATTACK_LIFE=20,000 なら下限は 0.0097 で、
+  // 0.0097〜0.0556 を3等分する位置に境界を置く。
+  // ⚠️ ATTACK_LIFE を変えたらこの境界も同じ根拠で切り直すこと(到達可能域が変わるため)。
+  speedClassBins: Object.freeze([0.025, 0.040, 1.0]),
   reachBins: 6, // 妨害の縦方向到達距離(旧 reachColumns → reachRows)
   /**
    * 妨害の縦到達距離のビン幅スケール。理論上の最大値
@@ -282,14 +315,7 @@ export const ARCHIVE2 = Object.freeze({
 });
 
 // ---- CPU ------------------------------------------------------------------
-/**
- * CPU が「新しい判断」をする間隔。1秒に1回(トークンが増えるのと同じ周期)。
- *
- * ⚠️ 予約した発射(counterTable / escortTable の fireAtStep)はこの周期に縛られない。
- * FIRE_TIMINGS のうち120の倍数は 0/600/1200 の3つだけなので、周期に丸めると
- * 記録されたカウンターの7割が撃てなくなる。docs/spec.md「共有盤面とステップ順序」参照。
- */
-export const DECISION_INTERVAL_STEPS = STEPS_PER_SECOND;
+
 
 /** 予約した発射を fireAtStep ちょうどに実行する(true)か、判断周期に丸める(false)か。 */
 export const SCHEDULED_FIRE_IS_EXACT = true;

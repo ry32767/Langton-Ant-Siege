@@ -330,9 +330,16 @@ const REPORT_SAMPLE_CAP = 120000;
  */
 function createViableCollector(perSignature) {
   const bySignature = new Map();
+  const seenKeys = new Set();
   let total = 0;
   return {
     add(genome, evaluation) {
+      // ⚠️ **重複を先に落とす。** MAP-Elites は同じ親から同じ子を何度も作るので、
+      // 重複を許すと「quality 上位 perSignature 件」が同一 genome のコピーで埋まり、
+      // 実際には数十件しか残らない(実測: 13,839件収集 → ユニーク93件)。
+      const key = genomeKey(genome);
+      if (seenKeys.has(key)) return;
+      seenKeys.add(key);
       const sig = highwaySignatureKey(evaluation.highway) ?? 'none';
       if (!bySignature.has(sig)) bySignature.set(sig, []);
       const list = bySignature.get(sig);
@@ -342,6 +349,21 @@ function createViableCollector(perSignature) {
         // 償却: 上限の2倍まで溜まったら quality 降順で上位 perSignature 件に切り詰める
         list.sort((a, b) => b.quality - a.quality || (genomeKey(a.genome) < genomeKey(b.genome) ? -1 : 1));
         list.length = perSignature;
+      }
+    },
+    /** 保存/復元用(--resume-archive で②以降だけ回すときに候補を失わないため)。 */
+    toJSON() {
+      return this.entries();
+    },
+    load(entries) {
+      for (const e of entries ?? []) {
+        const key = genomeKey(e.genome);
+        if (seenKeys.has(key)) continue;
+        seenKeys.add(key);
+        const sig = highwaySignatureKey(e.meta?.highway) ?? 'none';
+        if (!bySignature.has(sig)) bySignature.set(sig, []);
+        bySignature.get(sig).push(e);
+        total++;
       }
     },
     /** 署名ごとに quality 上位を切り詰めた entries を返す(決定論的)。 */
@@ -363,7 +385,7 @@ function createViableCollector(perSignature) {
   };
 }
 /** 署名ごとに保持する viable 個体の上限。署名20種 × 200件でも4,000件で、メモリは十分軽い。 */
-const VIABLE_PER_SIGNATURE = 200;
+const VIABLE_PER_SIGNATURE = 400;
 
 // ---------------------------------------------------------------------------
 // ① 第1アーカイブ: MAP-Elites によるハイウェイ探索(バッチ並列 + Seed Distillation)
@@ -1051,15 +1073,30 @@ async function buildOutput(pool, attackPool, disruptPool, ai, di) {
  * 閾値を当て直すだけで別の寿命に対する viable が復元できる(再シミュレーション不要)。
  * 新規探索時は evaluateProjectile が同じ判定をしているので実質 no-op。
  */
-function reprojectViability(archive1) {
+async function reprojectViability(pool, archive1, viableCollector) {
+  const entries = archiveEntries(archive1);
+  // ⚠️ 保存済みの arrivalStep は「保存した当時の GAME_LIFE_SEARCH_CAP まで」しか
+  // 記録されていない。キャップより長い寿命へ再射影するときは、閾値を当て直すだけでは
+  // 足りない(キャップの外で到達した個体が「未到達」として保存されているため)ので、
+  // アーカイブの genome を**評価し直す**。elite は数千件しかないので数秒で終わる。
+  log(`  ゲーム射影をやり直す(GAME_LIFE_SEARCH_CAP=${C.GAME_LIFE_SEARCH_CAP} で ${entries.length}件を再評価)`);
+  const results = await pool.runBatch(
+    'evaluate',
+    entries.map((e) => ({ genome: e.genome })),
+  );
+  evalCount += entries.length;
   let changed = 0;
-  for (const e of archiveEntries(archive1)) {
-    const arrival = e.meta?.game?.arrivalStep;
-    const viable = arrival != null && arrival <= C.ATTACK_LIFE;
-    if (e.meta.viable !== viable) changed++;
-    e.meta.viable = viable;
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    const r = results[i];
+    if (e.meta.viable !== r.viable) changed++;
+    e.meta.highway = r.highway;
+    e.meta.game = r.game;
+    e.meta.viable = r.viable;
+    e.quality = r.quality;
+    if (r.viable) viableCollector.add(e.genome, r);
   }
-  if (changed > 0) log(`  ATTACK_LIFE=${C.ATTACK_LIFE} で viable を再射影: ${changed}件の判定が変わった`);
+  log(`  ATTACK_LIFE=${C.ATTACK_LIFE} で viable を再射影: ${changed}件の判定が変わった`);
 }
 
 async function runPipeline(pool, sampler) {
@@ -1073,6 +1110,9 @@ async function runPipeline(pool, sampler) {
     archive1 = archiveFromJSON(saved.archive1);
     distillStats = saved.distillStats ?? null;
     iterations = saved.archive1Iterations ?? 0;
+    // 探索中に集めた viable 候補も一緒に復元する(アーカイブの elite だけだと候補が痩せる)。
+    viableCollector.load(saved.viablePool);
+    if (saved.viablePool) log(`  viable プールを復元: ${saved.viablePool.length}件`);
     const stats = archiveStats(archive1);
     log(`  読み込み完了: filled=${stats.filled}/${stats.total} (元の反復回数 ${iterations})`);
   } else {
@@ -1081,7 +1121,7 @@ async function runPipeline(pool, sampler) {
     distillStats = built.distillStats;
     iterations = built.iterations;
   }
-  reprojectViability(archive1);
+  await reprojectViability(pool, archive1, viableCollector);
   const { attackSeedEntries, disruptSeedEntries, attackSeeds, disruptSeeds } = projectCandidates(archive1, viableCollector);
   if (attackSeeds.length < C.TEMPLATE_COUNT_ATTACK || disruptSeeds.length < C.TEMPLATE_COUNT_DISRUPT) {
     throw new Error(`②の候補数が不足(攻撃${attackSeeds.length}/妨害${disruptSeeds.length})。探索予算を増やすこと`);
@@ -1112,7 +1152,16 @@ async function runPipeline(pool, sampler) {
     log('⚠️ ⑤の必須条件を満たさなかった。選抜結果はそのまま書き出すが、docs/spec.md 未決定事項に記録すること');
   }
   const output = await buildOutput(pool, verifiedAttackPool, verifiedDisruptPool, selection.ai, selection.di);
-  return { output, archive1, archive2Attack, archive2Disrupt, distillStats, iterations, selectionOk: selection.ok };
+  return {
+    output,
+    archive1,
+    archive2Attack,
+    archive2Disrupt,
+    distillStats,
+    iterations,
+    viablePool: viableCollector.toJSON(),
+    selectionOk: selection.ok,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1123,7 +1172,7 @@ async function main() {
   const pool = createPool(WORKERS);
   const sampler = createReportSampler(REPORT_SAMPLE_CAP);
   try {
-    const { output, archive1, archive2Attack, archive2Disrupt, distillStats, iterations, selectionOk } = await runPipeline(
+    const { output, archive1, archive2Attack, archive2Disrupt, distillStats, iterations, viablePool, selectionOk } = await runPipeline(
       pool,
       sampler,
     );
@@ -1178,6 +1227,9 @@ async function main() {
       generatedAt,
       selectionOk,
       distillStats,
+      // ②以降だけ再実行(--resume-archive)するときに候補を失わないよう、
+      // 探索中に集めた viable 個体も保存する。
+      viablePool,
       archive1: archiveToJSON(archive1),
       archive2Attack: archiveToJSON(archive2Attack),
       archive2Disrupt: archiveToJSON(archive2Disrupt),
