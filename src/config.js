@@ -44,6 +44,39 @@ export function isInScoreGate(x) {
   return x >= SCORE_GATE_X_MIN && x < SCORE_GATE_X_MAX;
 }
 
+// ---- CPU の盤面観測(32×32 粗視化。v6 差分仕様 §10・docs/action-centric-contract.md §0) ----
+//
+// 実盤面は 256×256 = 65,536 セルある。CPU が毎判断でこれを走査すると学習が終わらない
+// (view は学習1回で数千万回作られる)ので、8×8 セルを1ブロックに畳んだ 32×32 の粗視化盤面を
+// engine 側で**増分更新**して持つ。CPU は局所ではなく全 32×32 ブロックを見る(§10)。
+export const COARSE_SIZE = 32;
+export const COARSE_BLOCK = WIDTH / COARSE_SIZE; // 8
+/** `x >> COARSE_SHIFT` で coarse 列を求める。COARSE_BLOCK が2の冪であることが前提。 */
+export const COARSE_SHIFT = Math.log2(COARSE_BLOCK); // 3
+export const COARSE_COUNT = COARSE_SIZE * COARSE_SIZE; // 1024
+export const COARSE_CELLS_PER_BLOCK = COARSE_BLOCK * COARSE_BLOCK; // 64
+/** 盤面を CPU ローカル Y で4分割した帯(§17.2)。band0 が自陣側、band3 が敵陣側。 */
+export const COARSE_BAND_COUNT = 4;
+export const COARSE_ROWS_PER_BAND = COARSE_SIZE / COARSE_BAND_COUNT; // 8
+
+/**
+ * グローバル coarse 行 → CPU ローカル coarse 行。
+ * y だけが陣営で鏡像になる(x はトーラスの共有軸なので変換しない)。
+ * HEIGHT が COARSE_BLOCK の倍数なので、セル座標の鏡像とブロック座標の鏡像は完全に対応する。
+ * 自己逆変換(ローカル→グローバルも同じ式)。
+ */
+export function coarseLocalRow(sideIndex, cyGlobal) {
+  return sideIndex === 0 ? cyGlobal : COARSE_SIZE - 1 - cyGlobal;
+}
+
+/**
+ * 所有セルの散らばり(特徴23 `ownedTrailSpread`)を [0,1] に落とす正規化スケール。
+ * 差分仕様は「正規化2次モーメントを [0,1] へ」としか言っていないため、この値が唯一の定義
+ * (docs/action-centric-contract.md §11-4)。所有セルが盤面全体に散ったときの重心からの
+ * RMS 距離の目安として、x/y それぞれ盤面の 1/4 を取る。
+ */
+export const OWNED_SPREAD_SCALE = Math.hypot(WIDTH / 4, HEIGHT / 4); // ≈ 90.5
+
 // ---- セルオートマトンのルール ----------------------------------------------
 // ルールは 'L' / 'R' の文字列で、添字がセルの状態。長さ = 色数。
 // ⚠️ グローバルな RULE は存在しない。各アリが自分の rule / colorCount を持つ。
@@ -356,6 +389,40 @@ export const COEVO_DELTA_X_STRIDE = 16; // 共進化中の deltaX 掃引の刻�
  * 全192列の argmin にすると選択が決定的になり読まれるので、標本を絞って揺らぎを残す。
  */
 export const ATTACK_COLUMN_SAMPLES = 8;
+
+// ---- Action 候補の生成(v6 Action-Centric。差分仕様 §5・§7・§29) ---------------
+//
+// ⚠️ これらは**候補数を制御するための上限**であって戦術的な絞り込みではない(§29)。
+// 「敵が来たから妨害を優先する」「汚れていない列を選ぶ」といった戦術は候補生成に
+// 入れてはいけない。候補の良し悪しは24次元の特徴が表現し、重みが学習する(§41)。
+//
+// 得点ゲート内の192列は x 方向の平行移動対称性でどこも等価なので、全列を候補化しても
+// 情報は増えず計算量だけが増える。一様サンプルで代表を引き、順位付けは特徴に任せる。
+/** 攻撃の発射列を得点ゲート内から何本サンプルするか(scoreReachability=1 になる候補)。 */
+export const ACTION_ATTACK_GATE_SAMPLES = 4;
+/**
+ * 攻撃の発射列を得点ゲート**外**から何本サンプルするか(scoreReachability=0 になる候補)。
+ * ⚠️ 0 にしてはいけない。差分仕様 §5 は「得点可能列だけに限定して候補生成してはならない」と
+ * している(攻撃アリを妨害・護衛・囮・盤面操作として使う戦略を方策表現上禁止しないため)。
+ */
+export const ACTION_ATTACK_OFFGATE_SAMPLES = 2;
+/** 妨害の発射列を全256列から何本サンプルするか。 */
+export const ACTION_DISRUPT_SAMPLES = 4;
+/** counterTable 由来の候補の上限(全敵アリ合計)。 */
+export const ACTION_COUNTER_MAX = 8;
+/** escortTable 由来の候補の上限(全自軍攻撃アリ合計)。 */
+export const ACTION_ESCORT_MAX = 4;
+
+/** Action 評価器(線形)の次元数。data/policy.json の weights の長さと必ず一致する。 */
+export const ACTION_FEATURE_COUNT = 24;
+/** data/policy.json の featureSchemaVersion。特徴の定義を変えたら必ず上げる。 */
+export const FEATURE_SCHEMA_VERSION = 1;
+
+/**
+ * Reference League の `SAVE_AND_BURST` が撃ち始めるトークン閾値(§19.3)。
+ * **参照方策の固定設定値であって CEM の学習対象ではない。**
+ */
+export const BURST_THRESHOLD = 20;
 
 // ---- 探索(MAP-Elites) -----------------------------------------------------
 /** ハイウェイ探索時のシミュレーション上限(§7)。ゲーム採用評価とは別。 */

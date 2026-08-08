@@ -31,6 +31,12 @@
 //     escortTable[attackId][interceptId] の要素は
 //     { interceptDeltaX, interceptFireAtStep, escortDisruptId, escortDeltaX, fireAtStep }。
 //     迎撃/護衛の発射列は wrapX(攻撃の発射列 + deltaX) で決める。
+//
+// v6(Action-Centric、docs/action-centric-contract.md §2・§4・§7)追従メモ:
+//   - CPU は `createCpuAgent({ templates, weights, rng, scheduleFire, selfDestruct, observe })`。
+//     旧11次元の個別パラメータを持つ `policy` は全廃され、`weights`
+//     (24要素の Action 評価器の重み配列)1本に統一された。
+//   - data/policy.json のトップレベルは `weights`(24要素の配列)。旧 `.policy` フィールドは無い。
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -54,7 +60,7 @@ import { createCpuAgent } from '../src/cpu.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATES_PATH = path.join(__dirname, '..', 'data', 'templates.json');
-const POLICY_PATH = path.join(__dirname, '..', 'data', 'policy.json');
+const DEFAULT_POLICY_PATH = path.join(__dirname, '..', 'data', 'policy.json');
 
 // ---------------------------------------------------------------------------
 // CLI 引数
@@ -66,8 +72,19 @@ function argNum(name, def) {
   const v = Number(argv[i + 1]);
   return Number.isFinite(v) ? v : def;
 }
+function argStr(name, def) {
+  const i = argv.indexOf(`--${name}`);
+  if (i === -1 || i + 1 >= argv.length) return def;
+  return argv[i + 1];
+}
 const GAMES = argNum('games', 1000);
 const SEED = argNum('seed', 1);
+/**
+ * 診断に使う方策ファイル(既定 `data/policy.json`)。
+ * ⚠️ 学習を回す**前**に「どのバランス指標が危ないか」を仮の重みで先に見るための逃げ道。
+ * 本番の合否判定は必ず既定(= data/policy.json の学習済み方策)で取ること。
+ */
+const POLICY_ARG = argStr('policy', null);
 // data/templates.json はまだ旧スキーマ(v3.1)のままの場合がある。新スキーマ移行後の動作を
 // エラーなく検証するための最小合成テンプレート(攻撃2種・妨害2種)へのフォールバック。
 // 旧 data/templates.json は書き換えない。
@@ -212,34 +229,36 @@ const counterTable = templates.counterTable ?? {};
 const escortTable = templates.escortTable ?? {};
 
 // data/policy.json が無ければ中立方策(仕様書の指示どおりの既定値)を使う。
-// ⚠️ v5.4 で方策は17次元になり(disruptAimOffsetFrac 削除、selfDestructAgeFrac →
-// selfDestructRemainingTicks)、v5.5 で TEMPLATE_COUNT_ATTACK が 9→3 になったのに伴い
-// 11次元になった(attackPref の長さが C.TEMPLATE_COUNT_ATTACK から自動追従する)。
-// ここは「学習前の既定値」なので、自爆の2つは
-// **意図的に「自爆しない」設定**にしてある(selfDestructBias=0, selfDestructRemainingTicks=0
-// =候補になるアリが存在しない)。学習済みの方策と比べたときに「自爆を覚えたかどうか」が
-// 差として見えるようにするため。attackAvoidBias も同じ流儀で「新機能を使わない既定値」にしてある。
-const NEUTRAL_POLICY = Object.freeze({
-  fireThreshold: 8,
-  reserveTokens: 6,
-  defendBias: 0.7,
-  escortBias: 0.5,
-  attackPref: Array.from({ length: C.TEMPLATE_COUNT_ATTACK }, () => 1.0),
-  selfDestructBias: 0,
-  selfDestructRemainingTicks: 0, // 値域は1..10だが「自爆しない」既定値として意図的に範囲外の0を使う
-  pollutionDestructWeight: 0,
-  attackAvoidBias: 0, // 盤面を見ない一様選択(既定挙動)
-});
+// ⚠️ v6(Action-Centric、docs/action-centric-contract.md §2・§4・§7)で方策は
+// 「24次元の Action 評価器の重み」1本になった(旧11次元パラメータは全廃)。
+// score(action) = Σ weights[i] * features[i] なので、weights を全0にすると
+// すべての Action のスコアが 0 になり、WAIT(スコアも常に0)と同点になる。
+// 同点は候補配列の添字が小さい方が勝つ実装なので、全0は必ず WAIT に倒れる
+// ＝「何もしない」という、学習前として過不足のない完全に中立な既定値になる。
+const NEUTRAL_WEIGHTS = Object.freeze(new Array(C.ACTION_FEATURE_COUNT).fill(0));
 
-let policy;
+const POLICY_PATH = POLICY_ARG ? path.resolve(POLICY_ARG) : DEFAULT_POLICY_PATH;
+const POLICY_LABEL = POLICY_ARG ? path.relative(process.cwd(), POLICY_PATH) : 'data/policy.json';
+
+let weights;
 let policyNote;
 if (existsSync(POLICY_PATH)) {
   const raw = JSON.parse(readFileSync(POLICY_PATH, 'utf8'));
-  policy = raw.policy;
-  policyNote = `data/policy.json を使用(学習済み・trainedAt=${raw.trainedAt ?? '不明'}・matches=${raw.matches ?? '?'})`;
+  if (!Array.isArray(raw.weights) || raw.weights.length !== C.ACTION_FEATURE_COUNT) {
+    // 旧スキーマ(.policy を持つ11次元方策など)が data/policy.json に残っていると、ここで
+    // 気づかず中立方策にフォールバックしてしまい「学習の効果が無い」という誤診断を出す。
+    // それを防ぐため、形が合わなければ黙って続行せず止める。
+    console.error(
+      `${POLICY_LABEL} のスキーマが不正です(weights が長さ${C.ACTION_FEATURE_COUNT}の配列ではありません)。` +
+        ' `node scripts/train-policy.mjs` で再学習してください。',
+    );
+    process.exit(1);
+  }
+  weights = raw.weights;
+  policyNote = `${POLICY_LABEL} を使用(学習済み・trainedAt=${raw.trainedAt ?? '不明'}・matches=${raw.matches ?? '?'})`;
 } else {
-  policy = NEUTRAL_POLICY;
-  policyNote = 'data/policy.json が見つからないため中立方策を使用(fireThreshold=8, reserveTokens=6, defendBias=0.7, escortBias=0.5, attackPref=全1.0)';
+  weights = NEUTRAL_WEIGHTS;
+  policyNote = `${POLICY_LABEL} が見つからないため中立方策を使用(weights=全0、長さ${C.ACTION_FEATURE_COUNT})`;
 }
 
 console.log(`Langton Ant Siege バランス診断: games=${GAMES} seed=${SEED}${SYNTHETIC ? ' (--synthetic)' : ''}`);
@@ -309,7 +328,7 @@ function makeTrackedAgent(getMatch, sideIndex, rngSeed, counters) {
   const rng = createRng(rngSeed);
   const base = createCpuAgent({
     templates,
-    policy,
+    weights,
     rng,
     scheduleFire: (action, atStep) => {
       counters[action.kind] = (counters[action.kind] ?? 0) + 1;
@@ -985,11 +1004,11 @@ if (failCount > 0) {
     console.log(`    攻撃1発あたりの得点率(概算, 得点数/攻撃発射数)=${fmtPct(impliedBreakthrough)}`);
     console.log(`    参考: 妨害なしの得点率=${fmtPct(scoreRateNoDisrupt)} / 攻撃のみvs迎撃の突破率=${fmtPct(breakthroughVsCounter)} / 攻撃+護衛vs迎撃の突破率=${fmtPct(breakthroughWithEscort)}`);
     if (Number.isFinite(impliedBreakthrough) && impliedBreakthrough < 0.05) {
-      console.log('    → 概算突破率が極端に低い。迎撃(counterTable)が強く効きすぎているか、CPUが護衛を撃てていない(escortBias/トークン不足)可能性がある。');
+      console.log('    → 概算突破率が極端に低い。迎撃(counterTable)が強く効きすぎているか、CPUが護衛を撃てていない(護衛 FIRE の重みが弱い/トークン不足)可能性がある。');
     }
-    console.log(`    方策: fireThreshold=${fmtNum(policy.fireThreshold)} reserveTokens=${fmtNum(policy.reserveTokens)} defendBias=${fmtNum(policy.defendBias)} escortBias=${fmtNum(policy.escortBias)}`);
+    console.log(`    方策: 平均攻撃発射数=${fmtNum(avgAttackFired)} 平均妨害発射数=${fmtNum(avgDisruptFired)} 平均自爆回数=${fmtNum(sumSelfDestructSuccess / GAMES)}`);
     if (avgAttackFired < 1) {
-      console.log('    → 攻撃発射数自体が極端に少ない。fireThreshold/reserveTokens が高すぎて攻撃を出せていない可能性がある。');
+      console.log('    → 攻撃発射数自体が極端に少ない。攻撃 FIRE の重み(特徴0)が負に振れている、または他の Action が常に上回っている可能性がある。');
     }
   }
   if (failedNames.has('得点した弾のハイウェイ割合')) {

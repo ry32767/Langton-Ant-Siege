@@ -7,6 +7,7 @@
 - **AGENTS.md**(このファイル)：作業規約・コマンド・検証ループ・ドキュメント同期規約。
 - **CLAUDE.md**(直下)：Claude Code 固有の補足のみ(このファイルを読み込む薄いラッパ)。
 - **docs/**：`spec.md`(ゲームルール・受け入れ条件=合格ライン)、`README.md`(索引)、`data-model.md`、`architecture.md`。
+- **docs/action-centric-contract.md**：v6 の CPU 実装契約。view の追加フィールド・Action の形・**24次元 Feature Encoder の凍結表**・Reference League・`data/policy.json` の新スキーマ。**CPU/学習/評価に触るなら spec.md より先にこれを読む**(名前と式が一字一句ここで決まっている)。
 - **REVIEW.md**(直下)：実測レビュー(v1本編 + 付録B/C/D/E)。現仕様の制約の根拠。**ルールを変えたくなったら先にこれを読む。**
 - **verify-v3/ verify-highway/**：REVIEW.md の数値を出した検証スクリプト。**仕様の曖昧な箇所は、まずここを読んで挙動を確認する**(REVIEW.md の全数値はこのコードの出力なので、これが事実上の実行可能な仕様書になっている)。
 
@@ -31,12 +32,27 @@ node scripts/generate-templates.mjs --budget-min 180 --workers 22   # 本探索(
 node scripts/generate-templates.mjs --seed 1 --iterations 4200000   # 上の成果物を再現する(下記)
 node scripts/tune-attack-life.mjs            # 探索アーカイブから ATTACK_LIFE の候補を掃引して比較
 node scripts/generate-templates.mjs --resume-archive data/search-archive.json  # ①を省略して②〜⑤だけ再実行
-node scripts/train-policy.mjs                # CPU同士の自己対戦で方策を学習 → data/policy.json
+node scripts/evaluate-policy.mjs --mode bench              # ★学習の**前**に必須。性能ベンチ(v6 §28)→ data/benchmark.json
+node scripts/train-policy.mjs                # 24次元 Action 評価器を CEM で学習 → data/policy.json(数十分)
+node scripts/train-policy.mjs --quick --out /tmp/policy-check.json  # 学習の通し確認(数分。本番設定ではない)
+node scripts/evaluate-policy.mjs --mode final             # ★学習の**後**。リーグ2,000試合＋旧CPU1,000試合(v6 §26)
 node scripts/simulate-matches.mjs --games 5000            # バランス検証(得点率・HW割合・盤面汚染度・先手勝率)
 node scripts/simulate-matches.mjs --games 100 --seed 1    # シード固定で再現性を確認(2回実行して出力一致)
-node scripts/verify-v54.mjs --games 300                   # CPUの行動内訳(攻撃/迎撃/護衛/自爆の発射数・迎撃の効果を対照群つきで測る)
-node scripts/verify-v54.mjs --compare-ticks --games 200   # selfDestructRemainingTicks を 1/5/10 に固定してCRNで比較
 ```
+
+**v6(Action-Centric CPU)の学習・検証の順序**。この順を崩さないこと:
+
+1. `evaluate-policy.mjs --mode bench` … 差分仕様 §28 が「CEM 本学習前に性能計測を必須」としている。
+   ここで足りないと分かったときの最適化順は §29 で、**世代数の削減は最後**。
+2. `train-policy.mjs` … `--workers N`(既定 = min(コア数-2, 22))。乱数はメインスレッドだけが持ち
+   ワーカーは純粋関数なので、**ワーカー数を変えても `--seed` が同じなら出力は一致する**。
+3. `evaluate-policy.mjs --mode final` … `data/policy.json` の `evaluation` / `tacticsLog` を上書きする。
+4. `simulate-matches.mjs --games 5000` … バランス指標11項目。
+
+⚠️ **`scripts/verify-v54.mjs` は v6 で退役した**(`archive/verify-v54.mjs`)。「迎撃/護衛」という戦術
+カテゴリを前提に数えるスクリプトだったが、v6 の CPU には WAIT / FIRE / SELF_DESTRUCT しか無く、
+妨害を「迎撃」と呼ぶか「護衛」と呼ぶかは人間の解釈でしかない(差分仕様 §3・§8)。
+戦術の使用回数は `evaluate-policy.mjs --mode final` の戦術使用ログが出す(§27。**fitness には入れない**)。
 
 ⚠️ **通し確認(`--quick`)には必ず `--out-dir` を付ける。** 付けないと `data/templates.json` を直接上書きし、以降の `simulate-matches` / `train-policy` が「動作確認用の粗いテンプレート」を本物だと思って走る(実際に踏みかけた)。
 

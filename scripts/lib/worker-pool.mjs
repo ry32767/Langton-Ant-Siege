@@ -20,7 +20,17 @@ export function defaultWorkerCount() {
   return Math.max(1, os.cpus().length - 2);
 }
 
-export function createPool(size = defaultWorkerCount()) {
+/**
+ * @param {number} size ワーカー数
+ * @param {object} [options]
+ * @param {string} [options.workerPath] ワーカーのモジュールパス(既定は MAP-Elites 探索ワーカー)。
+ *   v6 で CEM 学習の対戦ワーカー(match-worker.mjs)も同じプールを使うため差し替え可能にした。
+ * @param {object} [options.workerData] ワーカー起動時に一度だけ渡すデータ(テンプレート等)。
+ *   ⚠️ 乱数の種をここに入れないこと(乱数はメインスレッドだけが持つ。冒頭の決定論の担保を参照)。
+ */
+export function createPool(size = defaultWorkerCount(), options = {}) {
+  const workerPath = options.workerPath ?? WORKER_PATH;
+  const workerData = options.workerData;
   const workers = [];
   const idle = [];
   const queue = []; // { task, payload, resolve, reject }
@@ -40,7 +50,7 @@ export function createPool(size = defaultWorkerCount()) {
   }
 
   for (let i = 0; i < size; i++) {
-    const worker = new Worker(WORKER_PATH);
+    const worker = new Worker(workerPath, workerData === undefined ? undefined : { workerData });
     worker.on('message', (msg) => {
       const entry = pending.get(msg.id);
       if (!entry) return;

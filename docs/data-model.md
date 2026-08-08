@@ -23,6 +23,13 @@
 > v5.5 で**テンプレート数が9+9 → 3+3に削減**され、方策ベクトルが17 → **11次元**に縮小された。
 > 妨害の非対称コスト(`2 + ceil(マス/2)`)を導入。`DISRUPT_BASE_COST` に改名(`DISRUPT_COST` 廃止)。
 > 最終選抜が役割別(Speed/Economy/Robust × Cheap/General/Complement)に変更。
+>
+> v6 で **CPU のデータモデルが全面刷新**された。旧11次元の方策ベクトル(`policy` オブジェクト)は廃止され、
+> `data/policy.json` は **24要素の `weights` 配列(線形評価器の重み)ひとつ**を唯一の方策として持つ。
+> `src/engine.js` に **32×32粗視化盤面**(`coarseNonWhite`/`coarseOwnedBySide`)と**自軍アリ別 ownership map**
+> (`coarseOwnedByAnt`/`antSlotOccupant`/`lastToucherSlot`)が増分更新で追加され、Ant に `slot` が加わった。
+> CPU の Action は **WAIT / FIRE / SELF_DESTRUCT** の3種のみになった。全スキーマの唯一の正は
+> [action-centric-contract.md](action-centric-contract.md)(以下「契約書」)であり、本書はそれと二重管理しない。
 
 ```mermaid
 erDiagram
@@ -74,7 +81,8 @@ erDiagram
         int spawnY "発射時の位置(identifyTable の引き用)"
         int spawnDir "発射時の向き(identifyTable の引き用)"
         int steps
-        int life "kind で決まる: attack=20000(確定) / disrupt=1000(rule/colorCountには依存しない)"
+        int life "kind で決まる: attack=20000(確定) / disrupt=6000(v5.3で1000から変更。rule/colorCountには依存しない)"
+        int slot "v6追加。自軍のみ意味を持つ(coarseOwnedByAntの添字+ant.slot)。敵アリは-1。fire()でantSlotOccupantの空きを添字の小さい順に確保する"
     }
     PLACEDCELL {
         int antId FK
@@ -112,7 +120,7 @@ erDiagram
 | Match(試合) | `stepsPerSecond`, `timeLimitSec`, `totalSteps`, `winScore`, `elapsedStep`, `phase`, `result`, `seed` | 先に `winScore` 到達で勝ち。`totalSteps`(=160,800)経過で得点比較、同点なら `draw` |
 | Board(盤面) | `width`(256), `height`(256), `zoneDepth`(32), `wrapHorizontal`(true), `wrapVertical`(false), `scoreLineY`(224), `scoreGateXMin`(32), `scoreGateXMax`(224) | side1 の配置可能帯は `y=0..31`、side2 は `y=224..255`。左右はトーラス、上下端でアリ消滅/得点。得点ゲートは下記参照 |
 | Side(陣営) | `id`, `controller`, `mirrored`, `score`, `tokens`, `tokenCap`, `maxFlying` | `tokens` は1秒(=670ステップ)ごとに+1(上限30)。アリ飛行中も蓄積。同時飛行は攻撃・妨害あわせて最大4匹 |
-| Ant(アリ) | `id`, `sideId`, `kind`, `rule`, `colorCount`, `templateId`, `x`, `y`, `direction`, `spawnX`, `spawnY`, `spawnDir`, `steps`, `life` | 現在位置 `x` / `y` / `direction` は毎ステップ動く。発射位置 `spawnX` / `spawnY` / `spawnDir` は発射時に保存される。`identifyTable` を引くのに使うのは `spawnY`/`spawnDir` の組だけ(`spawnX` は発射時に選べる自由度なので識別には使わない)。`rule` / `colorCount` は発射時に固定され消滅まで変わらない。`kind` で寿命が決まる(attack=20000(確定) / disrupt=1000。ルールの長さでは変わらない)。`steps >= life` で消滅。内部実装は `ant.touched`(踏んだマスの添字列)も持つが、これはクリーンアップ専用の実装詳細で試合の外部モデルには出さない(下記「盤面の内部表現」参照) |
+| Ant(アリ) | `id`, `sideId`, `kind`, `rule`, `colorCount`, `templateId`, `x`, `y`, `direction`, `spawnX`, `spawnY`, `spawnDir`, `steps`, `life`, `slot`(v6) | 現在位置 `x` / `y` / `direction` は毎ステップ動く。発射位置 `spawnX` / `spawnY` / `spawnDir` は発射時に保存される。`identifyTable` を引くのに使うのは `spawnY`/`spawnDir` の組だけ(`spawnX` は発射時に選べる自由度なので識別には使わない)。`rule` / `colorCount` は発射時に固定され消滅まで変わらない。`kind` で寿命が決まる(attack=20000(確定) / disrupt=6000(v5.3で1,000から変更)。ルールの長さでは変わらない)。`steps >= life` で消滅。**`slot`(v6追加)** は自軍アリ別 ownership map(`coarseOwnedByAnt`)の添字で、`fire()` が `antSlotOccupant[sideIndex]` の空きを添字の小さい順に確保して割り当てる。敵アリの `slot` は常に `-1`。内部実装は `ant.touched`(踏んだマスの添字列)も持つが、これはクリーンアップ専用の実装詳細で試合の外部モデルには出さない(下記「盤面の内部表現」参照) |
 | PlacedCell(配置マス) | `antId`, `x`, `y`, `state` | **アリ単位**で持つ(陣営単位ではない)。盤面上は**絶対座標**(発射時に `src/template.js` の `instantiateTemplate` が相対テンプレートを絶対座標へ変換してから書き込む)。そのアリの消滅時にクリーンアップ対象になる。`state` は `0 <= state < colorCount` |
 | Template(テンプレート) | `id`, `kind`, `rule`, `colorCount`, `cost`, `antY`, `antDir`, `arrivalStep` / `entryXAt0` / `robustness`(攻撃)、`reachRows` / `endDirection` / `coverage`(妨害), `costTier`, `featureTier` | **`antX` を持たない**(発射列は発射時にプレイヤー/CPUが自由に選ぶ)。攻撃用と妨害用で特徴軸が異なる。`robustness` / `coverage` は共進化生成の結果 |
 | TemplateCell | `templateId`, `dx`, `dy`, `state` | 配置マスの**アリからの相対座標**と状態。アリの初期行・向きは Template に `antY` / `antDir` として持つ(`antX` は無い) |
@@ -131,6 +139,7 @@ erDiagram
 board           = new Uint8Array(W * H);   // セルの状態。0(白)〜MAX_COLORS-1(15)まで取りうる
 lastToucher     = new Int16Array(W * H);   // 最後にそのマスを踏んだアリの id。-1 = 誰も踏んでいない
 lastToucherSide = new Uint8Array(W * H);   // 最後にそのマスへ触れた陣営。0=未接触 / 1=side1 / 2=side2
+lastToucherSlot = new Uint8Array(W * H);   // v6追加。最後にそのマスへ触れたアリのスロット+1。0=所有者なし
 ```
 
 セルはオブジェクト化しない。256×256 = 65,536セル。
@@ -155,6 +164,50 @@ CPU が盤面を観測できるようにするため、`createMatch` の内部�
 - **参照渡し(読み取り専用)**(`board`: `Uint8Array`[65536], `lastToucherSide`: `Uint8Array`[65536], `columnNonWhite`: `Int32Array`[256])
 
 ⚠️ **重要**: view は学習1回で約4,600万回作られるので、(a)コピーを1回でも挟むと学習が終わらない、(b)利用側が毎判断で全65,536セルを走査しても同様に破綻する。「どの列が汚れているか」を知りたいだけなら **`columnNonWhite` を使うこと**。参照渡しなので読み取り専用として扱う。engine 側は `createMatch` が `nonWhiteColumn`(長さ WIDTH の `Int32Array`)を持ち、`fire()` / `stepAnt()` / `cleanupAnt()` がセル値の「0 ↔ 0以外」の跨ぎだけで増分更新する。
+
+> ⚠️ **v6 での位置づけ**: `boardPollution` / `myZonePollution` / `enemyZonePollution` / `columnNonWhite` は `src/engine.js` の `createSideView` から**引き続き公開されている**(削除していない)が、v6 の `src/cpu.js`(24次元 Action 評価器)はこれらを**一切参照しない**。現在これらを読むのは `src/cpu-legacy.js`(凍結した v5.5 の旧CPU。`scripts/evaluate-policy.mjs --mode final` が対戦相手として使う)だけである。v6 の盤面認識は次の「32×32粗視化盤面とownershipマップ」に置き換わった。
+
+### 32×32粗視化盤面とownershipマップ(v6)
+
+CPU(機能6)が256×256の実盤面を毎判断走査すると学習が終わらないため、8×8セルを1ブロックに畳んだ **32×32の粗視化盤面**を `createMatch` の戻り値に増分更新で持つ。**唯一の実装契約は [action-centric-contract.md](action-centric-contract.md) §1**。ここでは配列の型・添字の求め方・不変条件だけをまとめる。
+
+```js
+// すべてグローバル coarse 座標(index = cyGlobal * 32 + cxGlobal)
+coarseNonWhite:    new Int32Array(1024),               // ブロック内の非白セル数 0..64
+coarseOwnedBySide: [new Int32Array(1024),               // lastToucherSide===1 のセル数(side0)
+                    new Int32Array(1024)],              // lastToucherSide===2 のセル数(side1)
+// 自軍アリ別 ownership。[sideIndex][slot] で 32×32。slot は 0..MAX_FLYING-1
+coarseOwnedByAnt: [
+  Array.from({length: 4}, () => new Int32Array(1024)),  // MAX_FLYING=4
+  Array.from({length: 4}, () => new Int32Array(1024)),
+],
+antSlotOccupant: [new Int8Array(4).fill(-1), new Int8Array(4).fill(-1)], // 各スロットのantId。空き=-1
+```
+
+`x >> COARSE_SHIFT`(=3)・`gy >> COARSE_SHIFT` で coarse 座標を求める(`WIDTH=256` が `COARSE_SIZE=32` の倍数である前提)。CPUローカル座標への変換は `C.coarseLocalRow(sideIndex, cyGlobal)`(`y` だけを鏡像にする。`x` は共有トーラス軸なので変換しない)。
+
+**増分更新の経路は `stepAnt` / `fire` / `cleanupAnt` の3つだけ**(既存の `bumpCounters` 呼び出し箇所と完全に同じ)。新しい書き込み経路を作らない。
+
+| 経路 | 意味 |
+|---|---|
+| `stepAnt` | アリが1マス進んで踏んだセルの所有者が変わる |
+| `fire`(配置マス) | 配置マスの書き込みも ownership に計上する。⚠️ **落としやすい**: `fire()` も `lastToucher[j] = antId` を書くため、ここを見落とすと「`ownedTrailAmount` が実 cleanup セル数と一致する」という不変条件が壊れる(契約書 §1.2) |
+| `cleanupAnt`(白に戻すセル) | 所有者を「なし」(`side=0`/`slot=0`)に戻す |
+
+**スロットの確保と解放**: `fire()` は `antSlotOccupant[sideIndex]` の空き(値-1)を**添字の小さい順**に探して確保し、`ant.slot` に持たせる。空きが無いことは `canFire` が `MAX_FLYING` を弾くので起こらない。アリの消滅時は `cleanupAnt` の後に `antSlotOccupant[side][slot] = -1` と `coarseOwnedByAnt[side][slot].fill(0)` を行う(後者は cleanup が正しければ冗長だが、不変条件の保険として必ず行う)。
+
+**不変条件**(テストで検査する対象。§1.3): `Σ_slot coarseOwnedByAnt[s][slot][b]` は「ブロック `b` 内で `lastToucher[j] !== -1` かつ `lastToucherSide[j] === s+1` のセル数」= `coarseOwnedBySide[s][b]` に一致する。
+
+`createSideView` はこれらを**参照渡し・グローバル coarse 座標のまま**公開する(コピーしない。既存 `board`/`columnNonWhite` と同じ規律):
+
+```js
+coarseNonWhite,   // Int32Array(1024) 参照
+coarseOwnedMine,  // Int32Array(1024) = match.coarseOwnedBySide[sideIndex]
+coarseOwnedEnemy, // Int32Array(1024) = match.coarseOwnedBySide[1-sideIndex]
+coarseAntOwned,   // (Int32Array|null)[MAX_FLYING]。自軍スロットごと。空きスロットはnull
+```
+
+`toView(ant)` にも `slot`(自軍のみ意味を持つ。敵アリは`-1`)が追加された。
 
 ### `ant.touched` によるクリーンアップの高速化(v5)
 
@@ -584,48 +637,128 @@ MAP-Elites 探索アーカイブのデバッグ・再現性確保用ダンプ。
 >
 > `escortTable` の `fireAtStep` も同じく「**自分の**攻撃アリが発射されたステップ」からの相対。`interceptDeltaX`/`interceptFireAtStep` は「その護衛が対応する迎撃」がどの deltaX・タイミングで来た場合かを表す。
 
-## data/policy.json
+> ⚠️ **v6 での位置づけ**: これらのテーブルは `generateActions`(下記「Action」参照)が候補を作るための材料に降格した(契約書 §9)。「テーブル由来だから優先する」という選択規則は無い。`counterTable.successRate` は候補の列挙順(降順)を決めるためだけに使い、24次元の特徴には含めない。
+
+## Action(v6)
+
+CPU(機能6)の意思決定単位。**唯一の実装契約は [action-centric-contract.md](action-centric-contract.md) §2**。ここでは形だけを要約する。
+
+```js
+// WAIT — 常に合法。score ≡ 0。特徴は計算しない
+{ type: 'WAIT' }
+
+// FIRE — 即時(atStep === view.step)または予約(atStep > view.step)
+{
+  type: 'FIRE',
+  kind: 'attack' | 'disrupt',                // テンプレートの物理的kind。戦術ラベルではない
+  templateId: string,
+  launchX: number,                           // 0..255
+  atStep: number,
+  cost: number,                              // C.costOf(kind, cells.length)
+  source: 'generic' | 'counter' | 'escort',  // 由来。選択規則には使わない(DEFEND_HEAVYのsource参照を除く。ログ専用)
+  engineAction: object,                      // instantiateTemplate() の戻り値。engine.fireがそのまま受け取る
+}
+
+// SELF_DESTRUCT — 飛行中の自軍アリすべてが候補(事前フィルタ禁止)
+{ type: 'SELF_DESTRUCT', antId: number, slot: number, ant: object }
+```
+
+`type` に `ATTACK`/`DEFEND`/`ESCORT` は存在しない。`generateActions(view, ctx)` が合法な Action を列挙し(戦術判断はしない)、`selectAction(view, actions, ctx)` が `score = Σ weights[i]*features[i]` の24次元線形評価器で最大スコアを選ぶ(同点は候補配列の添字が小さい方)。24特徴それぞれの名前・範囲・定義は契約書 §5 の凍結表が唯一の定義(本書では複製しない)。
+
+## data/policy.json(v6で全面差し替え)
+
+**唯一の実装契約は [action-centric-contract.md](action-centric-contract.md) §7**。旧11次元の `policy` オブジェクト(`fireThreshold`/`reserveTokens`/`defendBias`/`escortBias`/`attackPref`/`selfDestructBias`/`selfDestructRemainingTicks`/`pollutionDestructWeight`/`attackAvoidBias`)は**廃止**され、トップレベルの `weights`(24要素の配列)だけが方策の実体になった。旧スキーマと新スキーマを**混在させない**。
 
 ```json
 {
-  "trainedAt": "2026-08-08T00:00:00Z",
-  "method": "CEM",
-  "generations": 40,
-  "matches": 96000,
-  "winRateVsRandom": 0.0,
-  "policy": {
-    "fireThreshold": 8,
-    "reserveTokens": 6,
-    "defendBias": 0.7,
-    "escortBias": 0.5,
-    "attackPref": [1.0, 0.8, 1.2],
-    "selfDestructBias": 0.2,
-    "selfDestructRemainingTicks": 5,
-    "pollutionDestructWeight": 0.5,
-    "attackAvoidBias": 0.3
+  "trainedAt": "2026-08-08T18:07:49.954Z",
+  "method": "CEM_ACTION_CENTRIC",
+  "featureSchemaVersion": 1,
+  "dimensions": 24,
+  "population": 80, "elite": 16, "gamesPerIndividual": 40,
+  "minGenerations": 20, "maxGenerations": 60, "actualGenerations": 0,
+  "earlyStopReason": null,
+  "seed": 1, "workers": 22, "matches": 0,
+  "selectedCandidate": "mean|bestValidation|gen<N>Best",
+  "weights": [ 0, 0, "…(24要素)…", 0 ],
+  "evaluation": {
+    "referenceLeagueAverageWinRate": 0, "winRateVsAttackOnly": 0,
+    "winRateVsCheapSpam": 0, "winRateVsSaveAndBurst": 0,
+    "winRateVsDefendHeavy": 0, "winRateVsOldCPU": null, "averageScoreDiff": null
   },
-  "selfDestructTicksTrajectory": [5.96, 6.08, 4.84, "…(世代数ぶん)…", 5.59]
+  "performance": { "matchesPerSec": 0, "trainingSec": 0, "decisionsPerSec": 0,
+                   "avgCandidatesPerDecision": 0, "p95CandidatesPerDecision": 0,
+                   "featureEncodeUsPerDecision": 0, "actionScoreUsPerDecision": 0 },
+  "trajectory": [ { "generation": 1, "bestFitness": 0, "eliteMeanFitness": 0,
+                    "eliteSelfPlayWinRate": 0, "eliteLeagueWinRate": 0, "normalizedMeanShift": 0 } ],
+  "validation": [ { "generation": 5, "candidate": "mean|generationBest|bestSoFar",
+                    "referenceLeagueAverageWinRate": 0, "perOpponent": {} } ],
+  "finalCandidates": [ { "label": "finalMean", "referenceLeagueAverageWinRate": 0, "perOpponent": {} } ],
+  "tacticsLog": { "wait": 0, "attackFire": 0, "disruptFire": 0, "selfDestruct": 0, "byTemplate": {} }
 }
 ```
 
 | フィールド | 意味 |
 |---|---|
-| `fireThreshold` | このトークン数以上でのみ発射を検討する |
-| `reserveTokens` | 迎撃用に温存するトークン量。これを下回る攻撃はしない |
-| `defendBias` | 敵の攻撃が飛来中に、攻撃ではなく迎撃を選ぶ確率 |
-| `escortBias` | 自分の攻撃に敵の迎撃が来たとき、護衛を撃つ確率 |
-| `attackPref[3]` | **v5.5で変更**。攻撃テンプレート3種(`TEMPLATE_COUNT_ATTACK`。Speed/Economy/Robust)の選好重み(softmaxで選択)。配列順は役割順で固定。相手の防御傾向への適応がここに現れる |
-| `selfDestructBias` | 自爆を試みる基礎確率(v5.2) |
-| `selfDestructRemainingTicks` | 寿命までの残りCPU判断tick数がこの値以下のアリだけ自爆対象。整数1..10 |
-| `pollutionDestructWeight` | `boardPollution` に比例して自爆確率を上げる重み(v5.2) |
-| `attackAvoidBias` | 攻撃の発射列を盤面(`columnNonWhite`)から選ぶ確率(v5.3) |
-| `winRateVsRandom` | 学習の効果を示す記録値。再学習したら更新する |
+| `weights[24]` | **方策の実体**。24次元線形評価器の重み。`score(action) = Σ weights[i]*features[i]`。特徴の名前・範囲・定義は契約書 §5 が唯一の定義 |
+| `method` | 常に `"CEM_ACTION_CENTRIC"`(旧スキーマと区別するための識別子) |
+| `featureSchemaVersion` | 契約書 §5 の特徴定義のバージョン。定義を変えたら上げる(`C.FEATURE_SCHEMA_VERSION`) |
+| `population`/`elite`/`gamesPerIndividual`/`minGenerations`/`maxGenerations`/`actualGenerations`/`earlyStopReason` | CEM の学習設定と実際の打ち切り理由(契約書 §8) |
+| `selectedCandidate` | 最終候補の再評価(§25)で採用されたラベル(`mean`/`bestValidation`/直近世代ベストのいずれか) |
+| `evaluation` | 学習中の固定シード集合での参考値。**`scripts/evaluate-policy.mjs --mode final` を実行すると `winRateVsOldCPU`(旧CPU v5.5との対戦)を含めて上書きされる**(§26) |
+| `performance` | `evaluate-policy.mjs --mode bench` の結果(`data/benchmark.json`)から `train-policy.mjs` が転記する学習前性能値 |
+| `trajectory` | 各世代のfitness・エリート勝率・`normalizedMeanShift`(補助表示専用。early stopの主条件にはしない) |
+| `validation` | 5世代ごとの held-out validation の記録(§23) |
+| `finalCandidates` | 最終選抜(§25)で比較した候補一覧とその成績 |
+| `tacticsLog` | `evaluate-policy.mjs --mode final` が書く戦術使用ログ(§27)。**fitness には一切使わない観測専用** |
 
-> **`selfDestructTicksTrajectory`**(v5.4・`policy` の外側のトップレベル): CEM の各世代における `selfDestructRemainingTicks` 次元の平均(丸めない生の浮動小数)を世代順に並べた配列。
-> ⚠️ これは学習結果ではなく**学習の診断用**。この次元は値域 1〜10 に対して `MIN_STD` が 0.18、方策へのデコード時の丸め粒度が 1 なので、エリートが一度ある整数に揃うと隣の整数へ移るのに約2.8σを要し、**序盤で凍結したまま一度も探索されずに終わる**ことがあり得る。その場合「自爆にゲーム上の価値が無い」と「そもそも探索されていない」が区別できなくなるため、軌跡を残す。
+`src/cpu.js` の `createCpuAgent({ templates, weights, rng, scheduleFire, selfDestruct, observe })` は `weights` を受け取る(`policy` という引数名は使わない。旧スキーマとの取り違え防止)。`src/app.js` は `weights: policyData.weights` を渡す。
 
-学習は CEM法(交差エントロピー法)による自己対戦。パラメータは**11個**(v5.2で13→16、v5.3で18、v5.4で17、**v5.5で11に縮小**)。実測(v3.1) 362試合/秒 で、集団60 × 各40試合 × 40世代 = **約4分**(v5.3盤面・寿命20,000・670ステップ/秒での再計測は未実施)。CPU の意思決定周期は `DECISION_INTERVAL_STEPS`(=`STEPS_PER_SECOND`=670)ステップに1回(v4までは120、v5は300)。
+学習は CEM法(交差エントロピー法。**24次元 対角ガウス**)による自己対戦 + 固定 Reference League(`src/reference-policies.js` の4方策)。詳細な予算・fitness配分・early stop条件は契約書 §8、[spec.md](spec.md) 機能6を参照(本書では複製しない)。
 
-> ⚠️ 上の値は**形式を示す例**であり実在の学習結果ではない。`node scripts/train-policy.mjs` を実行して実際の値で上書きすること。
+> ⚠️ 上のJSON中の `0`/`null` は**形式を示すプレースホルダ**であり実在の学習結果ではない。実際に入っている値は
+> `node scripts/train-policy.mjs` → `node scripts/evaluate-policy.mjs --mode final` の実行結果で、
+> 現在の実測値は [spec.md](spec.md) の「v6 の学習後検証・バランス実測」節にまとめてある
+> (数値をここに複製すると二重管理になるので置かない)。
 >
 > `data/*.json` は手で編集しない。ロジックを直したらスクリプトを再実行する([../AGENTS.md](../AGENTS.md) の Do NOT)。
+
+## data/policy-v55.json(v6で追加。旧スキーマの凍結スナップショット)
+
+v5.5時点の11次元 `policy` オブジェクトをそのまま凍結保存したファイル。形式は上の「v6で全面差し替え」より前の版(`policy: { fireThreshold, reserveTokens, defendBias, escortBias, attackPref, selfDestructBias, selfDestructRemainingTicks, pollutionDestructWeight, attackAvoidBias }`)と同一。`src/cpu-legacy.js`(凍結した v5.5 の旧CPU実装)と対になっており、`scripts/evaluate-policy.mjs --mode final`(§26.2)が旧CPUとの対戦相手を組み立てるためだけに読む。ブラウザの実行時コードはこのファイルを読み込まない。
+
+## data/benchmark.json(v6で追加)
+
+`scripts/evaluate-policy.mjs --mode bench`(契約書 §9・差分仕様 §28)が書き出す、CEM本学習**前**の性能ベンチマーク。新CPU(v6)と旧CPU(`src/cpu-legacy.js`。存在すれば)の `matches/sec`・`decisions/sec`・1判断あたりの平均/p95候補数・特徴生成/採点にかかる時間(µs)・coarse盤面/ownership更新の推定コストを記録する。`train-policy.mjs` が実行時にこのファイルを読み、`data/policy.json` の `performance` へ転記する。
+
+```json
+{
+  "measuredAt": "2026-08-08T00:00:00.000Z",
+  "seed": 1, "games": 30,
+  "newCpu": { "matchesPerSec": 0, "decisionsPerSec": 0, "avgCandidatesPerDecision": 0,
+              "p95CandidatesPerDecision": 0, "featureEncodeUsPerDecision": 0, "actionScoreUsPerDecision": 0 },
+  "oldCpu": { "matchesPerSec": 0, "decisionsPerSec": 0 },
+  "boardHooks": { "boardWritesPerMatch": 0, "coarseUpdateNsPerWrite": 0, "ownershipUpdateNsPerWrite": 0,
+                  "coarseUpdateMsPerMatchEstimate": 0, "ownershipUpdateMsPerMatchEstimate": 0, "note": "推定値" },
+  "tacticsSample": { "wait": 0, "attackFire": 0, "disruptFire": 0, "selfDestruct": 0, "decisions": 0 }
+}
+```
+
+> ⚠️ ベンチを全0の重み(未学習)のまま実行すると、全 Action のスコアが0点で `score(WAIT)=0` と同点になり WAIT が勝つため、1発も撃たない試合の速度しか測れない。`--policy <path>` で `--quick` などの軽い学習済み重みを指定して測ること(`evaluate-policy.mjs` 自身のコメント参照)。
+
+## data/evaluation.json(v6で追加。`--mode final` 実行後に生成される)
+
+`scripts/evaluate-policy.mjs --mode final`(契約書 §9・差分仕様 §26)が書き出す最終評価の記録。同じ内容は `data/policy.json` の `evaluation`/`tacticsLog` にも反映される。
+
+```json
+{
+  "evaluatedAt": "2026-08-08T00:00:00.000Z",
+  "seed": 1, "leagueGames": 500, "oldGames": 1000,
+  "evaluation": { "referenceLeagueAverageWinRate": 0, "winRateVsAttackOnly": 0, "winRateVsCheapSpam": 0,
+                   "winRateVsSaveAndBurst": 0, "winRateVsDefendHeavy": 0, "winRateVsOldCPU": null, "averageScoreDiff": null },
+  "tacticsLog": { "games": 100, "wait": 0, "attackFire": 0, "disruptFire": 0, "selfDestruct": 0, "byTemplate": {},
+                   "avgCandidatesPerDecision": 0, "p95CandidatesPerDecision": 0, "note": "解釈用の観測のみ。fitness には使わない" }
+}
+```
+
+> `scripts/evaluate-policy.mjs --mode final` を実行すると生成される(実行するまでは存在しないファイルだが、開発が進んで一度でも `--mode final` を回せば以後はコミットされたスナップショットとして残る)。🚧 このファイルの中身の実測値は、本改訂時点でオーケストレータが精査・確定していないため本書には転記していない。`tacticsLog` の `byTemplate`/`disruptFire`/`selfDestruct` は「CPUが実戦でどの手をどれだけ使ったか」の直接証拠になるので、[spec.md の未決定事項](spec.md#v6-で新たに洗い出した未決定事項)や旧来の「防御をほぼ使わない」問題の再燃有無を判断する材料として、このファイルを直接参照すること。

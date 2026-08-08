@@ -269,13 +269,19 @@ function myAntLabel(id) {
 function makeCpuAgent(sideIndex) {
   return createCpuAgent({
     templates: templatesData,
-    policy: policyData.policy,
+    // v6: 方策は「24次元 Action 評価器の重み」ひとつだけ(data/policy.json の weights)。
+    // 旧スキーマの `policy` オブジェクト(fireThreshold / defendBias / …)は廃止した。
+    weights: policyData.weights,
     rng: {
       next: () => match.rng.next(),
       int: (n) => match.rng.int(n),
       pick: (arr) => match.rng.pick(arr),
     },
     scheduleFire: (action, atStep) => scheduleFire(match, sideIndex, action, atStep),
+    // ⚠️ v5 系ではここを渡していなかったため、ブラウザの CPU だけ自爆できなかった
+    // (学習・検証スクリプトは渡していたので、実プレイと学習で挙動が食い違っていた)。
+    // v6 では SELF_DESTRUCT が他の Action と同列の候補なので、配線漏れは方策の一部を殺す。
+    selfDestruct: (antId) => selfDestruct(match, sideIndex, antId),
   });
 }
 

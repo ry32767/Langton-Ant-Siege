@@ -1,64 +1,413 @@
 {
-  "trainedAt": "2026-08-08T15:51:51.884Z",
-  "method": "CEM",
-  "generations": 40,
-  "matches": 96200,
-  "winRateVsRandom": 0.795,
-  "policy": {
-    "fireThreshold": 5.240810318747772,
-    "reserveTokens": 0.2639275948318912,
-    "defendBias": 0.011551951451274335,
-    "escortBias": 0.5807632448325586,
-    "attackPref": [
-      1.3991790759931317,
-      0.5260192389776981,
-      0.1650967228409539
-    ],
-    "selfDestructBias": 0.7219083945375111,
-    "selfDestructRemainingTicks": 3,
-    "pollutionDestructWeight": 0.4532264164218996,
-    "attackAvoidBias": 0.07989244121600467
+  "trainedAt": "2026-08-08T18:07:49.954Z",
+  "method": "CEM_ACTION_CENTRIC",
+  "featureSchemaVersion": 1,
+  "dimensions": 24,
+  "population": 80,
+  "elite": 16,
+  "gamesPerIndividual": 40,
+  "minGenerations": 20,
+  "maxGenerations": 60,
+  "actualGenerations": 20,
+  "earlyStopReason": "held-out validation plateau: 直近2checkpoint(10世代)の改善 0.00pt < 1pt (補助: normalizedMeanShift=0.277)",
+  "seed": 1,
+  "workers": 22,
+  "matches": 69400,
+  "selectedCandidate": "bestValidation",
+  "weights": [
+    0.43934876674950013,
+    -1.0240177783739903,
+    -1.7975315841543222,
+    0.4250648960098855,
+    -0.06871067522952132,
+    -1.280818136498049,
+    1.7188414431741208,
+    1.4807121030195436,
+    -2.9620333227244813,
+    0.5313324661867859,
+    0.7484458073414484,
+    -0.5047859923574706,
+    0.7049138068414323,
+    -0.4358343062475107,
+    -0.8755956653796122,
+    -0.7710182832314829,
+    0.360985757392884,
+    0.3302070427482083,
+    0.013856768721518808,
+    0.34719314294729053,
+    -1.752895402204746,
+    -0.20998651649234631,
+    1.2392263302094602,
+    0.17552731853966574
+  ],
+  "evaluation": {
+    "referenceLeagueAverageWinRate": 0.64825,
+    "winRateVsAttackOnly": 0.422,
+    "winRateVsCheapSpam": 0.392,
+    "winRateVsSaveAndBurst": 0.779,
+    "winRateVsDefendHeavy": 1,
+    "winRateVsOldCPU": 0.637,
+    "averageScoreDiff": 1.0476666666666667
   },
-  "selfDestructTicksTrajectory": [
-    5.868575319684376,
-    4.7515537062991555,
-    4.887407400702129,
-    4.240798878941957,
-    3.740721016607372,
-    3.5404723129979194,
-    2.6706195709718825,
-    2.935550028920805,
-    3.019413577495589,
-    3.055599009617147,
-    2.935465919395333,
-    2.7942865442627163,
-    3.2945780509375107,
-    3.232453624126785,
-    3.231652810185237,
-    3.4079029307866233,
-    3.5068711102431678,
-    3.5255051343985224,
-    3.462886911126114,
-    3.4934061907135723,
-    3.5990457869799433,
-    3.6635190155390234,
-    3.735166445463516,
-    3.751348859288914,
-    3.6621090692098877,
-    3.467565162809514,
-    3.5743604296271827,
-    3.693218109999095,
-    3.2973763320908653,
-    3.3846764789064068,
-    3.3260911487806917,
-    3.195014192233742,
-    3.2053966955100255,
-    3.2718878470879678,
-    3.2098331465126795,
-    3.229531816726093,
-    3.1632636091281916,
-    3.1505426813878072,
-    3.1837436906363417,
-    3.163558029667353
-  ]
+  "performance": {
+    "matchesPerSec": 42.05595586984439,
+    "trainingSec": 251.8571357,
+    "decisionsPerSec": 7073.811777307826,
+    "avgCandidatesPerDecision": 17.5041782729805,
+    "p95CandidatesPerDecision": 29,
+    "featureEncodeUsPerDecision": 28.45417827297201,
+    "actionScoreUsPerDecision": 0.9695682451240658
+  },
+  "trajectory": [
+    {
+      "generation": 1,
+      "bestFitness": 0.485,
+      "eliteMeanFitness": 0.2664375,
+      "eliteSelfPlayWinRate": 0.55625,
+      "eliteLeagueWinRate": 0.0203125,
+      "normalizedMeanShift": 0.2981534624344876
+    },
+    {
+      "generation": 2,
+      "bestFitness": 0.6355,
+      "eliteMeanFitness": 0.36178124999999994,
+      "eliteSelfPlayWinRate": 0.33125000000000004,
+      "eliteLeagueWinRate": 0.409375,
+      "normalizedMeanShift": 0.3270474186224123
+    },
+    {
+      "generation": 3,
+      "bestFitness": 0.736,
+      "eliteMeanFitness": 0.6205000000000002,
+      "eliteSelfPlayWinRate": 0.6062500000000001,
+      "eliteLeagueWinRate": 0.61875,
+      "normalizedMeanShift": 0.2831708279991134
+    },
+    {
+      "generation": 4,
+      "bestFitness": 0.76175,
+      "eliteMeanFitness": 0.6587343749999999,
+      "eliteSelfPlayWinRate": 0.625,
+      "eliteLeagueWinRate": 0.675,
+      "normalizedMeanShift": 0.2629495904534072
+    },
+    {
+      "generation": 5,
+      "bestFitness": 0.7377500000000001,
+      "eliteMeanFitness": 0.66203125,
+      "eliteSelfPlayWinRate": 0.671875,
+      "eliteLeagueWinRate": 0.634375,
+      "normalizedMeanShift": 0.2243293320497318
+    },
+    {
+      "generation": 6,
+      "bestFitness": 0.6855,
+      "eliteMeanFitness": 0.5918593750000001,
+      "eliteSelfPlayWinRate": 0.521875,
+      "eliteLeagueWinRate": 0.6500000000000001,
+      "normalizedMeanShift": 0.2654086496534031
+    },
+    {
+      "generation": 7,
+      "bestFitness": 0.65975,
+      "eliteMeanFitness": 0.61640625,
+      "eliteSelfPlayWinRate": 0.5375,
+      "eliteLeagueWinRate": 0.6812499999999999,
+      "normalizedMeanShift": 0.23545002812266252
+    },
+    {
+      "generation": 8,
+      "bestFitness": 0.7084999999999999,
+      "eliteMeanFitness": 0.6163281250000001,
+      "eliteSelfPlayWinRate": 0.6156249999999999,
+      "eliteLeagueWinRate": 0.603125,
+      "normalizedMeanShift": 0.2919603821704441
+    },
+    {
+      "generation": 9,
+      "bestFitness": 0.735,
+      "eliteMeanFitness": 0.63996875,
+      "eliteSelfPlayWinRate": 0.5031249999999999,
+      "eliteLeagueWinRate": 0.7625000000000001,
+      "normalizedMeanShift": 0.24138773623390292
+    },
+    {
+      "generation": 10,
+      "bestFitness": 0.7112499999999999,
+      "eliteMeanFitness": 0.646015625,
+      "eliteSelfPlayWinRate": 0.5968749999999999,
+      "eliteLeagueWinRate": 0.678125,
+      "normalizedMeanShift": 0.28300830273753863
+    },
+    {
+      "generation": 11,
+      "bestFitness": 0.712,
+      "eliteMeanFitness": 0.657265625,
+      "eliteSelfPlayWinRate": 0.625,
+      "eliteLeagueWinRate": 0.671875,
+      "normalizedMeanShift": 0.26696242703528905
+    },
+    {
+      "generation": 12,
+      "bestFitness": 0.79225,
+      "eliteMeanFitness": 0.664296875,
+      "eliteSelfPlayWinRate": 0.6281249999999999,
+      "eliteLeagueWinRate": 0.6781250000000002,
+      "normalizedMeanShift": 0.2913588231304615
+    },
+    {
+      "generation": 13,
+      "bestFitness": 0.7877500000000001,
+      "eliteMeanFitness": 0.73371875,
+      "eliteSelfPlayWinRate": 0.6937500000000001,
+      "eliteLeagueWinRate": 0.7468750000000001,
+      "normalizedMeanShift": 0.21786005468147468
+    },
+    {
+      "generation": 14,
+      "bestFitness": 0.634,
+      "eliteMeanFitness": 0.575890625,
+      "eliteSelfPlayWinRate": 0.4468750000000001,
+      "eliteLeagueWinRate": 0.6937500000000001,
+      "normalizedMeanShift": 0.310478024782047
+    },
+    {
+      "generation": 15,
+      "bestFitness": 0.84275,
+      "eliteMeanFitness": 0.710015625,
+      "eliteSelfPlayWinRate": 0.5625,
+      "eliteLeagueWinRate": 0.8312500000000002,
+      "normalizedMeanShift": 0.2212960854381089
+    },
+    {
+      "generation": 16,
+      "bestFitness": 0.68425,
+      "eliteMeanFitness": 0.608359375,
+      "eliteSelfPlayWinRate": 0.4781250000000001,
+      "eliteLeagueWinRate": 0.7250000000000001,
+      "normalizedMeanShift": 0.253020422066589
+    },
+    {
+      "generation": 17,
+      "bestFitness": 0.71175,
+      "eliteMeanFitness": 0.6398593749999999,
+      "eliteSelfPlayWinRate": 0.60625,
+      "eliteLeagueWinRate": 0.65625,
+      "normalizedMeanShift": 0.2774333873519729
+    },
+    {
+      "generation": 18,
+      "bestFitness": 0.7380000000000001,
+      "eliteMeanFitness": 0.6658749999999999,
+      "eliteSelfPlayWinRate": 0.6375,
+      "eliteLeagueWinRate": 0.675,
+      "normalizedMeanShift": 0.3547200163715699
+    },
+    {
+      "generation": 19,
+      "bestFitness": 0.713,
+      "eliteMeanFitness": 0.6743124999999999,
+      "eliteSelfPlayWinRate": 0.6718749999999999,
+      "eliteLeagueWinRate": 0.6562500000000001,
+      "normalizedMeanShift": 0.21272531640149447
+    },
+    {
+      "generation": 20,
+      "bestFitness": 0.686,
+      "eliteMeanFitness": 0.6413749999999999,
+      "eliteSelfPlayWinRate": 0.515625,
+      "eliteLeagueWinRate": 0.75,
+      "normalizedMeanShift": 0.2765280184042907
+    }
+  ],
+  "validation": [
+    {
+      "generation": 5,
+      "candidate": "mean",
+      "referenceLeagueAverageWinRate": 0.56,
+      "perOpponent": {
+        "ATTACK_ONLY": 0.33,
+        "CHEAP_SPAM": 0.27,
+        "SAVE_AND_BURST": 0.64,
+        "DEFEND_HEAVY": 1
+      }
+    },
+    {
+      "generation": 5,
+      "candidate": "generationBest",
+      "referenceLeagueAverageWinRate": 0.54,
+      "perOpponent": {
+        "ATTACK_ONLY": 0.24,
+        "CHEAP_SPAM": 0.32,
+        "SAVE_AND_BURST": 0.6,
+        "DEFEND_HEAVY": 1
+      }
+    },
+    {
+      "generation": 10,
+      "candidate": "mean",
+      "referenceLeagueAverageWinRate": 0.6475,
+      "perOpponent": {
+        "ATTACK_ONLY": 0.4,
+        "CHEAP_SPAM": 0.42,
+        "SAVE_AND_BURST": 0.77,
+        "DEFEND_HEAVY": 1
+      }
+    },
+    {
+      "generation": 10,
+      "candidate": "generationBest",
+      "referenceLeagueAverageWinRate": 0.665,
+      "perOpponent": {
+        "ATTACK_ONLY": 0.47,
+        "CHEAP_SPAM": 0.44,
+        "SAVE_AND_BURST": 0.75,
+        "DEFEND_HEAVY": 1
+      }
+    },
+    {
+      "generation": 10,
+      "candidate": "bestSoFar",
+      "referenceLeagueAverageWinRate": 0.5825,
+      "perOpponent": {
+        "ATTACK_ONLY": 0.35,
+        "CHEAP_SPAM": 0.29,
+        "SAVE_AND_BURST": 0.69,
+        "DEFEND_HEAVY": 1
+      }
+    },
+    {
+      "generation": 15,
+      "candidate": "mean",
+      "referenceLeagueAverageWinRate": 0.6325000000000001,
+      "perOpponent": {
+        "ATTACK_ONLY": 0.39,
+        "CHEAP_SPAM": 0.39,
+        "SAVE_AND_BURST": 0.75,
+        "DEFEND_HEAVY": 1
+      }
+    },
+    {
+      "generation": 15,
+      "candidate": "generationBest",
+      "referenceLeagueAverageWinRate": 0.6425000000000001,
+      "perOpponent": {
+        "ATTACK_ONLY": 0.35,
+        "CHEAP_SPAM": 0.41,
+        "SAVE_AND_BURST": 0.81,
+        "DEFEND_HEAVY": 1
+      }
+    },
+    {
+      "generation": 15,
+      "candidate": "bestSoFar",
+      "referenceLeagueAverageWinRate": 0.6575,
+      "perOpponent": {
+        "ATTACK_ONLY": 0.43,
+        "CHEAP_SPAM": 0.43,
+        "SAVE_AND_BURST": 0.77,
+        "DEFEND_HEAVY": 1
+      }
+    },
+    {
+      "generation": 20,
+      "candidate": "mean",
+      "referenceLeagueAverageWinRate": 0.6575,
+      "perOpponent": {
+        "ATTACK_ONLY": 0.42,
+        "CHEAP_SPAM": 0.46,
+        "SAVE_AND_BURST": 0.75,
+        "DEFEND_HEAVY": 1
+      }
+    },
+    {
+      "generation": 20,
+      "candidate": "generationBest",
+      "referenceLeagueAverageWinRate": 0.64,
+      "perOpponent": {
+        "ATTACK_ONLY": 0.43,
+        "CHEAP_SPAM": 0.44,
+        "SAVE_AND_BURST": 0.69,
+        "DEFEND_HEAVY": 1
+      }
+    },
+    {
+      "generation": 20,
+      "candidate": "bestSoFar",
+      "referenceLeagueAverageWinRate": 0.6375,
+      "perOpponent": {
+        "ATTACK_ONLY": 0.4,
+        "CHEAP_SPAM": 0.43,
+        "SAVE_AND_BURST": 0.72,
+        "DEFEND_HEAVY": 1
+      }
+    }
+  ],
+  "finalCandidates": [
+    {
+      "label": "finalMean",
+      "referenceLeagueAverageWinRate": 0.66,
+      "perOpponent": {
+        "ATTACK_ONLY": 0.46,
+        "CHEAP_SPAM": 0.36,
+        "SAVE_AND_BURST": 0.82,
+        "DEFEND_HEAVY": 1
+      }
+    },
+    {
+      "label": "bestValidation",
+      "referenceLeagueAverageWinRate": 0.67,
+      "perOpponent": {
+        "ATTACK_ONLY": 0.54,
+        "CHEAP_SPAM": 0.4,
+        "SAVE_AND_BURST": 0.74,
+        "DEFEND_HEAVY": 1
+      }
+    },
+    {
+      "label": "gen18Best",
+      "referenceLeagueAverageWinRate": 0.63,
+      "perOpponent": {
+        "ATTACK_ONLY": 0.36,
+        "CHEAP_SPAM": 0.44,
+        "SAVE_AND_BURST": 0.72,
+        "DEFEND_HEAVY": 1
+      }
+    },
+    {
+      "label": "gen19Best",
+      "referenceLeagueAverageWinRate": 0.595,
+      "perOpponent": {
+        "ATTACK_ONLY": 0.4,
+        "CHEAP_SPAM": 0.28,
+        "SAVE_AND_BURST": 0.7,
+        "DEFEND_HEAVY": 1
+      }
+    },
+    {
+      "label": "gen20Best",
+      "referenceLeagueAverageWinRate": 0.66,
+      "perOpponent": {
+        "ATTACK_ONLY": 0.44,
+        "CHEAP_SPAM": 0.42,
+        "SAVE_AND_BURST": 0.78,
+        "DEFEND_HEAVY": 1
+      }
+    }
+  ],
+  "tacticsLog": {
+    "games": 100,
+    "wait": 6956,
+    "attackFire": 1317,
+    "disruptFire": 0,
+    "selfDestruct": 0,
+    "decisions": 8273,
+    "byTemplate": {
+      "A2": 1282,
+      "A1": 35
+    },
+    "avgCandidatesPerDecision": 15.150731294572706,
+    "p95CandidatesPerDecision": 28,
+    "note": "解釈用の観測のみ。fitness には一切入れていない(差分仕様 §20・§27)"
+  }
 }

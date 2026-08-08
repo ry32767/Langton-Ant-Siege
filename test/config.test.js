@@ -227,3 +227,68 @@ test('§26: engine.js の costOf と config.js の costOf が全 cells 数で一
     }
   }
 });
+
+// ---------------------------------------------------------------------------
+// v6: Action-Centric CPU の粗視化盤面と Action 候補生成の定数
+// (docs/action-centric-contract.md §0・§3)
+// ---------------------------------------------------------------------------
+
+test('v6: coarse 盤面の定数が整合する(32×32・8×8ブロック・シフトが2の冪と一致)', () => {
+  assert.equal(C.COARSE_SIZE, 32);
+  assert.equal(C.COARSE_BLOCK, C.WIDTH / C.COARSE_SIZE);
+  // x >> COARSE_SHIFT で coarse 列を求めるので、ブロック幅は2の冪でなければならない。
+  assert.equal(C.COARSE_SHIFT, Math.log2(C.COARSE_BLOCK));
+  assert.ok(Number.isInteger(C.COARSE_SHIFT), 'COARSE_BLOCK が2の冪でない');
+  assert.equal(C.COARSE_COUNT, C.COARSE_SIZE * C.COARSE_SIZE);
+  assert.equal(C.COARSE_CELLS_PER_BLOCK, C.COARSE_BLOCK * C.COARSE_BLOCK);
+  // 盤面の高さもブロック幅で割り切れないと、セル座標の鏡像とブロック座標の鏡像が対応しない。
+  assert.equal(C.HEIGHT % C.COARSE_BLOCK, 0);
+  assert.equal(C.COARSE_SIZE % C.COARSE_BAND_COUNT, 0);
+  assert.equal(C.COARSE_ROWS_PER_BAND, C.COARSE_SIZE / C.COARSE_BAND_COUNT);
+});
+
+test('v6: coarseLocalRow は自己逆変換で、side0 は恒等・side1 は上下反転', () => {
+  for (let cy = 0; cy < C.COARSE_SIZE; cy++) {
+    assert.equal(C.coarseLocalRow(0, cy), cy);
+    assert.equal(C.coarseLocalRow(1, cy), C.COARSE_SIZE - 1 - cy);
+    // 自己逆変換(2回かけると元に戻る)
+    assert.equal(C.coarseLocalRow(1, C.coarseLocalRow(1, cy)), cy);
+  }
+});
+
+test('v6: coarseLocalRow はセル座標の鏡像 toLocalY と一致する', async () => {
+  const engine = await import('../src/engine.js');
+  for (let gy = 0; gy < C.HEIGHT; gy++) {
+    const cyGlobal = gy >> C.COARSE_SHIFT;
+    for (const side of [0, 1]) {
+      const localY = engine.toLocalY(side, gy);
+      assert.equal(
+        C.coarseLocalRow(side, cyGlobal),
+        localY >> C.COARSE_SHIFT,
+        `side=${side} gy=${gy} でブロックの鏡像とセルの鏡像が食い違っている`,
+      );
+    }
+  }
+});
+
+test('v6: Action 候補の上限が正の整数で、得点ゲート外のサンプルが0でない', () => {
+  for (const [name, v] of [
+    ['ACTION_ATTACK_GATE_SAMPLES', C.ACTION_ATTACK_GATE_SAMPLES],
+    ['ACTION_ATTACK_OFFGATE_SAMPLES', C.ACTION_ATTACK_OFFGATE_SAMPLES],
+    ['ACTION_DISRUPT_SAMPLES', C.ACTION_DISRUPT_SAMPLES],
+    ['ACTION_COUNTER_MAX', C.ACTION_COUNTER_MAX],
+    ['ACTION_ESCORT_MAX', C.ACTION_ESCORT_MAX],
+  ]) {
+    assert.ok(Number.isInteger(v) && v > 0, `${name} は正の整数でなければならない (実際: ${v})`);
+  }
+  // ⚠️ 0 にすると差分仕様 §5「得点可能列だけに限定して候補生成してはならない」に反する
+  // (攻撃アリを妨害・護衛・囮・盤面操作に使う戦略が方策表現から消える)。
+  assert.ok(C.ACTION_ATTACK_OFFGATE_SAMPLES > 0);
+});
+
+test('v6: Action 評価器の次元は24で、OWNED_SPREAD_SCALE が正の有限値', () => {
+  assert.equal(C.ACTION_FEATURE_COUNT, 24);
+  assert.equal(C.FEATURE_SCHEMA_VERSION, 1);
+  assert.ok(Number.isFinite(C.OWNED_SPREAD_SCALE) && C.OWNED_SPREAD_SCALE > 0);
+  assert.ok(C.BURST_THRESHOLD > 0 && C.BURST_THRESHOLD <= C.TOKEN_CAP);
+});

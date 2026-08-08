@@ -36,6 +36,30 @@ function bumpCounters(counters, x, gy, wasZero, isZero) {
   counters.nonWhiteColumn[x] += delta;
   if (gy < C.ZONE_DEPTH) counters.nonWhiteZone[0] += delta;
   else if (gy >= C.HEIGHT - C.ZONE_DEPTH) counters.nonWhiteZone[1] += delta;
+  // 32×32 粗視化盤面(action-centric-contract.md §1.1)。ブロックは 8×8セル固定。
+  const coarseBlock = (gy >> C.COARSE_SHIFT) * C.COARSE_SIZE + (x >> C.COARSE_SHIFT);
+  counters.coarseNonWhite[coarseBlock] += delta;
+}
+
+/**
+ * セル (x, gy) の所有者が (oldSide, oldSlot) → (newSide, newSlot) へ変わったときの
+ * 粗視化 ownership の増分更新(action-centric-contract.md §1.2)。
+ * side は 0=所有者なし / 1=side0 / 2=side1(lastToucherSide と同じ符号化)。
+ * slot は 0=不明or未確保 / 1..MAX_FLYING(lastToucherSlot と同じ符号化)。
+ * counters が null なら何もしない(探索・単体シミュレーション経路はこのカウンタを持たないため)。
+ */
+function bumpOwnership(counters, x, gy, oldSide, oldSlot, newSide, newSlot) {
+  if (!counters) return;
+  if (oldSide === newSide && oldSlot === newSlot) return;
+  const b = (gy >> C.COARSE_SHIFT) * C.COARSE_SIZE + (x >> C.COARSE_SHIFT);
+  if (oldSide !== 0) {
+    counters.coarseOwnedBySide[oldSide - 1][b]--;
+    if (oldSlot !== 0) counters.coarseOwnedByAnt[oldSide - 1][oldSlot - 1][b]--;
+  }
+  if (newSide !== 0) {
+    counters.coarseOwnedBySide[newSide - 1][b]++;
+    if (newSlot !== 0) counters.coarseOwnedByAnt[newSide - 1][newSlot - 1][b]++;
+  }
 }
 
 /**
@@ -53,9 +77,16 @@ function stepAnt(board, lastToucher, lastToucherSide, ant, counters = null) {
   ant.dir = ant.rule[s] === 'R' ? (ant.dir + 1) & 3 : (ant.dir + 3) & 3;
   const newVal = (s + 1) % ant.colorCount;
   bumpCounters(counters, ant.x, gy, raw === 0, newVal === 0);
+  // ownership 更新前に旧所有者を控える(lastToucherSlot は match だけが持つので counters 経由)。
+  const oldSide = lastToucherSide[j];
+  const oldSlot = counters ? counters.lastToucherSlot[j] : 0;
   board[j] = newVal;
   lastToucher[j] = ant.id;
   lastToucherSide[j] = ant.sideIndex + 1;
+  if (counters) {
+    counters.lastToucherSlot[j] = ant.slot + 1;
+    bumpOwnership(counters, ant.x, gy, oldSide, oldSlot, ant.sideIndex + 1, ant.slot + 1);
+  }
   // 踏んだマスを記録する(cleanupAnt が全盤面を走査しないため。下の cleanupAnt のコメント参照)。
   ant.touched.push(j);
   const d = C.DIRS[ant.dir];
@@ -83,18 +114,30 @@ function cleanupAnt(board, lastToucher, lastToucherSide, ant, counters = null) {
     const q = idx(x, gy);
     if (lastToucher[q] === -1 || lastToucher[q] === ant.id) {
       bumpCounters(counters, x, gy, board[q] === 0, true);
+      const oldSide = lastToucherSide[q];
+      const oldSlot = counters ? counters.lastToucherSlot[q] : 0;
       board[q] = 0;
       lastToucher[q] = -1;
       lastToucherSide[q] = 0;
+      if (counters) {
+        counters.lastToucherSlot[q] = 0;
+        bumpOwnership(counters, x, gy, oldSide, oldSlot, 0, 0);
+      }
     }
   }
   for (let i = 0; i < ant.touched.length; i++) {
     const q = ant.touched[i];
     if (lastToucher[q] === ant.id) {
       if (counters) bumpCounters(counters, q % C.WIDTH, Math.floor(q / C.WIDTH), board[q] === 0, true);
+      const oldSide = lastToucherSide[q];
+      const oldSlot = counters ? counters.lastToucherSlot[q] : 0;
       board[q] = 0;
       lastToucher[q] = -1;
       lastToucherSide[q] = 0;
+      if (counters) {
+        counters.lastToucherSlot[q] = 0;
+        bumpOwnership(counters, q % C.WIDTH, Math.floor(q / C.WIDTH), oldSide, oldSlot, 0, 0);
+      }
     }
   }
 }
@@ -588,13 +631,32 @@ export function createMatch(options = {}) {
     nonWhiteZone: [0, 0], // 添字 = sideIndex。自陣の配置可能帯(深さ ZONE_DEPTH)の非白セル数
     // 列ごとの非白セル数(v5.3)。発射列を選ぶ判断のために列単位で持つ。
     nonWhiteColumn: new Int32Array(C.WIDTH),
+
+    // ---- 32×32 粗視化盤面 / 自軍アリ別 ownership map(action-centric-contract.md §1.1) ----
+    // すべてグローバル coarse 座標(index = cyGlobal * COARSE_SIZE + cxGlobal)。増分更新のみ
+    // (盤面へ書き込む経路は stepAnt / fire / cleanupAnt の3つだけ。bumpCounters / bumpOwnership 参照)。
+    coarseNonWhite: new Int32Array(C.COARSE_COUNT), // ブロック内の非白セル数 0..64
+    coarseOwnedBySide: [
+      new Int32Array(C.COARSE_COUNT), // lastToucherSide === 1 のセル数
+      new Int32Array(C.COARSE_COUNT), // lastToucherSide === 2 のセル数
+    ],
+    // 自軍アリ別 ownership。[sideIndex][slot] で 32×32。slot は 0..MAX_FLYING-1。
+    coarseOwnedByAnt: [
+      Array.from({ length: C.MAX_FLYING }, () => new Int32Array(C.COARSE_COUNT)),
+      Array.from({ length: C.MAX_FLYING }, () => new Int32Array(C.COARSE_COUNT)),
+    ],
+    // 各スロットに今どのアリが居るか(空きは -1)。fire でスロット確保、消滅で解放。
+    antSlotOccupant: [new Int8Array(C.MAX_FLYING).fill(-1), new Int8Array(C.MAX_FLYING).fill(-1)],
+    // セルの現在の所有アリのスロット番号+1(0 = 所有者なし)。lastToucher と同じ長さ。
+    // アリIDからスロットを引く Map 参照をホットパス(stepAnt)に入れないための実装上の要請。
+    lastToucherSlot: new Uint8Array(C.CELL_COUNT),
   };
 }
 
 export function createSideView(match, sideIndex) {
   const side = match.sides[sideIndex];
   const enemy = match.sides[1 - sideIndex];
-  const toView = (ant) => ({
+  const toView = (ant, isMine) => ({
     id: ant.id,
     kind: ant.kind,
     x: ant.x,
@@ -617,7 +679,18 @@ export function createSideView(match, sideIndex) {
     ownerX: ant.x,
     ownerY: ant.y,
     ownerDir: ant.dir,
+    // 自軍アリの ownership スロット番号(action-centric-contract.md §1.4)。
+    // 自軍のみ意味を持つ(coarseOwnedByAnt の添字に使う)。敵アリは -1。
+    slot: isMine ? ant.slot : -1,
   });
+  // 自軍アリ別 ownership(§1.4)。空きスロットは null。coarseOwnedByAnt の要素そのものは
+  // 参照渡し(コピーしない)。ここで新しく作るのは「どのスロットが埋まっているか」を
+  // 示す長さ MAX_FLYING のポインタ配列だけで、1024要素の Int32Array は複製しない。
+  const coarseAntOwned = new Array(C.MAX_FLYING);
+  for (let slot = 0; slot < C.MAX_FLYING; slot++) {
+    coarseAntOwned[slot] =
+      match.antSlotOccupant[sideIndex][slot] === -1 ? null : match.coarseOwnedByAnt[sideIndex][slot];
+  }
   return {
     sideIndex,
     step: match.step,
@@ -626,8 +699,8 @@ export function createSideView(match, sideIndex) {
     score: side.score,
     enemyScore: enemy.score,
     flyingCount: side.ants.length,
-    myAnts: side.ants.map(toView),
-    enemyAnts: enemy.ants.map(toView),
+    myAnts: side.ants.map((ant) => toView(ant, true)),
+    enemyAnts: enemy.ants.map((ant) => toView(ant, false)),
     // 盤面の派生スカラー(増分カウンタから O(1) で算出。全走査しない)。
     boardPollution: match.nonWhiteTotal / C.CELL_COUNT,
     myZonePollution: match.nonWhiteZone[sideIndex] / (C.WIDTH * C.ZONE_DEPTH),
@@ -647,6 +720,14 @@ export function createSideView(match, sideIndex) {
     // 列ごとの非白セル数(長さ WIDTH の Int32Array・参照渡し)。増分更新なので O(1)。
     // 「発射列をどこにするか」を盤面から決めるための、実用上いちばん重要な信号。
     columnNonWhite: match.nonWhiteColumn,
+
+    // ---- 32×32 粗視化盤面 / 自軍アリ別 ownership map(action-centric-contract.md §1.4) ----
+    // すべて参照渡し(コピー禁止)。グローバル coarse 座標のまま渡す。ローカル変換は
+    // 利用側が C.coarseLocalRow(sideIndex, cy) で行う。
+    coarseNonWhite: match.coarseNonWhite, // Int32Array(1024) 参照
+    coarseOwnedMine: match.coarseOwnedBySide[sideIndex], // Int32Array(1024) 参照
+    coarseOwnedEnemy: match.coarseOwnedBySide[1 - sideIndex], // Int32Array(1024) 参照
+    coarseAntOwned, // (Int32Array|null)[MAX_FLYING]
   };
 }
 
@@ -675,8 +756,21 @@ export function fire(match, sideIndex, action) {
   const side = match.sides[sideIndex];
   const cells = action.cells ?? [];
   const cost = costOf(action.kind, cells.length);
+  // スロット確保(action-centric-contract.md §1.3): 空き(-1)を添字の小さい順に探す。
+  // canFire が MAX_FLYING を弾くので空きが無いのはありえないはずだが、
+  // 念のため slot=-1(空きなし)なら発射失敗として扱う。
+  const occupant = match.antSlotOccupant[sideIndex];
+  let slot = -1;
+  for (let i = 0; i < occupant.length; i++) {
+    if (occupant[i] === -1) {
+      slot = i;
+      break;
+    }
+  }
+  if (slot === -1) return null;
   side.tokens -= cost;
   const antId = match.nextAntId++;
+  occupant[slot] = antId;
   for (const cell of cells) {
     const [x, y] = cell;
     const gy = toGlobalY(sideIndex, y);
@@ -684,9 +778,16 @@ export function fire(match, sideIndex, action) {
     const wasZero = match.board[j] === 0;
     const newVal = cellState(cell);
     bumpCounters(match, x, gy, wasZero, newVal === 0);
+    // ⚠️ fire() の配置マスも ownership に計上する。stepAnt の oldAnt→newAnt 遷移だけでなく、
+    // ここも lastToucher[j] を書き込む経路なので、落とすと ownedTrailAmount が
+    // 実際の cleanup セル数と食い違う(action-centric-contract.md §1.2)。
+    const oldSide = match.lastToucherSide[j];
+    const oldSlot = match.lastToucherSlot[j];
     match.board[j] = newVal;
     match.lastToucher[j] = antId;
     match.lastToucherSide[j] = sideIndex + 1;
+    match.lastToucherSlot[j] = slot + 1;
+    bumpOwnership(match, x, gy, oldSide, oldSlot, sideIndex + 1, slot + 1);
   }
   const rule = action.rule ?? C.LEGACY_RULE;
   const ant = {
@@ -711,6 +812,8 @@ export function fire(match, sideIndex, action) {
     touched: [],
     firedAtStep: match.step,
     templateId: action.templateId ?? null,
+    // ownership map(coarseOwnedByAnt)の自分の添字。antSlotOccupant[sideIndex][slot] = antId。
+    slot,
   };
   side.ants.push(ant);
   side.fired++;
@@ -734,6 +837,10 @@ function moveSide(match, side) {
         side.scoredAnts++;
       }
       cleanupAnt(match.board, match.lastToucher, match.lastToucherSide, ant, match);
+      // スロット解放(action-centric-contract.md §1.3)。cleanupAnt が正しければ fill(0) は
+      // 冗長だが、不変条件の保険として必ず行う。
+      match.antSlotOccupant[side.index][ant.slot] = -1;
+      match.coarseOwnedByAnt[side.index][ant.slot].fill(0);
     } else {
       survivors.push(ant);
     }
@@ -764,6 +871,9 @@ export function selfDestruct(match, sideIndex, antId) {
   const ant = side.ants.find((a) => a.id === antId);
   side.tokens -= C.SELF_DESTRUCT_COST;
   cleanupAnt(match.board, match.lastToucher, match.lastToucherSide, ant, match);
+  // スロット解放(action-centric-contract.md §1.3)。moveSide の消滅処理と同じ規律。
+  match.antSlotOccupant[sideIndex][ant.slot] = -1;
+  match.coarseOwnedByAnt[sideIndex][ant.slot].fill(0);
   side.ants = side.ants.filter((a) => a.id !== antId);
   return true;
 }

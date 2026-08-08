@@ -1,0 +1,30 @@
+{
+  "evaluatedAt": "2026-08-08T18:24:30.414Z",
+  "seed": 1,
+  "leagueGames": 500,
+  "oldGames": 1000,
+  "evaluation": {
+    "winRateVsAttackOnly": 0.422,
+    "winRateVsCheapSpam": 0.392,
+    "winRateVsSaveAndBurst": 0.779,
+    "winRateVsDefendHeavy": 1,
+    "referenceLeagueAverageWinRate": 0.64825,
+    "winRateVsOldCPU": 0.637,
+    "averageScoreDiff": 1.0476666666666667
+  },
+  "tacticsLog": {
+    "games": 100,
+    "wait": 6956,
+    "attackFire": 1317,
+    "disruptFire": 0,
+    "selfDestruct": 0,
+    "decisions": 8273,
+    "byTemplate": {
+      "A2": 1282,
+      "A1": 35
+    },
+    "avgCandidatesPerDecision": 15.150731294572706,
+    "p95CandidatesPerDecision": 28,
+    "note": "解釈用の観測のみ。fitness には一切入れていない(差分仕様 §20・§27)"
+  }
+}

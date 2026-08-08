@@ -1,0 +1,33 @@
+{
+  "measuredAt": "2026-08-08T18:26:17.146Z",
+  "seed": 1,
+  "games": 20,
+  "policySource": "data\\policy.json",
+  "newCpu": {
+    "matchesPerSec": 45.699870669366,
+    "decisionsPerSec": 7024.070121881555,
+    "avgCandidatesPerDecision": 18.169296987087517,
+    "p95CandidatesPerDecision": 28,
+    "featureEncodeUsPerDecision": 28.447274031561918,
+    "actionScoreUsPerDecision": 1.0319942611206778
+  },
+  "oldCpu": {
+    "matchesPerSec": 70.18223519189928,
+    "decisionsPerSec": 11425.667889241204
+  },
+  "boardHooks": {
+    "boardWritesPerMatch": 334932,
+    "coarseUpdateNsPerWrite": 1.5034,
+    "ownershipUpdateNsPerWrite": 2.9067,
+    "coarseUpdateMsPerMatchEstimate": 0.5035367688,
+    "ownershipUpdateMsPerMatchEstimate": 0.9735468443999999,
+    "note": "推定値。1試合の盤面書き込み回数(実測)× フック相当演算の単価(マイクロベンチ)"
+  },
+  "tacticsSample": {
+    "wait": 1171,
+    "attackFire": 223,
+    "disruptFire": 0,
+    "selfDestruct": 0,
+    "decisions": 1394
+  }
+}

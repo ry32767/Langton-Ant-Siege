@@ -147,7 +147,9 @@ test('両陣営の判断は同時で、相手が同じステップで撃った�
   assert.equal(match.sides[1].ants.length, 1);
 });
 
-test('CPU は識別した攻撃に対して迎撃を予約する', () => {
+// v6 では「戦術としての迎撃」という概念自体が無い(docs/action-centric-contract.md §3・§34)。
+// ここで確認するのは「counter 由来の候補が実際に生成され、weights 次第で予約発射される」こと。
+test('counter 由来の候補が生成され、weights 次第で予約発射される', () => {
   const templates = makeTemplates();
   const attack = templates.attack.find((a) => (templates.counterTable[a.id] ?? []).length > 0);
   assert.ok(attack, 'カウンターを持つ攻撃が1件も無い');
@@ -157,16 +159,14 @@ test('CPU は識別した攻撃に対して迎撃を予約する', () => {
   fire(match, 1, actionOf(attack));
 
   const scheduled = [];
+  // effectDelay(#5)だけを見る weights にする。即時 attack FIRE(atStep===step)は
+  // effectDelay=0、counter 由来の妨害(atStep>step)は effectDelay>0 なので、
+  // 戦術ラベルを書かなくても counter 由来が選ばれる(test/cpu.test.js と同じ手法)。
+  const weights = new Array(C.ACTION_FEATURE_COUNT).fill(0);
+  weights[5] = 1;
   const agent = createCpuAgent({
     templates,
-    // 必ず迎撃を選ぶ方策にして、確率で流れるのを防ぐ
-    policy: {
-      fireThreshold: 0,
-      reserveTokens: 0,
-      defendBias: 1,
-      escortBias: 1,
-      attackPref: new Array(templates.attack.length).fill(1),
-    },
+    weights,
     rng: createRng(1),
     scheduleFire: (action, atStep) => scheduled.push({ action, atStep }),
   });
@@ -176,24 +176,18 @@ test('CPU は識別した攻撃に対して迎撃を予約する', () => {
   const view = createSideView(match, 0);
   const immediate = agent.decide(view);
 
-  const fired = immediate !== null || scheduled.length > 0;
-  assert.ok(
-    fired,
-    'CPU が迎撃をまったく選ばなかった。identifyTable / counterTable の参照が死んでいる',
-  );
+  assert.equal(immediate, null, '予約発射のはずなのに即時アクションが返っている');
+  assert.equal(scheduled.length, 1, 'counter 由来の候補が生成されなかった(identifyTable/counterTable の参照が死んでいる)');
 
-  // 予約された場合、その絶対ステップは「敵の発射ステップ + fireAtStep」でなければならない
-  if (scheduled.length > 0) {
-    const threat = view.enemyAnts.find((a) => a.kind === 'attack');
-    const offsets = templates.counterTable[attack.id].map((c) => c.fireAtStep);
-    const actual = scheduled[0].atStep - threat.firedAtStep;
-    assert.ok(
-      offsets.includes(actual),
-      `予約ステップの相対値 ${actual} が counterTable の fireAtStep ${offsets.join(',')} に無い`,
-    );
-    assert.equal(scheduled[0].action.kind, 'disrupt');
-    assert.equal(scheduled[0].action.rule, 'RL'); // D1 の rule がそのまま載る
-  }
+  const threat = view.enemyAnts.find((a) => a.kind === 'attack');
+  const offsets = templates.counterTable[attack.id].map((c) => c.fireAtStep);
+  const actual = scheduled[0].atStep - threat.firedAtStep;
+  assert.ok(
+    offsets.includes(actual),
+    `予約ステップの相対値 ${actual} が counterTable の fireAtStep ${offsets.join(',')} に無い`,
+  );
+  assert.equal(scheduled[0].action.kind, 'disrupt');
+  assert.equal(scheduled[0].action.rule, 'RL'); // D1 の rule がそのまま載る
 });
 
 // ---------------------------------------------------------------------------
@@ -234,24 +228,23 @@ function makeMatchTemplates() {
   };
 }
 
-function makePolicy() {
-  return {
-    fireThreshold: 6,
-    reserveTokens: 0,
-    defendBias: 0.5,
-    escortBias: 0.5,
-    attackPref: [1],
-  };
+function makeWeights() {
+  // isAttackFire(#0)を優先する単純な weights。攻撃テンプレートしか無い fixture でも
+  // 確実に発射されることを確認できればよい(v6 は createCpuAgent({ weights }) の形)。
+  const weights = new Array(C.ACTION_FEATURE_COUNT).fill(0);
+  weights[0] = 1;
+  weights[1] = 1;
+  return weights;
 }
 
 function playMatch(seed) {
   const templates = makeMatchTemplates();
-  const policy = makePolicy();
+  const weights = makeWeights();
   const match = createMatch({
     seed,
     agents: [
-      createCpuAgent({ templates, policy, rng: createRng(seed * 2 + 1) }),
-      createCpuAgent({ templates, policy, rng: createRng(seed * 2 + 2) }),
+      createCpuAgent({ templates, weights, rng: createRng(seed * 2 + 1) }),
+      createCpuAgent({ templates, weights, rng: createRng(seed * 2 + 2) }),
     ],
   });
   // agents オプションは decide() を持つオブジェクトをそのまま match.sides[i].agent にセットする
@@ -278,6 +271,6 @@ test('integration: 両陣営が新スキーマのテンプレートで実際に�
   const match = playMatch(2);
   assert.equal(match.phase, 'finished');
   assert.ok(match.step > 0, '1ステップも進んでいない');
-  // 少なくともどちらかの陣営が発射できていること(トークン蓄積・fireThreshold が機能している証拠)
+  // 少なくともどちらかの陣営が発射できていること(トークン蓄積・weights が機能している証拠)
   assert.ok(match.sides[0].fired + match.sides[1].fired > 0, '一度も発射されなかった');
 });
