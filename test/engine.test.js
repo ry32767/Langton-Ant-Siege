@@ -300,7 +300,7 @@ test('配置は y=0..ZONE_DEPTH-1 のみ・最大MAX_CELLS個(canFireがzone/cel
 
 test('コスト計算・トークン不足で発射不可・発射でコスト消費', () => {
   assert.equal(E.costOf('attack', 3), C.ATTACK_COST + 3);
-  assert.equal(E.costOf('disrupt', 2), C.DISRUPT_COST + 2);
+  assert.equal(E.costOf('disrupt', 2), C.costOf('disrupt', 2));
 
   const match = E.createMatch({ seed: 1 });
   match.sides[0].tokens = 2; // コストに満たない
@@ -632,7 +632,7 @@ test('同じシードで2回runMatchすると完全一致する(ステップ順�
   };
   const agentDisrupt = {
     decide(view) {
-      if (view.step === 0 && view.tokens >= C.DISRUPT_COST) {
+      if (view.step === 0 && view.tokens >= C.costOf('disrupt', 1)) {
         return { kind: 'disrupt', cells: [[2, 2]], antX: 3, antY: 10, antDir: C.DIR_UP, rule: 'RRL' };
       }
       return null;
@@ -844,7 +844,7 @@ function makeRandomFiringAgent(rng, kind) {
   return {
     decide(view) {
       if (view.flyingCount >= C.MAX_FLYING) return null;
-      const cost = (kind === 'attack' ? C.ATTACK_COST : C.DISRUPT_COST) + 1;
+      const cost = C.costOf(kind, 1) + 1;
       if (view.tokens < cost || rng.next() < 0.4) return null;
       const cellCount = 1 + rng.int(4);
       const cells = [];

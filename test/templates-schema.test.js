@@ -29,11 +29,60 @@ test('schemaVersion が 5 で、config スナップショットが src/config.js
   assert.equal(templates.config.templateCellRadius, C.TEMPLATE_CELL_RADIUS);
 });
 
-test('攻撃9種・妨害9種が揃っていて id が一意', () => {
+test(`攻撃${C.TEMPLATE_COUNT_ATTACK}種・妨害${C.TEMPLATE_COUNT_DISRUPT}種が揃っていて id が一意`, () => {
   assert.equal(templates.attack.length, C.TEMPLATE_COUNT_ATTACK);
   assert.equal(templates.disrupt.length, C.TEMPLATE_COUNT_DISRUPT);
   assert.equal(new Set(templates.attack.map((a) => a.id)).size, C.TEMPLATE_COUNT_ATTACK);
   assert.equal(new Set(templates.disrupt.map((d) => d.id)).size, C.TEMPLATE_COUNT_DISRUPT);
+});
+
+test('攻撃/妨害の id が A1..A3 / D1..D3(§23)', () => {
+  // 差分仕様 §23: 「A1, A2, A3」「D1, D2, D3」または同等の3件ずつであること。
+  const expectedAttackIds = Array.from({ length: C.TEMPLATE_COUNT_ATTACK }, (_, i) => `A${i + 1}`);
+  const expectedDisruptIds = Array.from({ length: C.TEMPLATE_COUNT_DISRUPT }, (_, i) => `D${i + 1}`);
+  assert.deepEqual(
+    templates.attack.map((a) => a.id).sort(),
+    expectedAttackIds,
+    `攻撃 id が ${expectedAttackIds.join(',')} と一致しない`,
+  );
+  assert.deepEqual(
+    templates.disrupt.map((d) => d.id).sort(),
+    expectedDisruptIds,
+    `妨害 id が ${expectedDisruptIds.join(',')} と一致しない`,
+  );
+});
+
+test('role フィールドが C.ATTACK_ROLES / C.DISRUPT_ROLES と配列順で一致する(§18: attackPref[i] の対応を守るため順序固定)', () => {
+  for (const a of templates.attack) {
+    assert.ok(C.ATTACK_ROLES.includes(a.role), `${a.id} の role が ATTACK_ROLES に無い`);
+  }
+  for (const d of templates.disrupt) {
+    assert.ok(C.DISRUPT_ROLES.includes(d.role), `${d.id} の role が DISRUPT_ROLES に無い`);
+  }
+  assert.deepEqual(
+    templates.attack.map((a) => a.role),
+    [...C.ATTACK_ROLES],
+    '攻撃テンプレートの role が ATTACK_ROLES の配列順と一致しない',
+  );
+  assert.deepEqual(
+    templates.disrupt.map((d) => d.role),
+    [...C.DISRUPT_ROLES],
+    '妨害テンプレートの role が DISRUPT_ROLES の配列順と一致しない',
+  );
+  // 役割に重複が無いこと
+  assert.equal(new Set(templates.attack.map((a) => a.role)).size, C.TEMPLATE_COUNT_ATTACK, '攻撃の role が重複している');
+  assert.equal(new Set(templates.disrupt.map((d) => d.role)).size, C.TEMPLATE_COUNT_DISRUPT, '妨害の role が重複している');
+});
+
+test('cost フィールドが C.costOf / C.templateCost と一致する(§26)', () => {
+  for (const a of templates.attack) {
+    assert.equal(a.cost, C.templateCost(a, 'attack'), `${a.id} の cost が costOf(attack, cells.length) と不一致`);
+    assert.equal(a.cost, C.costOf('attack', a.cells.length), `${a.id} の cost が costOf の直接計算と不一致`);
+  }
+  for (const d of templates.disrupt) {
+    assert.equal(d.cost, C.templateCost(d, 'disrupt'), `${d.id} の cost が costOf(disrupt, cells.length) と不一致`);
+    assert.equal(d.cost, C.costOf('disrupt', d.cells.length), `${d.id} の cost が costOf の直接計算と不一致`);
+  }
 });
 
 test('テンプレートは antX を持たず、cells はアリからの相対座標で近傍に収まる', () => {
@@ -61,9 +110,9 @@ test('テンプレートは antX を持たず、cells はアリからの相対�
   }
 });
 
-test('identifyTable のキーが "antY,antDir" で、攻撃9種を一意に識別できる', () => {
+test(`identifyTable のキーが "antY,antDir" で、攻撃${C.TEMPLATE_COUNT_ATTACK}種を一意に識別できる`, () => {
   const keys = Object.keys(templates.identifyTable);
-  assert.equal(keys.length, C.TEMPLATE_COUNT_ATTACK, '識別キーが9種そろっていない');
+  assert.equal(keys.length, C.TEMPLATE_COUNT_ATTACK, `識別キーが${C.TEMPLATE_COUNT_ATTACK}種そろっていない`);
   for (const a of templates.attack) {
     const key = `${a.antY},${a.antDir}`;
     assert.equal(templates.identifyTable[key], a.id, `${a.id} が identifyTable から引けない(キー: ${key})`);
@@ -105,6 +154,25 @@ test('counterTable が deltaX を持ち、カウンターを持たない攻撃�
       assert.ok(Number.isInteger(e.deltaX) && e.deltaX >= 0 && e.deltaX < C.WIDTH, `${a.id} のカウンターに deltaX が無い/範囲外`);
       assert.ok(C.FIRE_TIMINGS.includes(e.fireAtStep), `${a.id} のカウンターの fireAtStep が候補外`);
     }
+  }
+});
+
+test(`counterTable が ${C.TEMPLATE_COUNT_ATTACK}攻撃 × ${C.TEMPLATE_COUNT_DISRUPT}妨害 = ${C.TEMPLATE_COUNT_ATTACK * C.TEMPLATE_COUNT_DISRUPT}ペアの構造になっている(§15)`, () => {
+  // counterTable のキー(attackId)は攻撃テンプレートと同じ集合・同じ件数であること
+  assert.equal(Object.keys(templates.counterTable).length, C.TEMPLATE_COUNT_ATTACK);
+  assert.deepEqual(
+    new Set(Object.keys(templates.counterTable)),
+    new Set(templates.attack.map((a) => a.id)),
+    'counterTable のキーが攻撃テンプレートの id 集合と一致しない',
+  );
+  // 参照される disruptId は妨害テンプレートの id 集合の部分集合(=最大でも3種)であること
+  const disruptIds = new Set(templates.disrupt.map((d) => d.id));
+  for (const a of templates.attack) {
+    for (const e of templates.counterTable[a.id]) {
+      assert.ok(disruptIds.has(e.disruptId), `${a.id} のカウンターが3種の妨害以外を指している`);
+    }
+    const referenced = new Set(templates.counterTable[a.id].map((e) => e.disruptId));
+    assert.ok(referenced.size <= C.TEMPLATE_COUNT_DISRUPT, `${a.id} が妨害${C.TEMPLATE_COUNT_DISRUPT}種を超える disruptId を参照している`);
   }
 });
 

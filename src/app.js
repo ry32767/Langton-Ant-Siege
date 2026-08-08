@@ -71,7 +71,16 @@ buildTokenTicks(tokenBar1El);
 buildTokenTicks(tokenBar2El);
 
 const controlPanel = document.getElementById('control-panel');
-const tabButtons = document.querySelectorAll('.tab');
+const panelHandles = document.querySelectorAll('.panel-handle');
+const btnPanelToggle = document.getElementById('btn-panel-toggle');
+/** 「表示」を押したときに開き直す区画。既定は札(攻撃/妨害)。 */
+let lastOpenSection = 'template';
+const panelSections = {
+  template: document.getElementById('panel-template'),
+  threat: document.getElementById('panel-threat'),
+  self: document.getElementById('panel-self'),
+  legend: document.getElementById('panel-legend'),
+};
 const templateListEl = document.getElementById('template-list');
 const btnFire = document.getElementById('btn-fire');
 const fireReasonEl = document.getElementById('fire-reason');
@@ -217,6 +226,12 @@ const STEP_MS = 1000 / C.STEPS_PER_SECOND;
 const MAX_STEPS_PER_FRAME = Math.ceil(C.STEPS_PER_SECOND / 30) * 2; // 300/s → 20
 
 let activeTab = 'attack';
+/**
+ * 操作パネルで現在開いている区画。'template' | 'threat' | 'self' | 'legend' | null(全部閉じている)。
+ * 一度に見せる区画は1つだけ(タスク要件)。既定値は null(全区画を閉じた状態)で、
+ * これが 375×667 のような背の低い画面でもページが伸びない土台になる。
+ */
+let openSection = null;
 let selectedTemplateId = null; // プレイヤーが選択中のテンプレート
 let selectedThreatAntId = null; // 選択中の敵攻撃アリ(識別・カウンター表示用)
 let selectedSelfDestructAntId = null; // 選択中の自分の飛行中アリ(自爆対象)
@@ -281,14 +296,15 @@ function startMatch(selectedMode) {
   const agents = mode === 'cvc' ? [makeCpuAgent(0), makeCpuAgent(1)] : [null, makeCpuAgent(1)];
   match = createMatch({ seed: (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0, agents });
 
-  labelSide1.textContent = mode === 'cvc' ? '(CPU)' : '(あなた)';
-  labelSide2.textContent = '(CPU)';
+  labelSide1.textContent = mode === 'cvc' ? 'CPU' : 'あなた';
+  labelSide2.textContent = 'CPU';
   tokens1CapEl.textContent = String(C.TOKEN_CAP);
   tokens2CapEl.textContent = String(C.TOKEN_CAP);
   flying1CapEl.textContent = String(C.MAX_FLYING);
   flying2CapEl.textContent = String(C.MAX_FLYING);
 
   controlPanel.classList.toggle('hidden', mode === 'cvc');
+  setOpenSection(null); // 対戦開始のたびに全区画を閉じた既定状態に戻す
   resultOverlay.classList.add('hidden');
 
   screenStart.classList.add('hidden');
@@ -380,6 +396,21 @@ function counterSpeciesCount(attackId) {
 }
 
 /**
+ * 役割ID → 日本語表示名(v5.5 §20)。
+ * ⚠️ `tpl.id`(A1/D1 等)から役割を引く対応表は作らない。選抜順が変わると
+ * ID↔役割の対応だけが古くなる二重の真実になるため、必ず `tpl.role` を読む。
+ * 攻撃・妨害で役割IDの文字列は重複しないので、1つの表にまとめてよい。
+ */
+const ROLE_LABEL = {
+  speed: '高速',
+  economy: '低コスト',
+  robust: '突破力',
+  cheap: '安価',
+  general: '汎用',
+  complement: '補完',
+};
+
+/**
  * カード内の情報階層: コストを先頭・最も強く、ルール文字列を末尾・最も弱くする
  * (プレイヤーが札を選ぶとき最初に見るのはコストのため)。表示する情報自体は
  * 変えず、順序と強弱(クラス)だけを変える。
@@ -439,6 +470,14 @@ function renderTemplateList() {
     const idSpan = document.createElement('span');
     idSpan.textContent = tpl.id;
     header.appendChild(idSpan);
+    // 役割(§20): tpl.role が無い古いデータでは何も出さない(「役割: -」の連呼はノイズ)。
+    const roleLabel = ROLE_LABEL[tpl.role];
+    if (roleLabel) {
+      const roleSpan = document.createElement('span');
+      roleSpan.className = 'card-role';
+      roleSpan.textContent = roleLabel;
+      header.appendChild(roleSpan);
+    }
     // 色だけで無効/推奨を伝えない: 文字バッジも添える。
     // 「発射不可」とだけ出しても次に何をすればいいか分からないので、理由を出す。
     // 大半はトークン不足なので、その場合は「あと N」という待てば解消する表示にする。
@@ -482,19 +521,58 @@ function renderTemplateList() {
   }
 }
 
-tabButtons.forEach((btn) => {
+// ---------------------------------------------------------------------------
+// 操作パネルの区画開閉(盤面の端のハンドル列 + 開く区画)。
+// 一度に見せる区画は1つだけ。同じハンドルをもう一度押すと閉じる。
+// 攻撃/妨害ハンドルは既存の .tab の流儀を兼ねる(押すと activeTab も切り替わり、
+// 切替のたびに選択中テンプレートをリセットする)。
+// ---------------------------------------------------------------------------
+function setOpenSection(name) {
+  openSection = name;
+  for (const [key, el] of Object.entries(panelSections)) {
+    if (!el) continue;
+    el.classList.toggle('hidden', key !== name);
+  }
+  panelHandles.forEach((btn) => {
+    if (btn === btnPanelToggle) return; // 区画を持たないので選択状態を持たない
+    const target = btn.dataset.panel ?? (btn.dataset.tab ? 'template' : null);
+    const isOpenHandle = target === name && (target !== 'template' || btn.dataset.tab === activeTab);
+    btn.classList.toggle('active', isOpenHandle);
+    btn.setAttribute('aria-selected', String(isOpenHandle));
+  });
+  if (btnPanelToggle) {
+    // 開いていれば「隠す」、閉じていれば「表示」。押したときに何が起きるかを label にする。
+    btnPanelToggle.textContent = name ? '隠す' : '表示';
+    btnPanelToggle.setAttribute('aria-expanded', String(!!name));
+  }
+  if (name) lastOpenSection = name; // 「表示」で戻す先を覚えておく
+}
+
+if (btnPanelToggle) {
+  btnPanelToggle.addEventListener('click', () => {
+    setOpenSection(openSection ? null : lastOpenSection);
+  });
+}
+
+panelHandles.forEach((btn) => {
+  if (btn === btnPanelToggle) return; // 上で専用のハンドラを付けてある
   btn.addEventListener('click', () => {
-    activeTab = btn.dataset.tab;
-    tabButtons.forEach((b) => {
-      b.classList.toggle('active', b === btn);
-      b.setAttribute('aria-selected', String(b === btn));
-    });
-    selectedTemplateId = null;
-    renderTemplateList();
-    updateFireButton();
+    const target = btn.dataset.panel ?? 'template';
+    const isTabHandle = !!btn.dataset.tab;
+    const alreadyOpenSame =
+      openSection === target && (!isTabHandle || activeTab === btn.dataset.tab);
+
+    if (isTabHandle) {
+      activeTab = btn.dataset.tab;
+      selectedTemplateId = null;
+      renderTemplateList();
+      updateFireButton();
+    }
+
+    setOpenSection(alreadyOpenSame ? null : target);
   });
 });
-tabButtons.forEach((b) => b.setAttribute('aria-selected', String(b.classList.contains('active'))));
+setOpenSection(null); // 既定は全区画を閉じる(ページを伸ばさない土台)
 
 // ---------------------------------------------------------------------------
 // 発射ボタン

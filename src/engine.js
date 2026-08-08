@@ -650,9 +650,9 @@ export function createSideView(match, sideIndex) {
   };
 }
 
-export function costOf(kind, cellCount) {
-  return C.ANT_KINDS[kind].baseCost + cellCount;
-}
+// ⚠️ コスト式そのものは持たない。src/config.js の costOf が唯一の定義(v5.5)。
+// 外部から import されているため export だけ残す再輸出。
+export const costOf = C.costOf;
 
 export function canFire(match, sideIndex, action) {
   const side = match.sides[sideIndex];

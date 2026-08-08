@@ -111,7 +111,7 @@ function buildSyntheticTemplates() {
       antY: 30,
       antDir: C.DIR_RIGHT,
       kind: 'attack',
-      cost: C.ATTACK_COST + 1,
+      cost: C.costOf('attack', 1),
     },
     {
       id: 'SA2',
@@ -121,7 +121,7 @@ function buildSyntheticTemplates() {
       antY: 30,
       antDir: C.DIR_RIGHT,
       kind: 'attack',
-      cost: C.ATTACK_COST + 1,
+      cost: C.costOf('attack', 1),
     },
   ];
   const disrupt = [
@@ -133,7 +133,7 @@ function buildSyntheticTemplates() {
       antY: 8,
       antDir: C.DIR_DOWN,
       kind: 'disrupt',
-      cost: C.DISRUPT_COST + 1,
+      cost: C.costOf('disrupt', 1),
     },
     {
       id: 'SD2',
@@ -143,7 +143,7 @@ function buildSyntheticTemplates() {
       antY: 8,
       antDir: C.DIR_DOWN,
       kind: 'disrupt',
-      cost: C.DISRUPT_COST + 1,
+      cost: C.costOf('disrupt', 1),
     },
   ];
 
@@ -212,8 +212,10 @@ const counterTable = templates.counterTable ?? {};
 const escortTable = templates.escortTable ?? {};
 
 // data/policy.json が無ければ中立方策(仕様書の指示どおりの既定値)を使う。
-// ⚠️ v5.4 で方策は17次元になった(disruptAimOffsetFrac 削除、selfDestructAgeFrac →
-// selfDestructRemainingTicks)。ここは「学習前の既定値」なので、自爆の2つは
+// ⚠️ v5.4 で方策は17次元になり(disruptAimOffsetFrac 削除、selfDestructAgeFrac →
+// selfDestructRemainingTicks)、v5.5 で TEMPLATE_COUNT_ATTACK が 9→3 になったのに伴い
+// 11次元になった(attackPref の長さが C.TEMPLATE_COUNT_ATTACK から自動追従する)。
+// ここは「学習前の既定値」なので、自爆の2つは
 // **意図的に「自爆しない」設定**にしてある(selfDestructBias=0, selfDestructRemainingTicks=0
 // =候補になるアリが存在しない)。学習済みの方策と比べたときに「自爆を覚えたかどうか」が
 // 差として見えるようにするため。attackAvoidBias も同じ流儀で「新機能を使わない既定値」にしてある。
@@ -613,10 +615,23 @@ const highwayShareOfScoring = scoredCandidates.length > 0 ? highwayCount / score
 //    粗いグリッドで妥協する(本番の9×9選抜だけが全列を掃引する)。
 // ---------------------------------------------------------------------------
 
-const densityDeltaXs = Array.from(
-  { length: Math.ceil(C.WIDTH / C.COEVO_DELTA_X_STRIDE) },
-  (_, i) => i * C.COEVO_DELTA_X_STRIDE,
-);
+// ⚠️ v5.5: deltaX は**全列を掃引する**(粗いグリッドをやめた)。
+//
+// 実測で判明した重大な計測バグ: 同梱 counterTable の18エントリの deltaX は
+// 56/60/74/44/178/186/194 などで、**16列刻みのグリッドに1つも乗らない**。
+// つまり粗いグリッドの走査は「実際に存在するカウンターを1件も踏まない」ので、
+// カウンター密度が構造的に 0.0% に見えていた(v5.5 実測で A2/A3 が 0/39)。
+// v5.5 で妨害が Seed Compression により1マスまで圧縮され、迎撃が成立する deltaX の窓が
+// さらに狭くなったことで顕在化した。
+//
+// これは `docs/spec.md` が「カウンターを持たない攻撃テンプレートの数」について既に
+// 警告していたのと**同じ罠**(粗いグリッドでは偽陽性で「カウンター無し」になる)。
+// 9×9 の頃は全列掃引が 9×9×256×13 ≈ 27万回で重すぎたため妥協していたが、
+// v5.5 で 3×3 になり 3×3×256×13 ≈ 3万回まで落ちたので、**正しく全列を掃引する**。
+//
+// ⚠️ これは `BALANCE.counterDensityMedian` の**範囲を変えたのではなく、
+// 壊れていた測り方を直した**もの(範囲は 0.5〜3% のまま)。
+const densityDeltaXs = Array.from({ length: C.WIDTH }, (_, i) => i);
 
 function isCountered(attackInstance, disruptTpl, deltaX, t0) {
   const disruptInstance = instantiateTemplate(disruptTpl, deltaX);

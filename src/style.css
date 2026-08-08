@@ -214,18 +214,28 @@ body {
 /* ---------------------------------------------------------------------------
    2. 対戦画面 — HUD
    --------------------------------------------------------------------------- */
+/* ページのスクロールを0にするため、対戦画面だけ高さを viewport ぴったりに固定する
+   (開始画面は .screen の min-height:100vh のまま)。子の .match-layout が
+   flex:1; min-height:0 でこの高さを分け合い、はみ出す分は開いた区画の内側だけが
+   overflow-y:auto でスクロールする(ページ自体は伸びない)。 */
 #screen-match {
+  height: 100dvh;
+  min-height: 0;
   padding: var(--sp-2);
   gap: var(--sp-2);
   padding-bottom: calc(var(--sp-2) + env(safe-area-inset-bottom));
+  overflow: hidden;
 }
 
+/* 375pxで≤70px・1280pxで≤48pxが目標。旧版はラベル行・得点行・トークン行・
+   飛行中行の4行が --lh-body(1.7) で折り返され209px/169pxに膨らんでいた。
+   中身は削らず、1行(広幅)/2行(狭幅)に詰め直す。*/
 .hud {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   gap: var(--sp-2);
   align-items: start;
-  padding: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
   background-color: var(--paper-raised);
   border: var(--border);
   border-radius: var(--radius);
@@ -234,8 +244,9 @@ body {
 .hud-side {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1);
+  gap: 2px;
   font-size: var(--fs-sm);
+  line-height: var(--lh-tight);
 }
 
 .hud-side1 {
@@ -248,13 +259,31 @@ body {
   color: var(--shu);
 }
 
-.hud-label {
-  font-weight: 700;
-  letter-spacing: 0.05em;
+.hud-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
-.hud-row {
+.hud-side2 .hud-row {
+  flex-direction: row-reverse;
+}
+
+.hud-label {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.hud-figure {
   color: var(--sumi);
+  font-family: var(--font-numeric);
+}
+
+.hud-row-sub .token-bar {
+  width: var(--sp-6);
+  flex-shrink: 0;
 }
 
 .hud-center {
@@ -267,10 +296,28 @@ body {
 .hud-time {
   font-family: var(--font-numeric);
   font-variant-numeric: tabular-nums;
+  line-height: var(--lh-tight);
   font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--sumi);
   white-space: nowrap;
+}
+
+@media (min-width: 900px) {
+  /* 広幅は1行に詰める(≤48px目標)。sub行の内容も同じ行へ合流させる。 */
+  .hud-side {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--sp-2);
+  }
+
+  .hud-side2 {
+    flex-direction: row-reverse;
+  }
+
+  .hud-row {
+    gap: var(--sp-1);
+  }
 }
 
 /* 得点＝5升のインク升目。色だけでなく塗りの有無(枠→塗)でも状態を示す */
@@ -425,7 +472,16 @@ body {
   justify-content: flex-start;
 }
 
-/* 記号の意味を示す最小限の凡例。盤面には重ねず、盤面の下(狭幅)/上(広幅とも下)に置く。 */
+/* 狭幅(1カラム、縦積み): 盤面は縮めない(タスク要件)。#screen-match が高さを
+   固定するので、足りない分は .control-panel(開いた区画の内側)だけが吸収する。 */
+@media (max-width: 899px) {
+  .board-column {
+    flex: 0 0 auto;
+  }
+}
+
+/* 記号の意味を示す最小限の凡例。盤面には重ねない。既定では非表示で、
+   ハンドル「凡例」を押したときだけ .panel-legend の中に開く。 */
 .board-legend {
   display: flex;
   flex-wrap: wrap;
@@ -514,15 +570,12 @@ body {
   }
 
   .board-column {
-    /* 残り幅を全部取る。shrink-to-fit(0 1 auto)だと、列の幅が中身(凡例)の
-       max-content 幅で決まり、その幅に盤面が従属して不必要に小さくなる
-       (実測: 使える幅547pxに対し盤面が408pxまで縮んでいた)。 */
+    /* 残り幅を全部取る。shrink-to-fit(flex:0 0 auto)だと、.battle-area の
+       width:min(100%, ...) の「100%」が未定義の shrink-to-fit 幅を親に取り、
+       盤面が意図せず小さくなる(実測: 702px → 300px に縮退した)。
+       凡例は操作パネルの「凡例」区画へ移したので、中身に幅を従属させる理由は無い。 */
     flex: 1 1 auto;
     min-width: 0;
-    /* ⚠️ ここに max-height を掛けてはいけない。子の合計(盤面+凡例)が上限を超えると
-       justify-content:center が **上方向にも** あふれ、盤面が HUD に重なる
-       (実測: 列716px に対し子が758px、HUD と21px重複 = 不変条件2違反)。
-       高さの上限は .battle-area 側だけが持つ。 */
   }
 
   .battle-area {
@@ -536,10 +589,6 @@ body {
     max-width: 100%;
   }
 
-  .board-legend {
-    flex: 0 0 auto;
-  }
-
   #board {
     /* 一辺は .battle-area が決めるので、ここは満たすだけ。
        width:auto + height:100% + max-width:100% の組み合わせは aspect-ratio を殺す。 */
@@ -547,10 +596,29 @@ body {
     height: 100%;
   }
 
+  /* 操作パネルは「盤面の右辺に沿った縦のハンドル列 + その右に開く区画」。
+     align-self:stretch で行(.match-layout)の高さいっぱいに広げ、開いた区画の
+     内側だけがその高さの中でスクロールする(ページ自体は伸びない)。 */
   .control-panel {
-    width: var(--panel-w);
-    flex: 0 0 var(--panel-w);
+    flex-direction: row;
     align-self: stretch;
+    width: auto;
+    max-width: 100%;
+    min-height: 0;
+  }
+
+  .panel-handles {
+    flex-direction: column;
+  }
+
+  .panel-sections {
+    height: 100%;
+  }
+
+  .panel-section {
+    width: var(--panel-w);
+    max-width: min(var(--panel-w), 42vw);
+    height: 100%;
   }
 }
 
@@ -611,14 +679,33 @@ body {
   border-radius: var(--radius);
 }
 
-.tabs {
-  display: flex;
-  gap: var(--sp-1);
+/* 狭幅: .match-layout(縦積み)の残り高さを .control-panel に持たせ、開いた区画の
+   内側(.panel-section)だけがその中でスクロールできるようにする。これが無いと
+   .control-panel は中身の自然な高さまで伸びてページ自体がスクロールしてしまう
+   (発射ボタンがビューポート外に出ていた実測不具合の原因)。 */
+@media (max-width: 899px) {
+  .control-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
 }
 
-.tab {
+/* ハンドル列。一度に見せる区画は1つだけにするための操作の起点で、常に見える。
+   狭幅は盤面のすぐ下の横のストリップ、広幅は盤面の右辺に沿った縦のストリップ
+   (@media (min-width: 900px) の .panel-handles で flex-direction: column にする)。 */
+.panel-handles {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  flex: 0 0 auto;
+}
+
+.tab,
+.panel-handle {
   flex: 1;
   min-height: var(--tap-min);
+  min-width: var(--tap-min);
   padding: var(--sp-1) var(--sp-2);
   background: var(--paper);
   border: var(--border);
@@ -631,28 +718,48 @@ body {
     border-color var(--dur-fast) var(--ease);
 }
 
-.tab:hover {
+.tab:hover,
+.panel-handle:hover {
   color: var(--sumi);
   border-color: var(--sumi);
 }
 
-.tab.active {
+/* 現在開いている区画のハンドルを示す(不変条件6: 色だけに頼らない。太さ・地の濃さでも示す)。 */
+.tab.active,
+.panel-handle.active {
   background: var(--sumi);
   border-color: var(--sumi);
   color: var(--paper);
 }
 
+/* 開いた区画をまとめて置く場所。一度に表示されるのは1つ(他は .hidden で
+   display:none)。この内側だけがスクロールし、ページ自体は伸びない。 */
+.panel-sections {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  width: 100%;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .template-list {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  /* 3列にしておく: 今日(9種)は3行に収まり、近く各3種になったときはこれで1行に
+     収まる(タスク要件)。2列だと3種のときに1枚だけ次の行に落ちてしまう。 */
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--sp-2);
-  max-height: 40vh;
-  overflow-y: auto;
-  /* max-height が「確定した高さ」になると、既定の auto 行がその高さに**押し込められる**。
-     実測: 必要123pxの中身が67pxの行に潰され、「コスト」行がカードの外へはみ出して
-     隣のカードに重なっていた(ユーザー報告「コストが書かれていない」の実体)。
-     行を min-content で明示すると中身の高さを保ち、あふれた分はここがスクロールする。
-     align-content:start は、余白ができたときに行が伸びて間延びするのを防ぐ。 */
+  /* 区画の内側(.panel-section)が既にスクロールするので、ここに max-height を
+     重ねて二重のスクロール境界を作らない。
+     行を min-content で明示するのは、既定の auto 行だと「使える高さ」に中身が
+     押し込められ、コスト行がカードの外へはみ出す事故が過去にあったため
+     (実測123pxの中身が67pxの行に潰れた)。align-content:start は余白での間延び防止。 */
   grid-auto-rows: min-content;
   align-content: start;
 }
@@ -693,11 +800,16 @@ body {
   box-shadow: inset 3px 0 0 var(--ai);
 }
 
+/* 撃てない札: 色だけに頼らない(不変条件6)。既存の「沈んだ地・破線の枠・
+   『あとN』の文字」に加えて、朱でも紺でもない --akane(危険色)の筋を1本足して
+   「今は撃てない」を強く示す。--akane は --paper-sunk 上で 5.65:1(実測。
+   L=0.0931 vs 0.7578)あり、11px相当の小さな文字の基準(4.5:1)を満たす。 */
 .template-card.disabled {
   cursor: not-allowed;
   background: var(--paper-sunk);
   border-color: var(--rule-fine);
   border-style: dashed;
+  box-shadow: inset 3px 0 0 var(--akane);
 }
 
 
@@ -716,6 +828,15 @@ body {
   margin-bottom: var(--sp-1);
 }
 
+/* 役割(§20)。card-header は数字用フォント・太字なので、日本語の役割名は
+   本文用フォント・通常の太さの別スパンにして馴染ませる(新規の色は増やさない)。 */
+.card-role {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: var(--fs-sm);
+  color: var(--sumi-soft);
+}
+
 .card-badge {
   font-family: var(--font-body);
   font-size: 0.7rem;
@@ -727,9 +848,10 @@ body {
 
 /* 「あと N」は「いつ撃てるか」を読む値なので、補助テキスト扱いにしない。
    --sumi-soft は沈んだ地(--paper-sunk)の上では 4.20:1 しかなく、11px の小さな文字の
-   基準(4.5:1)を割る。--sumi なら 11.5:1(実測)。 */
+   基準(4.5:1)を割る。--akane なら 5.65:1(実測)あり、かつ「今は撃てない」という
+   危険・不可の意味そのものを色でも運べる(枠の色も currentColor で揃う)。 */
 .card-badge.badge-disabled {
-  color: var(--sumi);
+  color: var(--akane);
   font-variant-numeric: tabular-nums;
 }
 
@@ -806,26 +928,23 @@ body {
 }
 
 /*
- * 「発射」は画面の主アクションなので、常に押せる位置に無ければならない。
- * 実測: 操作パネルが画面外まで伸びるとき #btn-fire がビューポート下端の79px下にあり、
- * スクロールしないと押せなかった。
- *
- * スクロールしているのは**ページ**(操作パネル自身ではない)。position:sticky は
- * 「スクロールする祖先」に対して効くので、ページスクロールでも bottom:0 で
- * ビューポート下端に貼り付く。貼り付く範囲は containing block(.control-panel)の
- * 内側に限られるため、パネルが画面外にある間は出てこないし、盤面に重なることもない
- * (不変条件2)。自爆側の .fire-row には付けない(主アクションは1つに絞る)。
+ * 「発射」は画面の主アクションなので、区画を開いている間は常に押せる位置に
+ * 無ければならない。v5.5 でページ自体はスクロールしなくなり、代わりに
+ * .panel-section(攻撃/妨害の区画)の内側がスクロールする。position:sticky は
+ * 「スクロールする祖先」に対して効くので、bottom:0 で .panel-section の下端に
+ * 貼り付く。貼り付く範囲は containing block(.panel-section)の内側に限られるため、
+ * 区画が閉じている間は存在せず、盤面に重なることもない(不変条件2)。
+ * 自爆側の .fire-row には付けない(主アクションは1つに絞る)。
  */
-.fire-row--pinned {
+.fire-row--main {
   position: sticky;
   bottom: 0;
   z-index: 1;
+  flex-shrink: 0;
   /* 下に流れる一覧が透けないよう地を敷き、上辺に罫線を1本引いて浮きを示す */
   background-color: var(--paper-raised);
   border-top: var(--border);
-  margin: 0 calc(-1 * var(--sp-2)) calc(-1 * var(--sp-2));
-  padding: var(--sp-2);
-  padding-bottom: calc(var(--sp-2) + env(safe-area-inset-bottom));
+  padding: var(--sp-2) 0 0;
 }
 
 .fire-row .btn {
@@ -838,15 +957,11 @@ body {
   font-weight: 600;
 }
 
-.threat-panel h3,
-.self-destruct-panel h3 {
+#panel-threat h3,
+#panel-self h3 {
   margin: 0 0 var(--sp-1);
   font-size: var(--fs-sm);
   color: var(--sumi);
-}
-
-.self-destruct-panel {
-  margin-bottom: var(--sp-2);
 }
 
 .threat-items {
@@ -927,26 +1042,24 @@ body {
 
 @media (min-width: 640px) {
   .template-list {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+}
+
+/* 900px 以上は .panel-section が var(--panel-w)(340px)に固定されるため、
+   auto-fill だと 140px 基準では2列にしかならない。3列に固定し、近く各3種に
+   なったときにちょうど1行へ収まるようにする(今日の9種は3行)。 */
+@media (min-width: 900px) {
+  .template-list {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
 /* ---------------------------------------------------------------------------
-   狭幅: 発射行を画面下部に sticky にし、盤面と重ならないよう内容側に余白を確保
+   広幅は縦のハンドル列、狭幅は横のハンドル列(盤面のすぐ下)。
    --------------------------------------------------------------------------- */
-@media (max-width: 899px) {
-  .fire-row {
-    position: sticky;
-    bottom: 0;
-    padding: var(--sp-2);
-    margin: 0 calc(var(--sp-2) * -1) calc(var(--sp-2) * -1);
-    background-color: var(--paper-raised);
-    border-top: var(--border);
-    padding-bottom: calc(var(--sp-2) + env(safe-area-inset-bottom));
-  }
-
-  .threat-panel,
-  .template-list {
-    margin-bottom: var(--sp-2);
+@media (min-width: 900px) {
+  .panel-handles {
+    flex-wrap: nowrap;
   }
 }

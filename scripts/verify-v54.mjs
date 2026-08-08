@@ -21,6 +21,7 @@ import {
   runMatch,
   scheduleFire as engineScheduleFire,
   selfDestruct as engineSelfDestruct,
+  costOf,
 } from '../src/engine.js';
 import { createCpuAgent } from '../src/cpu.js';
 
@@ -41,6 +42,7 @@ function argNum(name, def) {
 const SEED = argNum('seed', 1);
 const GAMES = argNum('games', 500);
 const COMPARE_TICKS = argv.includes('--compare-ticks');
+const COMPARE_DEFEND = argv.includes('--compare-defend');
 
 // ---------------------------------------------------------------------------
 // data/templates.json・data/policy.json の読み込み(読むだけ。書き出しはしない)
@@ -101,13 +103,18 @@ const RANDOM_POLICY = {
 // 試合の実行(scripts/train-policy.mjs の makeAgent と同じ結線 + observe を追加)
 // ---------------------------------------------------------------------------
 
-function makeAgent(getMatch, sideIndex, policy, rngSeed, observe) {
+// onDisruptFire は省略可(既存呼び出しに影響しない)。§29 の「妨害の平均コスト」計測用に、
+// 発火直前の action(kind/cells を持つ)をそのまま横取りして観測するためのフック。
+function makeAgent(getMatch, sideIndex, policy, rngSeed, observe, onDisruptFire) {
   const rng = createRng(rngSeed);
   return createCpuAgent({
     templates,
     policy,
     rng,
-    scheduleFire: (action, atStep) => engineScheduleFire(getMatch(), sideIndex, action, atStep),
+    scheduleFire: (action, atStep) => {
+      if (onDisruptFire && action.kind === 'disrupt') onDisruptFire(action);
+      return engineScheduleFire(getMatch(), sideIndex, action, atStep);
+    },
     selfDestruct: (antId) => engineSelfDestruct(getMatch(), sideIndex, antId),
     observe: (event) => observe(sideIndex, event),
   });
@@ -122,15 +129,17 @@ function makeAgent(getMatch, sideIndex, policy, rngSeed, observe) {
  * (life は攻撃/妨害どちらも1よりずっと大きいので、生まれた直後の同じステップ内で
  * 即死することは無い)。
  */
-function playInstrumentedMatch(seed, policyA, policyB) {
+// onDisruptFireA / onDisruptFireB は省略可(§28/§29 の妨害コスト計測を追加するための拡張。
+// 既存の呼び出し元 [runSelfPlaySeries / runTicksCondition] は渡さないので挙動は変わらない)。
+function playInstrumentedMatch(seed, policyA, policyB, onDisruptFireA, onDisruptFireB) {
   const match = createMatch({ seed });
   const events = []; // { sideIndex, type, ... }(observe がそのまま流してくる形に sideIndex を足したもの)
   const antMap = new Map(); // antId(match全体で一意) -> ant オブジェクト参照
   function observe(sideIndex, event) {
     events.push({ sideIndex, ...event });
   }
-  match.sides[0].agent = makeAgent(() => match, 0, policyA, deriveSeed(seed, 1), observe);
-  match.sides[1].agent = makeAgent(() => match, 1, policyB, deriveSeed(seed, 2), observe);
+  match.sides[0].agent = makeAgent(() => match, 0, policyA, deriveSeed(seed, 1), observe, onDisruptFireA);
+  match.sides[1].agent = makeAgent(() => match, 1, policyB, deriveSeed(seed, 2), observe, onDisruptFireB);
 
   while (match.phase !== 'finished') {
     stepMatch(match);
@@ -195,10 +204,33 @@ function runSelfPlaySeries(policy, games, seedBase) {
   let undefendedAttacks = 0;
   let undefendedAttacksScored = 0;
   let totalAbsScoreDiff = 0;
+  // v5.4 §28: テンプレート別の内訳(攻撃/妨害)。
+  const attackFiredByTpl = new Map(); // templateId -> 発射数(決着未決も含む)
+  const attackDecidedByTpl = new Map(); // templateId -> 決着がついた数(undecided/selfDestructedを除く分母)
+  const attackScoredByTpl = new Map(); // templateId -> 得点した数
+  const disruptFiredByTpl = new Map(); // templateId -> 迎撃+護衛の合計発射数
+  let totalDisruptCost = 0; // 撃たれた妨害1件あたりのコストの総和(§28「妨害の平均コスト」用)
+  let totalDisruptCount = 0;
+
+  // onDisruptFire: 迎撃(defend)/護衛(escort)はどちらも action.kind==='disrupt' で
+  // scheduleFire を経由するので、ここで横取りしてテンプレート別の発射数とコストを積算する。
+  // 自己対戦(policyA===policyB)の両陣営合計を出す既存の集計方針に合わせ、両側で同じ関数を使う。
+  const onDisruptFire = (action) => {
+    const tid = action.templateId ?? null;
+    if (tid != null) disruptFiredByTpl.set(tid, (disruptFiredByTpl.get(tid) ?? 0) + 1);
+    totalDisruptCost += costOf(action.kind, action.cells.length);
+    totalDisruptCount++;
+  };
 
   for (let g = 0; g < games; g++) {
     const seed = deriveSeed(seedBase, g);
-    const { match, events, antMap } = playInstrumentedMatch(seed, policy, policy);
+    const { match, events, antMap } = playInstrumentedMatch(
+      seed,
+      policy,
+      policy,
+      onDisruptFire,
+      onDisruptFire,
+    );
     // 自爆は迎撃(defend)より後のステップで起きることもあるので、先に全イベントを
     // 走査して「自爆で消えたアリID」を集めてから決着を判定する(1パスだと取りこぼす)。
     const selfDestructedIds = new Set();
@@ -234,8 +266,14 @@ function runSelfPlaySeries(policy, games, seedBase) {
     }
     for (const ant of antMap.values()) {
       if (ant.kind !== 'attack') continue;
+      const tid = ant.templateId ?? null;
+      if (tid != null) attackFiredByTpl.set(tid, (attackFiredByTpl.get(tid) ?? 0) + 1);
       const fate = classifyAntFate(match, ant, selfDestructedIds);
       if (fate === 'undecided' || fate === 'selfDestructed') continue;
+      if (tid != null) {
+        attackDecidedByTpl.set(tid, (attackDecidedByTpl.get(tid) ?? 0) + 1);
+        if (fate === 'scored') attackScoredByTpl.set(tid, (attackScoredByTpl.get(tid) ?? 0) + 1);
+      }
       if (defendedIds.has(ant.id)) {
         defendedAttacks++;
         if (fate === 'scored') defendedAttacksScored++;
@@ -267,6 +305,11 @@ function runSelfPlaySeries(policy, games, seedBase) {
     defendedScoreRate: defendedAttacks > 0 ? defendedAttacksScored / defendedAttacks : null,
     undefendedAttacks,
     undefendedScoreRate: undefendedAttacks > 0 ? undefendedAttacksScored / undefendedAttacks : null,
+    attackFiredByTpl,
+    attackDecidedByTpl,
+    attackScoredByTpl,
+    disruptFiredByTpl,
+    avgDisruptCost: totalDisruptCount > 0 ? totalDisruptCost / totalDisruptCount : null,
   };
 }
 
@@ -339,6 +382,115 @@ function runTicksCondition(candidatePolicy, games, seedBase) {
 }
 
 // ---------------------------------------------------------------------------
+// モード3(--compare-defend): 「迎撃するほど負ける」を恒久測定にする(v5.4 追加差分仕様 §29)。
+//
+// なぜこのモードがあるか: §29 は、コスト体系(妨害の baseCost 等)を変更する前後で
+// この比較を再実行し、変更が「迎撃するほど負ける」を緩和したかどうかを数値で確認することを
+// 要求している。今回はコスト体系の変更**前**の基準値を、同じコードパス・同じ試合シード列で
+// 固定しておくために実装する(この直後にテンプレート数とコスト体系が変わる予定)。
+//
+// RANDOM_POLICY(中立方策)を複製し defendBias だけ 0.0 / 0.5 / 1.0 に振ったものを
+// アンカーとして、学習済み方策(data/policy.json)と対戦させる。3条件は同一の試合シード列
+// (deriveSeed(seedBase, g)、seedBase に条件の添字を混ぜない CRN)を使い、試合ごとに
+// 先手・後手を入れ替える。
+//
+// 「妨害の平均コスト」: アンカーが撃った迎撃(defend)+護衛(escort)はどちらも
+// action.kind === 'disrupt' で発火されるので(src/cpu.js の tryDefend/tryEscort は
+// どちらも toAction('disrupt', ...) を経由する)、makeAgent の scheduleFire フックで
+// action を横取りし、engine.js の costOf(既存の一元化された関数。式はここに書かない)を
+// そのまま呼んで積算する。
+// ---------------------------------------------------------------------------
+function runDefendBiasCondition(defendBias, games, seedBase, opponentPolicy) {
+  const candidatePolicy = { ...RANDOM_POLICY, defendBias };
+  let totalAttack = 0;
+  let totalDefend = 0;
+  let totalEscort = 0;
+  let totalDisruptCost = 0;
+  let totalDisruptCount = 0;
+  let anchorScoreTotal = 0;
+  let opponentScoreTotal = 0;
+  let anchorWinTotal = 0;
+
+  for (let g = 0; g < games; g++) {
+    const matchSeed = deriveSeed(seedBase, g);
+    // ⚠️ 使い捨てスクリプトの基準値に合わせる: アンカー側は g%2===0 ? 1 : 0
+    // (g%2===0 のときアンカーは sideIndex=1。モード1/モード2の g%2===0→side0 とは逆)。
+    const anchorSideIndex = g % 2 === 0 ? 1 : 0;
+    const anchorIsSide1 = anchorSideIndex === 0;
+    const policyA = anchorIsSide1 ? candidatePolicy : opponentPolicy;
+    const policyB = anchorIsSide1 ? opponentPolicy : candidatePolicy;
+    const onAnchorDisruptFire = (action) => {
+      totalDisruptCost += costOf(action.kind, action.cells.length);
+      totalDisruptCount++;
+    };
+    const onDisruptFireA = anchorIsSide1 ? onAnchorDisruptFire : undefined;
+    const onDisruptFireB = anchorIsSide1 ? undefined : onAnchorDisruptFire;
+    const { match, events } = playInstrumentedMatch(
+      matchSeed,
+      policyA,
+      policyB,
+      onDisruptFireA,
+      onDisruptFireB,
+    );
+
+    for (const ev of events) {
+      if (ev.sideIndex !== anchorSideIndex) continue;
+      if (ev.type === 'attack') totalAttack++;
+      else if (ev.type === 'defend') totalDefend++;
+      else if (ev.type === 'escort') totalEscort++;
+    }
+
+    const anchorScore = anchorIsSide1 ? match.sides[0].score : match.sides[1].score;
+    const opponentScore = anchorIsSide1 ? match.sides[1].score : match.sides[0].score;
+    anchorScoreTotal += anchorScore;
+    opponentScoreTotal += opponentScore;
+
+    const result = match.result;
+    let outcome;
+    if (result === 'draw') outcome = 0.5;
+    else {
+      const anchorWon = (anchorIsSide1 && result === 'side1') || (!anchorIsSide1 && result === 'side2');
+      outcome = anchorWon ? 1 : 0;
+    }
+    anchorWinTotal += outcome;
+  }
+
+  return {
+    defendBias,
+    games,
+    attackPerGame: totalAttack / games,
+    defendPerGame: totalDefend / games,
+    escortPerGame: totalEscort / games,
+    avgDisruptCost: totalDisruptCount > 0 ? totalDisruptCost / totalDisruptCount : null,
+    anchorScorePerGame: anchorScoreTotal / games,
+    opponentScorePerGame: opponentScoreTotal / games,
+    anchorWinRate: anchorWinTotal / games,
+    opponentWinRate: 1 - anchorWinTotal / games, // 引き分けは両者0.5扱いなので合計は必ず1
+  };
+}
+
+/**
+ * 対照群: 「相手も学習済み方策(自己対戦)」の勝率だけを測る。0.5付近でなければ
+ * 結線がおかしい(§29 の注記どおり)。playPlainMatch を使い observe は取らない。
+ */
+function runSelfPlayControlWinRate(policy, games, seedBase) {
+  let winTotal = 0;
+  for (let g = 0; g < games; g++) {
+    const matchSeed = deriveSeed(seedBase, g);
+    const anchorIsSide1 = g % 2 === 0;
+    const { result } = playPlainMatch(matchSeed, policy, policy);
+    let outcome;
+    if (result === 'draw') outcome = 0.5;
+    else {
+      const anchorWon = (anchorIsSide1 && result === 'side1') || (!anchorIsSide1 && result === 'side2');
+      outcome = anchorWon ? 1 : 0;
+    }
+    winTotal += outcome;
+  }
+  return winTotal / games;
+}
+
+// ---------------------------------------------------------------------------
 // 出力
 // ---------------------------------------------------------------------------
 function fmt(n, digits = 3) {
@@ -350,7 +502,7 @@ function printHeader(title) {
   console.log(`=== ${title} ===`);
 }
 
-if (!COMPARE_TICKS) {
+if (!COMPARE_TICKS && !COMPARE_DEFEND) {
   printHeader(`v5.4 §11 検証(モード1: 学習済み方策の計測) games=${GAMES} seed=${SEED}`);
   console.log(`policy.json trainedAt = ${policyDoc.trainedAt ?? 'N/A'}`);
 
@@ -385,13 +537,39 @@ if (!COMPARE_TICKS) {
   console.log(`  差(されなかった − された) = ${lift == null ? 'N/A' : fmt(lift)}`);
   console.log('  ⚠️ 正なら迎撃は得点を減らせている。0以下なら迎撃は効果が無い(または狙う相手の選び方に偏りがある)。');
 
+  // v5.4 §28: テンプレート別の内訳。data/templates.json の attack/disrupt 配列から
+  // 動的に行を作る(テンプレート数を決め打ちしない。旧9種でも新3+3でもそのまま動く)。
+  console.log('');
+  console.log('[テンプレート別内訳: 攻撃]');
+  console.log('  id | role | cost | 発射回数/試合 | 得点率');
+  console.log('  ---|------|------|----------------|-------');
+  for (const tpl of templates.attack ?? []) {
+    const fired = stats.attackFiredByTpl.get(tpl.id) ?? 0;
+    const decided = stats.attackDecidedByTpl.get(tpl.id) ?? 0;
+    const scored = stats.attackScoredByTpl.get(tpl.id) ?? 0;
+    const scoreRate = decided > 0 ? scored / decided : null;
+    console.log(
+      `  ${tpl.id} | ${tpl.role ?? '-'} | ${tpl.cost} | ${fmt(fired / GAMES, 3)} | ${fmt(scoreRate)}`,
+    );
+  }
+
+  console.log('');
+  console.log('[テンプレート別内訳: 妨害(迎撃+護衛の合計)]');
+  console.log('  id | role | cost | 発射回数/試合');
+  console.log('  ---|------|------|----------------');
+  for (const tpl of templates.disrupt ?? []) {
+    const fired = stats.disruptFiredByTpl.get(tpl.id) ?? 0;
+    console.log(`  ${tpl.id} | ${tpl.role ?? '-'} | ${tpl.cost} | ${fmt(fired / GAMES, 3)}`);
+  }
+  console.log(`  妨害の平均コスト(実際に撃たれた1件あたり): ${fmt(stats.avgDisruptCost, 2)}`);
+
   const vsRandomSeedBase = deriveSeed(SEED, 0x52); // 'vs random' 用の別シード列(自己対戦と混ぜない)
   const vsRandom = evaluateVsRandom(trainedPolicy, GAMES, vsRandomSeedBase);
   console.log('');
   console.log('[学習済み方策 vs RANDOM_POLICY(先手/後手を試合ごとに入れ替えて計測)]');
   console.log(`  winRate vs RANDOM               : ${fmt(vsRandom.winRate)}`);
   console.log(`  平均得点差(自分-相手, vs RANDOM): ${fmt(vsRandom.avgScoreDiff)}`);
-} else {
+} else if (COMPARE_TICKS) {
   printHeader(`v5.4 §11 検証(モード2: --compare-ticks CRN比較) games=${GAMES} seed=${SEED}`);
   const ticksValues = [1, 5, 10];
   const seedBase = deriveSeed(SEED, 0xc0); // 3条件共通(CRN: シードに条件の添字を混ぜない)
@@ -419,4 +597,45 @@ if (!COMPARE_TICKS) {
   console.log('');
   console.log('  ⚠️ 3条件は同一の試合シード列(CRN)・同一の相手(RANDOM_POLICY)を使っている。');
   console.log('     差が出ていれば selfDestructRemainingTicks の値そのものが fitness に効いている証拠。');
+} else {
+  // モード3(--compare-defend): v5.4 追加差分仕様 §29。「迎撃するほど負ける」の恒久測定。
+  printHeader(`v5.4 §29 検証(モード3: --compare-defend CRN比較) games=${GAMES} seed=${SEED}`);
+  const defendBiasValues = [0.0, 0.5, 1.0];
+  // ⚠️ 使い捨てスクリプトが seedBase = deriveSeed(1, 0x52) を使っていたため、それに合わせる
+  // (モード1の vsRandomSeedBase と同じ 0x52 という分岐定数を、相手を RANDOM_POLICY から
+  // trainedPolicy に差し替えて再利用している)。
+  const seedBase = deriveSeed(SEED, 0x52); // 3条件共通(CRN: シードに条件の添字を混ぜない)
+
+  const rows = defendBiasValues.map((defendBias) =>
+    runDefendBiasCondition(defendBias, GAMES, seedBase, trainedPolicy),
+  );
+
+  console.log('');
+  console.log(
+    '  defendBias | 攻撃/試合 | 迎撃/試合 | 護衛/試合 | 妨害の平均コスト | アンカー得点 | 相手得点 | 相手(学習済み方策)勝率',
+  );
+  console.log(
+    '  -----------|-----------|-----------|-----------|------------------|--------------|----------|------------------------',
+  );
+  for (const row of rows) {
+    console.log(
+      `  ${String(row.defendBias).padStart(10)} | ${fmt(row.attackPerGame, 2).padStart(9)} | ${fmt(
+        row.defendPerGame,
+        2,
+      ).padStart(9)} | ${fmt(row.escortPerGame, 2).padStart(9)} | ${fmt(row.avgDisruptCost, 2).padStart(
+        16,
+      )} | ${fmt(row.anchorScorePerGame, 2).padStart(12)} | ${fmt(row.opponentScorePerGame, 2).padStart(
+        8,
+      )} | ${fmt(row.opponentWinRate, 3).padStart(22)}`,
+    );
+  }
+
+  const controlSeedBase = deriveSeed(SEED, 0x53); // 対照(自己対戦)専用の別シード列
+  const controlWinRate = runSelfPlayControlWinRate(trainedPolicy, GAMES, controlSeedBase);
+  console.log('');
+  console.log(`  [対照] 学習済み方策どうしの自己対戦の勝率(アンカー視点): ${fmt(controlWinRate)}`);
+  console.log('  ⚠️ この値が0.5付近でなければ結線がおかしい(先手/後手入れ替え・勝敗判定を疑うこと)。');
+  console.log('');
+  console.log('  ⚠️ 3条件は同一の試合シード列(CRN)・同一の相手(学習済み方策)を使っている。');
+  console.log('     妨害の平均コストは engine.js の costOf(既存の一元化関数)で計算している。');
 }

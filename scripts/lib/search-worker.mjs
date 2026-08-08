@@ -17,6 +17,7 @@ import { distillSeed } from '../../src/search/seed-distillation.js';
 import { evaluateInteraction } from '../../src/search/evaluate-interaction.js';
 import { simulateSolo, instantiateTemplate } from '../../src/engine.js';
 import { toTemplateCells } from '../../src/search/genome.js';
+import { compressSeed } from '../../src/search/seed-compression.js';
 
 /** genome を engine 用の相対テンプレート形に変換する。 */
 function toRelativeTemplate(genome, kind) {
@@ -157,12 +158,72 @@ function taskDisruptProfile(payload) {
   return { reachRows, endDir: endDir ?? genome.antDir, reached: r.reached };
 }
 
+
+// ---------------------------------------------------------------------------
+// タスク: 妨害の Seed Compression(差分仕様 §7・§8)
+//
+// 妨害コストは DISRUPT_BASE_COST + ceil(cells/2) なので、**2マス減るごとに1トークン安くなる**。
+// 迎撃札を実際に使える価格帯へ収めるため、迎撃性能を落とさない範囲で配置セルを貪欲に削る。
+//
+// ⚠️ 「周期軌道を保っているか」だけでは不十分(§8 の採用条件)。セルを削ると軌道が変わり、
+// 「まだハイウェイではあるが、もう当たらない」個体になりうる。したがって verify では
+// **元候補が持っていた迎撃能力を失っていないか**を毎回 evaluateInteraction で測り直す。
+//
+// ⚠️ このタスクは乱数を使わない(compressSeed の削除順は距離→辞書順で決定論的)。
+// ワーカーは純粋関数のままなので、並列数を変えても結果は変わらない。
+// ---------------------------------------------------------------------------
+function taskCompressDisrupt(payload) {
+  const { genome, attacks, preserve } = payload;
+
+  // preserve = [[attackIndex, deltaX, fireAtStep], ...]
+  // この妨害が**実際に止められていた**組み合わせだけを列挙したもの(段階⑤で計算済みの hits)。
+  // ⚠️ 全グリッド(攻撃 × 全deltaX × 全タイミング)を verify のたびに舐めると、
+  // 1候補あたり数十万シミュレーションになり圧縮だけで数時間かかる。§8 が要求しているのは
+  // 「元が持っていた迎撃能力を失っていないこと」なので、**元のヒットだけ**を再評価すれば足りる。
+  if (!preserve || preserve.length === 0) {
+    return { cells: toTemplateCells(genome), removed: 0, verifyCalls: 0, preserved: 0 };
+  }
+
+  function tplOf(cells) {
+    return { rule: genome.rule, cells, antY: genome.antY, antDir: genome.antDir, kind: 'disrupt' };
+  }
+
+  /** 妨害としての空間制約(§8 の採用条件1・2)。敵陣へ到達してしまう個体は不可。 */
+  function trajectoryOk(cells) {
+    const r = simulateSolo(instantiateTemplate(tplOf(cells), 0), { trackPath: false });
+    return !r.reached;
+  }
+
+  const baseCells = toTemplateCells(genome).map(([dx, dy, state]) => ({ dx, dy, state }));
+
+  const verify = (candidateCells) => {
+    const flat = candidateCells.map((c) => [c.dx, c.dy, c.state]);
+    if (!trajectoryOk(flat)) return false;
+    const tpl = tplOf(flat);
+    // 元が止められていた組を1つでも失ったら不採用(§8 採用条件3)。
+    for (const [ai, dx, t0] of preserve) {
+      const { scored } = evaluateInteraction(attacks[ai], tpl, t0, dx);
+      if (scored) return false;
+    }
+    return true;
+  };
+
+  const res = compressSeed(baseCells, verify);
+  return {
+    cells: res.cells.map((c) => [c.dx, c.dy, c.state]),
+    removed: res.removed,
+    verifyCalls: res.verifyCalls,
+    preserved: preserve.length,
+  };
+}
+
 const TASKS = {
   evaluate: taskEvaluate,
   countCounters: taskCountCounters,
   coverage: taskCoverage,
   counterRow: taskCounterRow,
   disruptProfile: taskDisruptProfile,
+  compressDisrupt: taskCompressDisrupt,
 };
 
 parentPort.on('message', (msg) => {

@@ -11,10 +11,8 @@
 import * as C from './config.js';
 import { instantiateTemplate, wrapX, scoringLaunchColumns } from './template.js';
 
-/** kind別のコスト(engine.js の costOf と同じ計算式。依存を避けるためローカルに持つ)。 */
-function costOf(kind, cellCount) {
-  return C.ANT_KINDS[kind].baseCost + cellCount;
-}
+// ⚠️ コスト式のローカル複製をやめ、src/config.js の costOf(唯一の定義)を使う(v5.5)。
+const costOf = C.costOf;
 
 function buildTemplateIndex(list) {
   const byId = new Map();

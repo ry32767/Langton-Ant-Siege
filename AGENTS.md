@@ -26,7 +26,7 @@
 ```bash
 npx serve .                                  # ローカルで動作確認(HTTPサーバー必須。file:// では動かない)
 node --test                                  # test/ の単体テスト(Node組み込みテストランナー)
-node scripts/generate-templates.mjs --quick  # テンプレート生成の通し確認(数分。本番設定ではない)
+node scripts/generate-templates.mjs --quick --out-dir /tmp/tpl-check   # 通し確認(数分。本番設定ではない)
 node scripts/generate-templates.mjs --budget-min 180 --workers 22   # 本探索(実時間で打ち切る)
 node scripts/generate-templates.mjs --seed 1 --iterations 4200000   # 上の成果物を再現する(下記)
 node scripts/tune-attack-life.mjs            # 探索アーカイブから ATTACK_LIFE の候補を掃引して比較
@@ -37,6 +37,10 @@ node scripts/simulate-matches.mjs --games 100 --seed 1    # シード固定で�
 node scripts/verify-v54.mjs --games 300                   # CPUの行動内訳(攻撃/迎撃/護衛/自爆の発射数・迎撃の効果を対照群つきで測る)
 node scripts/verify-v54.mjs --compare-ticks --games 200   # selfDestructRemainingTicks を 1/5/10 に固定してCRNで比較
 ```
+
+⚠️ **通し確認(`--quick`)には必ず `--out-dir` を付ける。** 付けないと `data/templates.json` を直接上書きし、以降の `simulate-matches` / `train-policy` が「動作確認用の粗いテンプレート」を本物だと思って走る(実際に踏みかけた)。
+
+⚠️ **`generate-templates.mjs` は import しただけで探索が走り出す**(トップレベルで実行される)。構文チェックをしたいだけなら `node --check scripts/generate-templates.mjs` を使うこと。`node -e "import('./scripts/generate-templates.mjs')"` は3時間の本探索を起動してしまう(実際に起きた)。
 
 **探索の再現性について(v5)**: 探索は worker_threads で並列化してあるが、**乱数はメインスレッドだけが持ち、ワーカーは純粋関数**で、結果は完了順ではなく**投入した添字順**にアーカイブへ入る。バッチ幅もワーカー数から導出せず固定値にしてある。したがって `--seed` と `--iterations` が同じなら**ワーカー数を変えても成果物は一致する**。
 `--budget-min`(実時間で打ち切る)を使った場合だけはマシンの速さで反復回数が変わるので、実行後にログと `data/search-archive.json` の `reproduceCommand` に「その回の反復回数」が残る。再生成するときはそれを `--iterations` に渡す。

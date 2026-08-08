@@ -17,7 +17,15 @@
 // dy も同様にアリ行からの相対にしてある(Seed Distillation が生成する種が
 // 「アリ周囲の局所セル」なので、表現をそちらに合わせると変換が要らない)。
 
-import { MIN_COLORS, MAX_COLORS, MAX_CELLS, MIN_TEMPLATE_CELLS, ZONE_DEPTH, TEMPLATE_CELL_RADIUS } from '../config.js';
+import {
+  MIN_COLORS,
+  MAX_COLORS,
+  MAX_CELLS,
+  MIN_TEMPLATE_CELLS,
+  ZONE_DEPTH,
+  TEMPLATE_CELL_RADIUS,
+  costOf,
+} from '../config.js';
 
 /** rng の [0,n) 整数を返す(n は正整数)。 */
 function randInt(rng, n) {
@@ -219,7 +227,14 @@ export function toTemplateCells(g) {
   return g.cells.map((c) => [c.dx, c.dy, c.state]);
 }
 
-/** genome のコスト。baseCost + cells.length(ルール長にはコストを課さない)。 */
-export function costOfGenome(g, baseCost) {
-  return baseCost + g.cells.length;
+/**
+ * genome のコスト。**式そのものは持たない**。src/config.js の costOf(唯一の定義)に
+ * kind と配置マス数を渡すだけの薄いラッパ(v5.5)。
+ *
+ * ⚠️ v5.5 でシグネチャを `costOfGenome(g, baseCost)` から `costOfGenome(g, kind)` へ変更した。
+ * 旧式(`baseCost + g.cells.length`)は妨害で誤った値になる(妨害はマス単価が半分。
+ * config.js の costOf のコメント参照)。kind は 'attack' | 'disrupt'。
+ */
+export function costOfGenome(g, kind) {
+  return costOf(kind, g.cells.length);
 }

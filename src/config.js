@@ -152,7 +152,12 @@ export const ATTACK_COST = 5; // 実コスト = ATTACK_COST + 配置マス数 �
  * scripts/generate-templates.mjs の --resume-archive がそれを行う)。
  */
 export const ATTACK_LIFE = 20000;
-export const DISRUPT_COST = 3; // 実コスト = DISRUPT_COST + 配置マス数 → 4..19
+/**
+ * 妨害アリの召喚ベースコスト(v5.5 で 3 → 2)。
+ * ⚠️ 妨害の実コストは `DISRUPT_BASE_COST + ceil(配置マス数 / 2)` で、**配置マスの単価も攻撃の半分**。
+ * 実コストは 3..10(攻撃は 6..21)。式は下の costOf() が唯一の定義なので、ここに書き足さないこと。
+ */
+export const DISRUPT_BASE_COST = 2;
 /**
  * 妨害アリの寿命(ステップ)。
  *
@@ -226,18 +231,57 @@ export const MIN_CELLS = 0; // 規則上の下限。0個(アリだけ)の発射�
  */
 export const MIN_TEMPLATE_CELLS = 1;
 
+/**
+ * 発射コストの**唯一の定義**(v5.5)。
+ *
+ * ⚠️ この式を他のファイルへ書き写さないこと。プレイヤーUI・CPU・テンプレート生成・
+ * MAP-Elites評価・共進化・最終選抜・templates.json・検証スクリプトが**すべてこの関数を通る**
+ * ことが仕様(差分仕様 §11)。
+ *
+ * ⚠️ ここに置いてある理由: `src/cpu.js` は `src/engine.js` を import してはいけない
+ * (実行時シミュレーションをしないことをコード上の依存関係で担保するため。AGENTS.md の Do NOT)。
+ * 両方が読める場所は config.js しかない。engine.js の costOf はこれに委譲するだけの再輸出。
+ *
+ * 攻撃と妨害は**非対称**:
+ *   攻撃 = ATTACK_COST(5) + 配置マス数        → 6..21
+ *   妨害 = DISRUPT_BASE_COST(2) + ceil(マス/2) → 3..10
+ * 妨害は召喚ベースだけでなく**配置マスの単価も安い**。迎撃札を実際に使える価格帯へ収めるための
+ * 意図的な非対称ルール(差分仕様 §10.2)。
+ */
+export function costOf(kind, cellCount) {
+  if (kind === 'disrupt') return DISRUPT_BASE_COST + Math.ceil(cellCount / 2);
+  return ANT_KINDS[kind].baseCost + cellCount;
+}
+
+/** テンプレート(cells を持つオブジェクト)のコスト。costOf の薄いラッパ。 */
+export function templateCost(template, kind) {
+  return costOf(kind ?? template.kind, template.cells.length);
+}
+
 /** 自爆(飛行中の自分のアリを任意のタイミングで消す)のトークンコスト。0 = 無料・払い戻しもなし。 */
 export const SELF_DESTRUCT_COST = 0;
 
-/** kind → コストと寿命。engine は kind による分岐をここだけに閉じる。 */
+/**
+ * kind → コストと寿命。engine は kind による分岐をここだけに閉じる。
+ * ⚠️ `baseCost` は**コスト式そのものではない**(妨害はマス単価が 1/2)。コストは必ず costOf() を通すこと。
+ */
 export const ANT_KINDS = Object.freeze({
   attack: Object.freeze({ baseCost: ATTACK_COST, life: ATTACK_LIFE }),
-  disrupt: Object.freeze({ baseCost: DISRUPT_COST, life: DISRUPT_LIFE }),
+  disrupt: Object.freeze({ baseCost: DISRUPT_BASE_COST, life: DISRUPT_LIFE }),
 });
 
 // ---- テンプレート ---------------------------------------------------------
-export const TEMPLATE_COUNT_ATTACK = 9;
-export const TEMPLATE_COUNT_DISRUPT = 9;
+// v5.5: 9種 → 3種。プレイヤーが役割・相性・コストを把握できる手札数にする。
+// 攻撃は Speed / Economy / Robust、妨害は Cheap / General / Complement の3役割を1種ずつ。
+// ⚠️ 探索(MAP-Elites)は大量の候補を作り続ける。減らすのは**プレイヤーに公開する最終手札**だけで、
+// 探索側の多様性とUIの複雑さは分離する。
+export const TEMPLATE_COUNT_ATTACK = 3;
+export const TEMPLATE_COUNT_DISRUPT = 3;
+
+/** 攻撃テンプレートの役割ID(配列順と一致させる。attackPref[i] がこの順に対応する)。 */
+export const ATTACK_ROLES = Object.freeze(['speed', 'economy', 'robust']);
+/** 妨害テンプレートの役割ID(配列順と一致させる)。 */
+export const DISRUPT_ROLES = Object.freeze(['cheap', 'general', 'complement']);
 
 /**
  * カウンター表・護衛表が候補にする発射タイミング(攻撃の発射ステップからの相対)。

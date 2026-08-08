@@ -1,7 +1,7 @@
 {
   "seed": 1,
   "quick": false,
-  "workers": 22,
+  "workers": 14,
   "budgetMin": 180,
   "archive1Iterations": 6032400,
   "reproduceCommand": "node scripts/generate-templates.mjs --seed 1 --iterations 6032400",
@@ -27303,16 +27303,6 @@
                 "dx": 1,
                 "dy": 1,
                 "state": 1
-              },
-              {
-                "dx": 4,
-                "dy": -8,
-                "state": 2
-              },
-              {
-                "dx": 3,
-                "dy": -4,
-                "state": 6
               }
             ],
             "origin": "mutation",
@@ -48635,11 +48625,6 @@
             "antY": 30,
             "antDir": 3,
             "cells": [
-              {
-                "dx": -1,
-                "dy": 0,
-                "state": 2
-              },
               {
                 "dx": -1,
                 "dy": 1,
@@ -161263,11 +161248,6 @@
             "cells": [
               {
                 "dx": -1,
-                "dy": 0,
-                "state": 2
-              },
-              {
-                "dx": -1,
                 "dy": 1,
                 "state": 3
               }
@@ -161366,11 +161346,6 @@
                 "state": 10
               },
               {
-                "dx": 8,
-                "dy": -3,
-                "state": 3
-              },
-              {
                 "dx": 7,
                 "dy": -5,
                 "state": 8
@@ -161386,34 +161361,9 @@
                 "state": 9
               },
               {
-                "dx": -6,
-                "dy": -8,
-                "state": 3
-              },
-              {
-                "dx": 8,
-                "dy": -6,
-                "state": 5
-              },
-              {
                 "dx": -4,
                 "dy": -8,
                 "state": 10
-              },
-              {
-                "dx": 3,
-                "dy": -8,
-                "state": 0
-              },
-              {
-                "dx": -2,
-                "dy": -3,
-                "state": 0
-              },
-              {
-                "dx": 8,
-                "dy": -4,
-                "state": 0
               },
               {
                 "dx": -3,

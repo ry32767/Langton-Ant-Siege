@@ -2,8 +2,10 @@
 // CPU同士の自己対戦 + CEM法(交差エントロピー法)で方策を学習し data/policy.json を書き出す。
 // docs/spec.md 機能6「学習方法」・docs/data-model.md「data/policy.json」準拠。
 //
-// 学習するのは17パラメータ: fireThreshold, reserveTokens, defendBias, escortBias, attackPref[9],
+// 学習するのは 4 + C.TEMPLATE_COUNT_ATTACK + 4 パラメータ(v5.5で11次元に変更):
+// fireThreshold, reserveTokens, defendBias, escortBias, attackPref[C.TEMPLATE_COUNT_ATTACK],
 // selfDestructBias, selfDestructRemainingTicks, pollutionDestructWeight, attackAvoidBias。
+// attackPref の並びは C.ATTACK_ROLES(=['speed','economy','robust'])の役割順で固定(§18)。
 // 各世代: 集団を平均方策からガウス分布でサンプリングし、それぞれ「その方策 vs 現在の平均方策」と
 // 「その方策 vs 固定アンカー方策(RANDOM_POLICY)」を複数試合戦わせて fitness にする(系統ドリフト
 // を防ぐため両方を混ぜる)。上位(エリート)の平均・標準偏差で分布を更新する。
@@ -82,8 +84,8 @@ const VS_RANDOM_GAMES = argNum('vsRandomGames', 200);
 // ---------------------------------------------------------------------------
 // パラメータベクトル ⇄ policy オブジェクト
 // ---------------------------------------------------------------------------
-const NUM_ATTACK = C.TEMPLATE_COUNT_ATTACK; // 9
-// fireThreshold, reserveTokens, defendBias, escortBias, attackPref[9],
+const NUM_ATTACK = C.TEMPLATE_COUNT_ATTACK; // 3(v5.5で9から変更)
+// fireThreshold, reserveTokens, defendBias, escortBias, attackPref[NUM_ATTACK],
 // selfDestructBias, selfDestructRemainingTicks, pollutionDestructWeight, attackAvoidBias
 const VECTOR_LENGTH = 4 + NUM_ATTACK + 4;
 
@@ -123,6 +125,8 @@ function vectorToPolicy(vec) {
     reserveTokens: vec[1],
     defendBias: vec[2],
     escortBias: vec[3],
+    // attackPref[i] は生成順ではなく C.ATTACK_ROLES の役割順で固定(§18):
+    // [0]=Speed(speed) / [1]=Economy(economy) / [2]=Robust(robust)
     attackPref: vec.slice(4, 4 + NUM_ATTACK),
     selfDestructBias: vec[4 + NUM_ATTACK],
     // clampVector 後の呼び出しなら常に [1,10] だが、clamp 前のベクトルに対して呼ばれても
@@ -246,7 +250,7 @@ function evaluate(seedBase, individualPolicy, opponentPolicy, games) {
 // ---------------------------------------------------------------------------
 
 // 「ランダム方策」= 学習していない中立の初期方策(閾値0で貯めずに撃ち、迎撃/護衛は五分五分、
-// 攻撃選好は9種均一 = softmaxがほぼ一様分布になる)。CEM の初期平均と同じ考え方。
+// 攻撃選好は NUM_ATTACK 種均一 = softmaxがほぼ一様分布になる)。CEM の初期平均と同じ考え方。
 // selfDestructBias=0 にして「自爆を使わない中立方策」にする(自爆を学習した方策がそれに
 // 勝てるかを固定アンカー戦で測るため)。
 const RANDOM_POLICY = {
@@ -276,7 +280,9 @@ let std = RANGES.map(([lo, hi]) => (hi - lo) / 2);
 
 let totalMatches = 0;
 
-// 追加要件B: index 14(selfDestructRemainingTicks)の世代ごとの mean を記録する。
+// 追加要件B: index SELF_DESTRUCT_TICKS_INDEX(selfDestructRemainingTicks。次元数の変更に
+// 追従するよう 4 + NUM_ATTACK + 1 で導出する。v5.5で11次元化した際は index 8 になる)の
+// 世代ごとの mean を記録する。
 // MIN_STD が値域の2%(=0.18)しか無く、丸め粒度が1のため、エリートが早期にある整数へ
 // 収束すると隣の整数へ移るのに約2.8σのサンプルが要り、探索が止まりうる。学習後に
 // 「自爆に fitness 価値が無かった」のか「そもそも探索されなかった」のかを見分けるための軌跡。
@@ -369,7 +375,8 @@ const output = {
   matches: totalMatches,
   winRateVsRandom,
   policy: finalPolicy,
-  // 追加要件B: index 14(selfDestructRemainingTicks)の mean(丸めない生の値)の世代ごとの軌跡。
+  // 追加要件B: index SELF_DESTRUCT_TICKS_INDEX(selfDestructRemainingTicks)の
+  // mean(丸めない生の値)の世代ごとの軌跡。
   selfDestructTicksTrajectory,
 };
 

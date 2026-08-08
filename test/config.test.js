@@ -106,10 +106,10 @@ test('妨害アリは盤面中央で消滅するので、寿命によらず敵�
 });
 
 test('コストがトークン上限の範囲に収まる', () => {
-  const maxAttackCost = C.ATTACK_COST + C.MAX_CELLS; // 21
-  const maxDisruptCost = C.DISRUPT_COST + C.MAX_CELLS; // 19
+  const maxAttackCost = C.costOf('attack', C.MAX_CELLS); // 21
+  const maxDisruptCost = C.costOf('disrupt', C.MAX_CELLS); // 10(v5.5: 妨害はマス単価も半分)
   assert.equal(maxAttackCost, 21);
-  assert.equal(maxDisruptCost, 19);
+  assert.equal(maxDisruptCost, 10);
   assert.ok(maxAttackCost <= C.TOKEN_CAP, '最も高い攻撃が上限まで貯めても撃てないことになる');
   assert.ok(C.MIN_CELLS >= 0 && C.MIN_CELLS <= C.MAX_CELLS);
 });
@@ -171,7 +171,7 @@ test('アリ種別の表が2種類ぶん揃っている', () => {
   assert.deepEqual(Object.keys(C.ANT_KINDS).sort(), ['attack', 'disrupt']);
   assert.equal(C.ANT_KINDS.attack.life, C.ATTACK_LIFE);
   assert.equal(C.ANT_KINDS.attack.baseCost, C.ATTACK_COST);
-  assert.equal(C.ANT_KINDS.disrupt.baseCost, C.DISRUPT_COST);
+  assert.equal(C.ANT_KINDS.disrupt.baseCost, C.DISRUPT_BASE_COST);
   assert.equal(C.ANT_KINDS.disrupt.life, C.DISRUPT_LIFE);
   assert.ok(C.ANT_KINDS.disrupt.life < C.ANT_KINDS.attack.life);
 });
@@ -179,4 +179,51 @@ test('アリ種別の表が2種類ぶん揃っている', () => {
 test('同時飛行数の上限が定義されている', () => {
   assert.equal(C.MAX_FLYING, 4);
   assert.equal(C.MAX_CELLS, 16);
+});
+
+// ---- §26: 発射コストの一本化(v5.5) -----------------------------------------
+// 「低コスト妨害設計」差分仕様 §26 が要求するコスト表。costOf() が唯一の定義。
+
+test('§26: 妨害コストの表(costOf("disrupt", n) = DISRUPT_BASE_COST + ceil(n/2))', () => {
+  const table = [
+    [1, 3],
+    [2, 3],
+    [3, 4],
+    [4, 4],
+    [8, 6],
+    [16, 10],
+  ];
+  for (const [cells, expected] of table) {
+    assert.equal(C.costOf('disrupt', cells), expected, `cells=${cells} の妨害コスト`);
+  }
+});
+
+test('§26: 攻撃コストは変わっていない(costOf("attack", n) = ATTACK_COST + n)', () => {
+  for (let n = 0; n <= C.MAX_CELLS; n++) {
+    assert.equal(C.costOf('attack', n), C.ATTACK_COST + n, `cells=${n} の攻撃コスト`);
+  }
+});
+
+test('§26: templateCost が costOf と一致する', () => {
+  for (const kind of ['attack', 'disrupt']) {
+    for (let n = 0; n <= C.MAX_CELLS; n++) {
+      const template = { kind, cells: Array.from({ length: n }, () => [0, 0, 0]) };
+      assert.equal(C.templateCost(template), C.costOf(kind, n));
+      // kind 引数を明示しても同じ結果になる
+      assert.equal(C.templateCost(template, kind), C.costOf(kind, n));
+    }
+  }
+});
+
+test('§26: engine.js の costOf と config.js の costOf が全 cells 数で一致する(一元化の回帰テスト)', async () => {
+  const engine = await import('../src/engine.js');
+  for (const kind of ['attack', 'disrupt']) {
+    for (let n = 0; n <= C.MAX_CELLS; n++) {
+      assert.equal(
+        engine.costOf(kind, n),
+        C.costOf(kind, n),
+        `kind=${kind} cells=${n} で engine.costOf と config.costOf が食い違っている`,
+      );
+    }
+  }
 });

@@ -48,9 +48,9 @@ import { buildSearchReport, formatSearchReport } from '../src/search/search-repo
 import { createPool, defaultWorkerCount } from './lib/worker-pool.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const TEMPLATES_OUT_PATH = path.join(__dirname, '..', 'data', 'templates.json');
-const ARCHIVE_OUT_PATH = path.join(__dirname, '..', 'data', 'search-archive.json');
-const REPORT_OUT_PATH = path.join(__dirname, '..', 'data', 'search-report.json');
+const DEFAULT_TEMPLATES_OUT_PATH = path.join(__dirname, '..', 'data', 'templates.json');
+const DEFAULT_ARCHIVE_OUT_PATH = path.join(__dirname, '..', 'data', 'search-archive.json');
+const DEFAULT_REPORT_OUT_PATH = path.join(__dirname, '..', 'data', 'search-report.json');
 
 // ---------------------------------------------------------------------------
 // CLI 引数
@@ -89,6 +89,22 @@ function argStr(name, def) {
   return argv[i + 1];
 }
 const RESUME_ARCHIVE = argStr('resume-archive', null);
+
+// ⚠️ --out-dir を付けると成果物3点の書き出し先をまとめて変えられる。
+// これが無いと `--quick`(数分の通し確認。本番設定ではない)が本番の
+// data/templates.json を直接上書きしてしまい、以降の simulate-matches /
+// train-policy が「動作確認用の粗いテンプレート」を本物だと思って走る。
+// 通し確認は必ず --out-dir を付けて別の場所に書くこと。
+const OUT_DIR = argStr('out-dir', null);
+const TEMPLATES_OUT_PATH = OUT_DIR
+  ? path.resolve(OUT_DIR, 'templates.json')
+  : DEFAULT_TEMPLATES_OUT_PATH;
+const ARCHIVE_OUT_PATH = OUT_DIR
+  ? path.resolve(OUT_DIR, 'search-archive.json')
+  : DEFAULT_ARCHIVE_OUT_PATH;
+const REPORT_OUT_PATH = OUT_DIR
+  ? path.resolve(OUT_DIR, 'search-report.json')
+  : DEFAULT_REPORT_OUT_PATH;
 /** 第1アーカイブ探索に使う実時間(分)。--iterations 指定時は無視する。 */
 const BUDGET_MIN = ITERATIONS_OVERRIDE != null ? 0 : argNum('budget-min', QUICK ? 0 : 180);
 
@@ -416,7 +432,9 @@ async function buildHighwayArchive(pool, sampler, viableCollector) {
       { name: 'direction', bins: C.ARCHIVE1.directions.length },
       { name: 'speedBin', bins: C.ARCHIVE1.speedBins },
       { name: 'formationBin', bins: C.ARCHIVE1.formationBins.length },
-      { name: 'cost', bins: C.MAX_CELLS + C.ATTACK_COST + 1 },
+      // コスト軸の bin 数は「取りうる最大コスト+1」。攻撃のほうが高いので攻撃で上限を取る
+      // (妨害はマス単価が半分なので必ずこれ以下に収まる)。式は C.costOf が唯一の定義。
+      { name: 'cost', bins: C.costOf('attack', C.MAX_CELLS) + 1 },
     ],
   });
 
@@ -778,9 +796,26 @@ async function filterFingerprintVerified(pool, genomes, label) {
 const gateStats = { checked: 0, verified: 0 };
 
 // ---------------------------------------------------------------------------
-// ⑤ 9×9 選抜(貪欲法+局所探索)。カウンター行列は deltaX を全列掃引する。
+// ⑤ 3×3 役割別選抜(v5.5)。カウンター行列は deltaX を全列掃引する。
+//
+// ⚠️ **総合スコア上位3件をそのまま採るのは禁止**(差分仕様 §5)。それをやると
+// A1/A2/A3 がほぼ同じ速度・同じコスト・似た軌道になり、手札を3種に絞った意味が消える。
+// 攻撃は Speed / Economy / Robust、妨害は Cheap / General / Complement の
+// **役割ごとに1種ずつ**選ぶ。
+//
+// ⚠️ **`quality = defenseScore - λ * cost` のような固定重み付き和は使わない**(§9)。
+// λ のチューニング問題を持ち込まないため、比較は必ず**辞書式(lexicographic)の優先順位**で行う。
 // ---------------------------------------------------------------------------
-async function selectNineByNine(pool, attackPool, disruptPool) {
+
+/** 辞書式比較。a のほうが優先される(大きい)なら true。 */
+function rankIsBetter(a, b) {
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return a[i] > b[i];
+  }
+  return false;
+}
+
+async function selectByRoles(pool, attackPool, disruptPool) {
   const NA = attackPool.length;
   const ND = disruptPool.length;
   const totalSims = NA * ND * SELECT_DELTA_XS.length * C.FIRE_TIMINGS.length;
@@ -790,7 +825,9 @@ async function selectNineByNine(pool, attackPool, disruptPool) {
   );
 
   if (NA < C.TEMPLATE_COUNT_ATTACK || ND < C.TEMPLATE_COUNT_DISRUPT) {
-    log(`  候補数が9件に満たない(攻撃${NA}/妨害${ND})ため選抜不能`);
+    log(
+      `  候補数が不足(攻撃${NA}/妨害${ND}、必要 ${C.TEMPLATE_COUNT_ATTACK}/${C.TEMPLATE_COUNT_DISRUPT})のため選抜不能`,
+    );
     return { ok: false };
   }
 
@@ -808,94 +845,294 @@ async function selectNineByNine(pool, attackPool, disruptPool) {
     },
   );
   evalCount += totalSims;
-  // hits[a][d] = その妨害が攻撃 a を止めた (deltaX, fireAtStep) の一覧
-  const hits = rows.map((r) => r.hits);
-  // M[a][d] = 止めた (deltaX, タイミング) の組の数
+  const hits = rows.map((r) => r.hits); // hits[a][d] = 止めた (deltaX, fireAtStep) の一覧
   const M = hits.map((row) => row.map((cell) => cell.length));
   log(`  行列計算完了`);
 
-  // 多様性判定用の情報(ハイウェイ署名・実効色数)をまとめて取る。
   const projections = await pool.runBatch(
     'evaluate',
     attackPool.map((g) => ({ genome: g })),
   );
   const attackHighwaySig = projections.map((p) => highwaySignatureKey(p.highway));
-  // 実効色数は「実際に踏んだ状態の種類数」。rule.length で多様性を測ってはいけない(§8)。
-  // 近似として、ハイウェイ署名が同じでもルールの原始形が違えば別クラスとみなす。
   const attackRuleKey = attackPool.map((g) => g.rule);
 
-  function evaluate(ai, di) {
-    const sub = ai.map((a) => di.map((d) => M[a][d]));
-    const pa = sub.map((row) => row.filter((v) => v > 0).length);
-    const pd = di.map((_, j) => sub.reduce((s, row) => s + (row[j] > 0 ? 1 : 0), 0));
-    const zeroA = pa.filter((v) => v === 0).length;
-    const zeroD = pd.filter((v) => v === 0).length;
-    // ⚠️ v5: 識別キーは "antY,antDir"(発射列 antX が可変になったため)。
-    const idSet = new Set(ai.map((a) => identityKey(attackPool[a])));
-    const cellsOk = ai.every((a) => attackPool[a].cells.length >= C.MIN_TEMPLATE_CELLS);
+  // --- 候補ごとの指標(コストは必ず C.costOf 経由。式をここに書かない) --------
+  const aCost = attackPool.map((g) => C.costOf('attack', g.cells.length));
+  const aArrival = projections.map((p) => p.game?.arrivalStep ?? Infinity);
+  const aSpeed = projections.map((p) => p.highway?.speed ?? 0);
+  // robustness = 「妨害候補プールのうち自分を止められない割合」。高いほど止められにくい。
+  const aRobust = M.map((row) => 1 - row.filter((v) => v > 0).length / ND);
+  const dCost = disruptPool.map((g) => C.costOf('disrupt', g.cells.length));
+  const dCells = disruptPool.map((g) => g.cells.length);
+  const timingSlots = SELECT_DELTA_XS.length * C.FIRE_TIMINGS.length;
 
-    let score = 0;
-    score -= 100000 * zeroA; // 必須: カウンター無し攻撃は0件
-    score -= 100000 * zeroD; // 必須: 死に札は0件
-    score -= 100000 * (C.TEMPLATE_COUNT_ATTACK - idSet.size); // 必須: (antY,antDir) がすべて異なる
-    score -= 100000 * (cellsOk ? 0 : 1);
-    score -= pa.reduce((s, v) => s + Math.max(0, 2 - v) + Math.max(0, v - 4), 0) * 10;
-    score -= pd.reduce((s, v) => s + Math.max(0, 2 - v) + Math.max(0, v - 4), 0) * 10;
-    const costSet = new Set(ai.map((a) => C.ATTACK_COST + attackPool[a].cells.length));
-    score += costSet.size * 5;
-    const hwSigSet = new Set(ai.map((a) => attackHighwaySig[a]));
-    const ruleSet = new Set(ai.map((a) => attackRuleKey[a]));
-    score += hwSigSet.size * 8;
-    score += ruleSet.size * 8;
-
-    return { score, pa, pd, zeroA, zeroD, idSet, hwSigSet, ruleSet, costSet };
-  }
-
-  const attackOrder = [...Array(NA).keys()].sort((a, b) => {
-    const ca = disruptPool.reduce((s, _, j) => s + (M[a][j] > 0 ? 1 : 0), 0);
-    const cb = disruptPool.reduce((s, _, j) => s + (M[b][j] > 0 ? 1 : 0), 0);
-    return cb - ca === 0 ? a - b : cb - ca;
-  });
-  let ai = attackOrder.slice(0, C.TEMPLATE_COUNT_ATTACK);
-  const disruptOrder = [...Array(ND).keys()].sort((a, b) => {
-    const cova = attackPool.reduce((s, _, i) => s + (M[i][a] > 0 ? 1 : 0), 0);
-    const covb = attackPool.reduce((s, _, i) => s + (M[i][b] > 0 ? 1 : 0), 0);
-    return covb - cova === 0 ? a - b : covb - cova;
-  });
-  let di = disruptOrder.slice(0, C.TEMPLATE_COUNT_DISRUPT);
-
-  let cur = evaluate(ai, di).score;
-  for (let it = 0; it < PARAMS.localSearchIters; it++) {
-    const na = [...ai];
-    const nd = [...di];
-    if (rng() < 0.5) {
-      na[Math.floor(rng() * C.TEMPLATE_COUNT_ATTACK)] = Math.floor(rng() * NA);
-      if (new Set(na).size < C.TEMPLATE_COUNT_ATTACK) continue;
-    } else {
-      nd[Math.floor(rng() * C.TEMPLATE_COUNT_DISRUPT)] = Math.floor(rng() * ND);
-      if (new Set(nd).size < C.TEMPLATE_COUNT_DISRUPT) continue;
-    }
-    const ev = evaluate(na, nd);
-    if (ev.score >= cur) {
-      cur = ev.score;
-      ai = na;
-      di = nd;
-    }
-  }
-
-  const finalEval = evaluate(ai, di);
-  const ok =
-    finalEval.zeroA === 0 &&
-    finalEval.zeroD === 0 &&
-    finalEval.idSet.size === C.TEMPLATE_COUNT_ATTACK &&
-    ai.every((a) => attackPool[a].cells.length >= C.MIN_TEMPLATE_CELLS) &&
-    di.every((d) => disruptPool[d].cells.length >= C.MIN_TEMPLATE_CELLS);
-  log(
-    `⑤完了: score=${finalEval.score} カウンター無し攻撃=${finalEval.zeroA} 死に札=${finalEval.zeroD} ` +
-      `識別可能=${finalEval.idSet.size}/9 ハイウェイ署名多様性=${finalEval.hwSigSet.size}種 ` +
-      `ルール多様性=${finalEval.ruleSet.size}種 コスト多様性=${finalEval.costSet.size}種 必須条件=${ok ? 'OK' : 'NG'}`,
+  const cellsOk = (g) => g.cells.length >= C.MIN_TEMPLATE_CELLS;
+  // 有効候補: 攻撃は「少なくとも1つの妨害に止められる」(カウンター無し攻撃0件が必須条件)、
+  // 妨害は「少なくとも1つの攻撃を止められる」(死に札を作らない)。
+  const attackViable = [...Array(NA).keys()].filter(
+    (a) => cellsOk(attackPool[a]) && M[a].some((v) => v > 0),
   );
-  return { ai, di, M, hits, ok, report: finalEval, projections };
+  const disruptViable = [...Array(ND).keys()].filter(
+    (d) => cellsOk(disruptPool[d]) && M.some((row) => row[d] > 0),
+  );
+  log(`  有効候補: 攻撃 ${attackViable.length}/${NA} 件・妨害 ${disruptViable.length}/${ND} 件`);
+  if (
+    attackViable.length < C.TEMPLATE_COUNT_ATTACK ||
+    disruptViable.length < C.TEMPLATE_COUNT_DISRUPT
+  ) {
+    log('  有効候補が必要数に満たない');
+    return { ok: false };
+  }
+
+  // --- 役割ごとのショートリスト(辞書式) -------------------------------------
+  const K = 6;
+  const byAsc =
+    (keyFns) =>
+    (x, y) => {
+      for (const f of keyFns) {
+        const d = f(x) - f(y);
+        if (d !== 0) return d;
+      }
+      return x - y; // 決定論的な最終タイブレーク
+    };
+  const shortSpeed = [...attackViable]
+    .sort(byAsc([(a) => aArrival[a], (a) => -aSpeed[a]]))
+    .slice(0, K);
+  const shortEconomy = [...attackViable]
+    .sort(byAsc([(a) => aCost[a], (a) => aArrival[a]]))
+    .slice(0, K);
+  const shortRobust = [...attackViable]
+    .sort(byAsc([(a) => -aRobust[a], (a) => aArrival[a]]))
+    .slice(0, K);
+  // 妨害は役割の割り当てを部分集合の中で行うので、和集合のショートリストだけ作る。
+  const shortDisrupt = [
+    ...new Set([
+      ...[...disruptViable].sort(byAsc([(d) => dCost[d], (d) => dCells[d]])).slice(0, 8),
+      ...[...disruptViable]
+        .sort(byAsc([(d) => -M.reduce((s, row) => s + (row[d] > 0 ? 1 : 0), 0)]))
+        .slice(0, 8),
+    ]),
+  ];
+
+  // --- 妨害の Seed Compression(差分仕様 §7・§8) -----------------------------
+  // 妨害コストは DISRUPT_BASE_COST + ceil(cells/2) なので、2マス削るごとに1トークン安くなる。
+  // 選抜候補(ショートリスト)だけを圧縮して、**安くなった状態で役割選抜にかける**。
+  //
+  // ⚠️ verify は「元が止められていた組を1つも失わないこと」を条件にする。したがって圧縮後の
+  // 個体は元の迎撃能力の**上位集合**になり、既に計算済みの M(カウンター行列)を
+  // 下界としてそのまま使える(= 行列を計算し直さなくてよい)。行列の再計算は
+  // NA×16×deltaX×タイミングで数十分かかるので、これは意図的な設計。
+  //
+  // ⚠️ 保存する組は「攻撃ごとのラウンドロビン」で選ぶ。上限で打ち切っても
+  // **止められる攻撃の集合(coverage)は必ず保たれる**ようにするため(選抜が見るのは coverage)。
+  const COMPRESS_PRESERVE_CAP = 400;
+  const attackTplsForCompress = attackPool.map((g) => toRelativeTemplate(g, 'attack'));
+  const compressJobs = shortDisrupt.map((d) => {
+    const perAttack = [];
+    for (let a = 0; a < NA; a++) {
+      if (hits[a][d].length > 0) perAttack.push([a, hits[a][d]]);
+    }
+    const preserve = [];
+    let round = 0;
+    while (preserve.length < COMPRESS_PRESERVE_CAP) {
+      let added = false;
+      for (const [a, list] of perAttack) {
+        if (round < list.length) {
+          const [dx, t0] = list[round];
+          preserve.push([a, dx, t0]);
+          added = true;
+          if (preserve.length >= COMPRESS_PRESERVE_CAP) break;
+        }
+      }
+      if (!added) break;
+      round++;
+    }
+    return { genome: disruptPool[d], attacks: attackTplsForCompress, preserve };
+  });
+
+  log(`  妨害の Seed Compression 開始: ショートリスト${shortDisrupt.length}件`);
+  const compressed = await pool.runBatch('compressDisrupt', compressJobs);
+  let totalRemoved = 0;
+  let cheaper = 0;
+  compressed.forEach((res, i) => {
+    const d = shortDisrupt[i];
+    if (res.removed <= 0) return;
+    const before = dCost[d];
+    // genome の cells を圧縮後のものへ置き換える(以降の選抜・出力がこれを使う)。
+    disruptPool[d].cells = res.cells.map(([dx, dy, state]) => ({ dx, dy, state }));
+    dCells[d] = res.cells.length;
+    dCost[d] = C.costOf('disrupt', res.cells.length);
+    totalRemoved += res.removed;
+    if (dCost[d] < before) cheaper++;
+    log(
+      `    ${disruptPool[d].id ?? `cand${d}`}: セル ${res.removed}個削減 → ${res.cells.length}マス / ` +
+        `コスト ${before} → ${dCost[d]}(保存した迎撃組=${res.preserved}件・verify=${res.verifyCalls}回)`,
+    );
+  });
+  log(`  Seed Compression 完了: 合計${totalRemoved}セル削減・${cheaper}件が実際に安くなった`);
+
+  /** 選んだ攻撃3種のうち、その妨害が止められる数。 */
+  const covOf = (d, ai) => ai.filter((a) => M[a][d] > 0).length;
+  /** 選んだ攻撃3種に対する平均成功率(止めた組合せ数 / 全組合せ数)。 */
+  const succOf = (d, ai) => ai.reduce((s, a) => s + M[a][d] / timingSlots, 0) / ai.length;
+
+  /**
+   * 妨害3種の部分集合に役割を割り当てる(§6)。
+   * D1 Cheap      = この3種の中で最もコストが低いもの
+   * D2 General    = 残り2種のうちカバー範囲が最も広いもの
+   * D3 Complement = 残り1種。価値は marginalCoverage(D3 | D1, D2) で測る
+   */
+  function assignDisruptRoles(subset, ai) {
+    const rest = [...subset];
+    rest.sort(byAsc([(d) => dCost[d], (d) => -covOf(d, ai), (d) => -succOf(d, ai), (d) => dCells[d]]));
+    const d1 = rest.shift();
+    rest.sort(byAsc([(d) => -covOf(d, ai), (d) => -succOf(d, ai), (d) => dCost[d], (d) => dCells[d]]));
+    const d2 = rest.shift();
+    const d3 = rest[0];
+    // marginalCoverage: D1/D2 が止められない攻撃を D3 が新たに止められる数
+    const marginal = ai.filter((a) => M[a][d3] > 0 && M[a][d1] === 0 && M[a][d2] === 0).length;
+    return { d1, d2, d3, marginal };
+  }
+
+  // --- 攻撃3つ組 × 妨害3部分集合 の組み合わせ評価(§14) ---------------------
+  const combos3 = (arr) => {
+    const out = [];
+    for (let i = 0; i < arr.length; i++)
+      for (let j = i + 1; j < arr.length; j++)
+        for (let k = j + 1; k < arr.length; k++) out.push([arr[i], arr[j], arr[k]]);
+    return out;
+  };
+  const disruptSubsets = combos3(shortDisrupt);
+
+  let best = null;
+  let evaluatedSets = 0;
+  for (const a1 of shortSpeed) {
+    for (const a2 of shortEconomy) {
+      if (a2 === a1) continue;
+      for (const a3 of shortRobust) {
+        if (a3 === a1 || a3 === a2) continue;
+        const ai = [a1, a2, a3];
+        // 必須: (antY, antDir) がすべて異なる(identifyTable が引けなくなるため)
+        if (new Set(ai.map((a) => identityKey(attackPool[a]))).size !== ai.length) continue;
+        for (const subset of disruptSubsets) {
+          const { d1, d2, d3, marginal } = assignDisruptRoles(subset, ai);
+          const di = [d1, d2, d3];
+          // 必須条件: カウンターを持たない攻撃0件・死に札0件
+          const zeroA = ai.filter((a) => di.every((d) => M[a][d] === 0)).length;
+          if (zeroA > 0) continue;
+          const zeroD = di.filter((d) => ai.every((a) => M[a][d] === 0)).length;
+          if (zeroD > 0) continue;
+          evaluatedSets++;
+          const costs = ai.map((a) => aCost[a]);
+          const arrivals = ai.map((a) => aArrival[a]).filter((v) => Number.isFinite(v));
+          // 役割の忠実さ(§24): A1が3種中いちばん速い / A2がいちばん安い / A3がいちばん止められにくい。
+          // ⚠️ これを入れないと「speed なのに economy より遅いA1」が選ばれる(実際に起きた)。
+          // ショートリストは役割ごとに作っているが、**セット単位の最適化が役割を裏切りうる**ため、
+          // セットの指標としても明示的に測って優先順位の最上位に置く。
+          const attackFidelity =
+            (aArrival[a1] <= Math.min(aArrival[a2], aArrival[a3]) ? 1 : 0) +
+            (aCost[a2] <= Math.min(aCost[a1], aCost[a3]) ? 1 : 0) +
+            (aRobust[a3] >= Math.max(aRobust[a1], aRobust[a2]) ? 1 : 0);
+          // 妨害3種が似通っていないか(§14: D1 ≒ D2 ≒ D3 を避ける)。
+          const disruptDistinct = new Set(di.map((d) => `${dCost[d]},${dCells[d]}`)).size;
+          const metrics = {
+            attackFidelity,
+            disruptDistinct,
+            marginal,
+            roleFidelity: covOf(d2, ai) >= covOf(d1, ai) ? 1 : 0,
+            hwSig: new Set(ai.map((a) => attackHighwaySig[a])).size,
+            ruleDiv: new Set(ai.map((a) => attackRuleKey[a])).size,
+            costSpread: Math.max(...costs) - Math.min(...costs),
+            arrivalSpread: arrivals.length === ai.length ? Math.max(...arrivals) - Math.min(...arrivals) : 0,
+            disruptCostTotal: di.reduce((s, d) => s + dCost[d], 0),
+          };
+          // ⚠️ 重み付き和ではなく**辞書式**。上から順に比較して、決着した時点で確定する。
+          const rank = [
+            metrics.attackFidelity, // 攻撃3種が名乗った役割どおりであること(§24)。最優先
+            metrics.marginal, // D3 が補完価値を持つ(§6・§25)
+            metrics.roleFidelity, // D2 のカバーが D1 以上(役割どおり)
+            metrics.disruptDistinct, // 妨害3種が横並びでない(§14)
+            metrics.hwSig, // 攻撃3種のハイウェイ署名が異なる(§5)
+            metrics.ruleDiv, // ルールが異なる(§5)
+            metrics.costSpread, // コストが横並びでない(§5)
+            metrics.arrivalSpread, // 到達速度が横並びでない(§5)
+            -metrics.disruptCostTotal, // 同等なら妨害は安いほうがよい(§9 のタイブレーク)
+          ];
+          if (best === null || rankIsBetter(rank, best.rank)) {
+            best = { ai, di, rank, metrics };
+          }
+        }
+      }
+    }
+  }
+
+  if (!best) {
+    log('  必須条件(カウンター無し攻撃0件・死に札0件・識別可能)を満たす3×3の組が見つからなかった');
+    return { ok: false };
+  }
+
+  const { ai, di, metrics } = best;
+  log(`⑤完了: ${evaluatedSets.toLocaleString()}組を評価して確定`);
+  log('--- 攻撃3種の役割レポート(§24) ---');
+  C.ATTACK_ROLES.forEach((role, i) => {
+    const a = ai[i];
+    log(
+      `  A${i + 1} (${role}): cost=${aCost[a]} arrivalStep=${aArrival[a]} ` +
+        `speed=${aSpeed[a].toFixed(5)} robustness=${aRobust[a].toFixed(3)} rule=${attackPool[a].rule}`,
+    );
+  });
+  log('--- 妨害3種の役割レポート(§25) ---');
+  C.DISRUPT_ROLES.forEach((role, i) => {
+    const d = di[i];
+    log(
+      `  D${i + 1} (${role}): cost=${dCost[d]} cells=${dCells[d]} ` +
+        `coverage=${covOf(d, ai)}/${ai.length} 平均successRate=${succOf(d, ai).toFixed(4)}`,
+    );
+  });
+  log(`  D3 の marginalCoverage = ${metrics.marginal}`);
+  if (metrics.marginal === 0) {
+    log('  ⚠️ 警告(§25): D3 の marginalCoverage が 0。D1/D2 が既に全攻撃をカバーしており、');
+    log('     D3 は「新たに止められる攻撃」を持たない。攻撃が3種しかないので構造上起こりうる。');
+  }
+  log(
+    `  役割の忠実さ: ${metrics.attackFidelity}/3(A1最速・A2最安・A3最強靭を満たした数)` +
+      ` 妨害の相異なるコスト構成=${metrics.disruptDistinct}/3`,
+  );
+  if (metrics.attackFidelity < 3) {
+    log('  ⚠️ 警告(§24): 攻撃の役割が完全には成立していない。上のレポートで各指標を確認すること');
+  }
+  log(
+    `  セット指標: ハイウェイ署名${metrics.hwSig}種 ルール${metrics.ruleDiv}種 ` +
+      `攻撃コスト幅=${metrics.costSpread} 到達ステップ幅=${metrics.arrivalSpread} 妨害コスト合計=${metrics.disruptCostTotal}`,
+  );
+
+  return {
+    ai,
+    di,
+    M,
+    hits,
+    ok: true,
+    projections,
+    roleReport: {
+      attack: C.ATTACK_ROLES.map((role, i) => ({
+        role,
+        cost: aCost[ai[i]],
+        arrivalStep: aArrival[ai[i]],
+        speed: aSpeed[ai[i]],
+        robustness: aRobust[ai[i]],
+      })),
+      disrupt: C.DISRUPT_ROLES.map((role, i) => ({
+        role,
+        cost: dCost[di[i]],
+        cells: dCells[di[i]],
+        coverage: covOf(di[i], ai),
+        meanSuccessRate: succOf(di[i], ai),
+        marginalCoverage: i === 2 ? metrics.marginal : null,
+      })),
+      set: metrics,
+      evaluatedSets,
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1006,10 +1243,13 @@ async function buildOutput(pool, attackPool, disruptPool, ai, di) {
 
   const attackOut = attacks.map((g, i) => {
     const p = projections[i];
-    const cost = costOfGenome(g, C.ATTACK_COST);
+    const cost = costOfGenome(g, 'attack');
     return {
       id: g.id,
       kind: 'attack',
+      // 役割(§18)。配列順 = C.ATTACK_ROLES の順で固定し、policy.attackPref[i] がこれに対応する。
+      // ⚠️ UI 側でIDから役割を引き直さないこと(二重の真実になる)。必ずこのフィールドを使う。
+      role: C.ATTACK_ROLES[i],
       rule: g.rule,
       colorCount: g.rule.length,
       cells: toTemplateCells(g), // [dx, dy, state](アリからの相対)
@@ -1045,13 +1285,14 @@ async function buildOutput(pool, attackPool, disruptPool, ai, di) {
     disrupts.map((g) => ({ genome: g })),
   );
   const disruptOut = disrupts.map((g, j) => {
-    const cost = costOfGenome(g, C.DISRUPT_COST);
+    const cost = costOfGenome(g, 'disrupt');
     const coveredCount = attacks.filter((_, i) =>
       matrix[i][j].some((byDelta) => byDelta.some((scored) => !scored)),
     ).length;
     return {
       id: g.id,
       kind: 'disrupt',
+      role: C.DISRUPT_ROLES[j], // 役割(§18)。配列順 = C.DISRUPT_ROLES の順で固定
       rule: g.rule,
       colorCount: g.rule.length,
       cells: toTemplateCells(g),
@@ -1164,7 +1405,7 @@ async function runPipeline(pool, sampler) {
   const verifiedAttackPool = await filterFingerprintVerified(pool, candidateAttackPool, '攻撃プール');
   const verifiedDisruptPool = await filterFingerprintVerified(pool, candidateDisruptPool, '妨害プール');
 
-  const selection = await selectNineByNine(pool, verifiedAttackPool, verifiedDisruptPool);
+  const selection = await selectByRoles(pool, verifiedAttackPool, verifiedDisruptPool);
   if (!selection.ok) {
     log('⚠️ ⑤の必須条件を満たさなかった。選抜結果はそのまま書き出すが、docs/spec.md 未決定事項に記録すること');
   }
@@ -1211,7 +1452,9 @@ async function main() {
         gameProjectileLife: C.ATTACK_LIFE,
         attackCost: C.ATTACK_COST,
         attackLife: C.ATTACK_LIFE,
-        disruptCost: C.DISRUPT_COST,
+        // v5.5: 妨害のコスト式は DISRUPT_BASE_COST + ceil(cells/2)(マス単価が攻撃の半分)。
+        // 旧 disruptCost(= ベース + マス数)は式が変わったので名前ごと差し替える。
+        disruptBaseCost: C.DISRUPT_BASE_COST,
         disruptLife: C.DISRUPT_LIFE,
         maxCells: C.MAX_CELLS,
         templateCellRadius: C.TEMPLATE_CELL_RADIUS,

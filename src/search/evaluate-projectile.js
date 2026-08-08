@@ -181,7 +181,7 @@ export function evaluateProjectile(genome, options = {}) {
   const direction = highway.trajectoryPeriodic ? directionBin(highway.driftX, highway.driftY) : null;
   const speedBin = highway.trajectoryPeriodic ? speedBinOf(highway.speed) : null;
   const formationBin = highway.trajectoryPeriodic ? formationBinOf(highway.formationStep) : null;
-  const cost = costOfGenome(genome, C.ATTACK_COST);
+  const cost = costOfGenome(genome, 'attack');
   const descriptor = { direction, speedBin, formationBin, cost };
 
   // ---- quality(§12。「最速」を最大化しない。探索中の評価なので trajectoryPeriodic を使う) ----

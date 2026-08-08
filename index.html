@@ -31,32 +31,40 @@
     <section id="screen-match" class="screen hidden">
       <div class="hud">
         <div class="hud-side hud-side1">
-          <div class="hud-label">SIDE1(藍) <span id="label-side1"></span></div>
-          <div class="pips" id="pips1" aria-hidden="true">
-            <span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span>
+          <div class="hud-row hud-row-main">
+            <span class="hud-label" id="label-side1">あなた</span>
+            <span class="pips" id="pips1" aria-hidden="true">
+              <span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span>
+            </span>
+            <span class="hud-figure">得点<span id="score1" class="num">0</span>/5</span>
           </div>
-          <div class="hud-row">得点 <span id="score1" class="num">0</span> / 5</div>
-          <div class="hud-row">トークン <span id="tokens1" class="num">0</span> / <span id="tokens1-cap" class="num"></span></div>
-          <div class="token-bar" id="token-bar1" aria-hidden="true"><div class="token-bar-fill" id="token-bar1-fill"></div></div>
-          <div class="hud-row">飛行中 <span id="flying1" class="num">0</span> / <span id="flying1-cap" class="num"></span></div>
-          <div class="flying-pips" id="flying-pips1" aria-hidden="true">
-            <span class="flying-pip side1-slot0"></span><span class="flying-pip side1-slot1"></span><span class="flying-pip side1-slot2"></span><span class="flying-pip side1-slot3"></span>
+          <div class="hud-row hud-row-sub">
+            <span class="token-bar" id="token-bar1" aria-hidden="true"><div class="token-bar-fill" id="token-bar1-fill"></div></span>
+            <span class="hud-figure">T<span id="tokens1" class="num">0</span>/<span id="tokens1-cap" class="num"></span></span>
+            <span class="flying-pips" id="flying-pips1" aria-hidden="true">
+              <span class="flying-pip side1-slot0"></span><span class="flying-pip side1-slot1"></span><span class="flying-pip side1-slot2"></span><span class="flying-pip side1-slot3"></span>
+            </span>
+            <span class="hud-figure">飛<span id="flying1" class="num">0</span>/<span id="flying1-cap" class="num"></span></span>
           </div>
         </div>
         <div class="hud-center">
           <div class="hud-time">残り <span id="time-left" class="num">--</span> 秒</div>
         </div>
         <div class="hud-side hud-side2">
-          <div class="hud-label">SIDE2(朱) <span id="label-side2"></span></div>
-          <div class="pips" id="pips2" aria-hidden="true">
-            <span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span>
+          <div class="hud-row hud-row-main">
+            <span class="hud-figure">得点<span id="score2" class="num">0</span>/5</span>
+            <span class="pips" id="pips2" aria-hidden="true">
+              <span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span>
+            </span>
+            <span class="hud-label" id="label-side2">CPU</span>
           </div>
-          <div class="hud-row">得点 <span id="score2" class="num">0</span> / 5</div>
-          <div class="hud-row">トークン <span id="tokens2" class="num">0</span> / <span id="tokens2-cap" class="num"></span></div>
-          <div class="token-bar" id="token-bar2" aria-hidden="true"><div class="token-bar-fill" id="token-bar2-fill"></div></div>
-          <div class="hud-row">飛行中 <span id="flying2" class="num">0</span> / <span id="flying2-cap" class="num"></span></div>
-          <div class="flying-pips" id="flying-pips2" aria-hidden="true">
-            <span class="flying-pip side2-slot0"></span><span class="flying-pip side2-slot1"></span><span class="flying-pip side2-slot2"></span><span class="flying-pip side2-slot3"></span>
+          <div class="hud-row hud-row-sub">
+            <span class="hud-figure">飛<span id="flying2" class="num">0</span>/<span id="flying2-cap" class="num"></span></span>
+            <span class="flying-pips" id="flying-pips2" aria-hidden="true">
+              <span class="flying-pip side2-slot0"></span><span class="flying-pip side2-slot1"></span><span class="flying-pip side2-slot2"></span><span class="flying-pip side2-slot3"></span>
+            </span>
+            <span class="hud-figure">T<span id="tokens2" class="num">0</span>/<span id="tokens2-cap" class="num"></span></span>
+            <span class="token-bar" id="token-bar2" aria-hidden="true"><div class="token-bar-fill" id="token-bar2-fill"></div></span>
           </div>
         </div>
       </div>
@@ -74,55 +82,73 @@
               </div>
             </div>
           </div>
-          <div class="board-legend">
-            <span class="legend-item">
-              寒色＝あなた
-              <span class="swatch swatch--side1-slot0" aria-hidden="true"></span>
-              <span class="swatch swatch--side1-slot1" aria-hidden="true"></span>
-              <span class="swatch swatch--side1-slot2" aria-hidden="true"></span>
-              <span class="swatch swatch--side1-slot3" aria-hidden="true"></span>
-            </span>
-            <span class="legend-item">
-              暖色＝敵
-              <span class="swatch swatch--side2-slot0" aria-hidden="true"></span>
-              <span class="swatch swatch--side2-slot1" aria-hidden="true"></span>
-              <span class="swatch swatch--side2-slot2" aria-hidden="true"></span>
-              <span class="swatch swatch--side2-slot3" aria-hidden="true"></span>
-            </span>
-            <span class="legend-item"><span class="legend-glyph" aria-hidden="true">▲</span>攻撃</span>
-            <span class="legend-item"><span class="legend-glyph" aria-hidden="true">○</span>妨害</span>
-          </div>
         </div>
 
+        <!-- 操作UI: 盤面の端に置いたハンドル列 + 開く区画。一度に見せる区画は1つだけ。
+             区画は盤面の外側(広幅=右、狭幅=下)に開く。盤面へは重ねない(不変条件2)。 -->
         <div class="control-panel" id="control-panel">
-          <div class="threat-panel">
-            <h3>飛来中の敵の攻撃</h3>
-            <div id="threat-items" class="threat-items"></div>
-            <div id="threat-detail" class="threat-detail"></div>
+          <div class="panel-handles" id="panel-handles" role="tablist" aria-label="操作パネルの区画切替">
+            <button data-tab="attack" class="tab panel-handle" role="tab" aria-selected="true">攻撃</button>
+            <button data-tab="disrupt" class="tab panel-handle" role="tab" aria-selected="false">妨害</button>
+            <button data-panel="threat" class="panel-handle" role="tab" aria-selected="false">脅威</button>
+            <button data-panel="self" class="panel-handle" role="tab" aria-selected="false">自軍</button>
+            <button data-panel="legend" class="panel-handle" role="tab" aria-selected="false">凡例</button>
+            <!-- 非表示トグル。開いている区画を閉じて盤面だけにする / 直前の区画を open し直す。
+                 開いているハンドルを再度押しても閉じられるが、それは見ただけでは分からないので
+                 明示的な出口を1つ置く。 -->
+            <button id="btn-panel-toggle" class="panel-handle panel-handle--toggle" type="button"
+                    aria-expanded="false" aria-controls="panel-sections">表示</button>
           </div>
-          <div class="self-destruct-panel">
-            <h3>飛行中の自分のアリ</h3>
-            <div id="self-destruct-items" class="threat-items"></div>
-            <div class="fire-row">
-              <button id="btn-self-destruct" class="btn btn-secondary" disabled>自爆</button>
-              <span id="self-destruct-reason" class="fire-reason" role="status" aria-live="polite"></span>
+
+          <div class="panel-sections" id="panel-sections">
+            <div class="panel-section hidden" id="panel-template" role="tabpanel">
+              <div id="template-list" class="template-list"></div>
+              <div class="launch-panel" id="launch-panel">
+                <div class="hud-row">発射列 x=<span id="launch-x" class="num">-</span></div>
+                <div class="hud-row">予測到達列 x=<span id="launch-entry" class="num">-</span></div>
+                <p id="launch-gate-warning" class="fire-reason" role="status" aria-live="polite"></p>
+              </div>
+              <div class="fire-row fire-row--main">
+                <button id="btn-fire" class="btn btn-primary" disabled>発射</button>
+                <span id="fire-reason" class="fire-reason" role="status" aria-live="polite"></span>
+              </div>
             </div>
-          </div>
-          <div class="tabs" role="tablist">
-            <button data-tab="attack" class="tab active" role="tab" aria-selected="true">攻撃</button>
-            <button data-tab="disrupt" class="tab" role="tab" aria-selected="false">妨害</button>
-          </div>
-          <div id="template-list" class="template-list" role="tabpanel"></div>
-          <div class="launch-panel" id="launch-panel">
-            <div class="hud-row">発射列 x=<span id="launch-x" class="num">-</span></div>
-            <div class="hud-row">予測到達列 x=<span id="launch-entry" class="num">-</span></div>
-            <p id="launch-gate-warning" class="fire-reason" role="status" aria-live="polite"></p>
-          </div>
-          <!-- 画面の主アクション。パネルが画面外まで伸びるときは下端に貼り付ける
-               (fire-row--pinned)。自爆側の .fire-row は貼り付けない。 -->
-          <div class="fire-row fire-row--pinned">
-            <button id="btn-fire" class="btn btn-primary" disabled>発射</button>
-            <span id="fire-reason" class="fire-reason" role="status" aria-live="polite"></span>
+
+            <div class="panel-section hidden" id="panel-threat" role="tabpanel">
+              <h3>飛来中の敵の攻撃</h3>
+              <div id="threat-items" class="threat-items"></div>
+              <div id="threat-detail" class="threat-detail"></div>
+            </div>
+
+            <div class="panel-section hidden" id="panel-self" role="tabpanel">
+              <h3>飛行中の自分のアリ</h3>
+              <div id="self-destruct-items" class="threat-items"></div>
+              <div class="fire-row">
+                <button id="btn-self-destruct" class="btn btn-secondary" disabled>自爆</button>
+                <span id="self-destruct-reason" class="fire-reason" role="status" aria-live="polite"></span>
+              </div>
+            </div>
+
+            <div class="panel-section hidden" id="panel-legend" role="tabpanel">
+              <div class="board-legend">
+                <span class="legend-item">
+                  寒色＝あなた
+                  <span class="swatch swatch--side1-slot0" aria-hidden="true"></span>
+                  <span class="swatch swatch--side1-slot1" aria-hidden="true"></span>
+                  <span class="swatch swatch--side1-slot2" aria-hidden="true"></span>
+                  <span class="swatch swatch--side1-slot3" aria-hidden="true"></span>
+                </span>
+                <span class="legend-item">
+                  暖色＝敵
+                  <span class="swatch swatch--side2-slot0" aria-hidden="true"></span>
+                  <span class="swatch swatch--side2-slot1" aria-hidden="true"></span>
+                  <span class="swatch swatch--side2-slot2" aria-hidden="true"></span>
+                  <span class="swatch swatch--side2-slot3" aria-hidden="true"></span>
+                </span>
+                <span class="legend-item"><span class="legend-glyph" aria-hidden="true">▲</span>攻撃</span>
+                <span class="legend-item"><span class="legend-glyph" aria-hidden="true">○</span>妨害</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

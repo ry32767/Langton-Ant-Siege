@@ -19,6 +19,10 @@
 >
 > v5.4 で妨害発射列の照準が事前計算テーブルに戻り、方策ベクトルが18 → **17次元**に縮小された。
 > `disruptAimOffsetFrac` を削除し、`selfDestructAgeFrac` を `selfDestructRemainingTicks` に置換した。
+>
+> v5.5 で**テンプレート数が9+9 → 3+3に削減**され、方策ベクトルが17 → **11次元**に縮小された。
+> 妨害の非対称コスト(`2 + ceil(マス/2)`)を導入。`DISRUPT_BASE_COST` に改名(`DISRUPT_COST` 廃止)。
+> 最終選抜が役割別(Speed/Economy/Robust × Cheap/General/Complement)に変更。
 
 ```mermaid
 erDiagram
@@ -431,13 +435,14 @@ MAP-Elites 探索アーカイブのデバッグ・再現性確保用ダンプ。
     "minColors": 2, "maxColors": 16,
     "searchLife": 30000, "gameProjectileLife": 20000,
     "attackCost": 5, "attackLife": 20000,
-    "disruptCost": 3, "disruptLife": 1000,
+    "disruptBaseCost": 2, "disruptLife": 6000,
     "maxCells": 16, "templateCellRadius": 8
   },
   "attack": [
     {
       "id": "A1",
       "kind": "attack",
+      "role": "speed",
       "rule": "RLLRRLR",
       "colorCount": 7,
       "cells": [[-2, 4, 3], [-1, 4, 6]],
@@ -449,30 +454,97 @@ MAP-Elites 探索アーカイブのデバッグ・再現性確保用ダンプ。
       "costTier": 8,
       "featureTier": 3,
       "highway": { "trajectoryPeriodic": true, "fingerprintVerified": true, "formationStep": 418, "period": 26, "driftX": 0, "driftY": 2, "speed": 0.076923, "verifiedCycles": 5 }
+    },
+    {
+      "id": "A2",
+      "kind": "attack",
+      "role": "economy",
+      "rule": "RRL",
+      "colorCount": 3,
+      "cells": [[0, 3, 1]],
+      "antY": 4, "antDir": 1,
+      "cost": 6,
+      "arrivalStep": 4200,
+      "entryXAt0": 128,
+      "robustness": 0.850,
+      "costTier": 6,
+      "featureTier": 2,
+      "highway": { "trajectoryPeriodic": true, "fingerprintVerified": true, "formationStep": 38, "period": 18, "driftX": 1, "driftY": 1, "speed": 0.056, "verifiedCycles": 5 }
+    },
+    {
+      "id": "A3",
+      "kind": "attack",
+      "role": "robust",
+      "rule": "RRRLLL",
+      "colorCount": 6,
+      "cells": [[1, 2, 2], [2, 1, 4]],
+      "antY": 6, "antDir": 0,
+      "cost": 9,
+      "arrivalStep": 6800,
+      "entryXAt0": 64,
+      "robustness": 0.980,
+      "costTier": 9,
+      "featureTier": 1,
+      "highway": { "trajectoryPeriodic": true, "fingerprintVerified": true, "formationStep": 102, "period": 52, "driftX": 1, "driftY": 2, "speed": 0.038, "verifiedCycles": 5 }
     }
   ],
   "disrupt": [
     {
-      "id": "D5",
+      "id": "D1",
       "kind": "disrupt",
+      "role": "cheap",
+      "rule": "RL",
+      "colorCount": 2,
+      "cells": [[1, 8, 1]],
+      "antY": 9, "antDir": 3,
+      "cost": 3,
+      "reachRows": 32,
+      "endDirection": 2,
+      "coverage": 0.33,
+      "costTier": 3,
+      "featureTier": 2
+    },
+    {
+      "id": "D2",
+      "kind": "disrupt",
+      "role": "general",
       "rule": "RLLR",
       "colorCount": 4,
       "cells": [[1, 10, 1], [1, 11, 2]],
       "antY": 11, "antDir": 1,
       "cost": 5,
-      "reachRows": 20,
+      "reachRows": 48,
       "endDirection": 1,
-      "coverage": 0.12,
+      "coverage": 0.67,
       "costTier": 5,
-      "featureTier": 2
+      "featureTier": 3
+    },
+    {
+      "id": "D3",
+      "kind": "disrupt",
+      "role": "complement",
+      "rule": "RRLLLL",
+      "colorCount": 6,
+      "cells": [[0, 7, 2], [1, 6, 4]],
+      "antY": 10, "antDir": 2,
+      "cost": 7,
+      "reachRows": 56,
+      "endDirection": 0,
+      "coverage": 0.50,
+      "costTier": 7,
+      "featureTier": 1
     }
   ],
-  "identifyTable": { "5,2": "A1", "11,1": "A2" },
+  "identifyTable": { "5,2": "A1", "4,1": "A2", "6,0": "A3" },
   "counterTable": {
-    "A1": [ { "disruptId": "D5", "deltaX": 12, "fireAtStep": 750, "successRate": 0.30 } ]
+    "A1": [ { "disruptId": "D2", "deltaX": 12, "fireAtStep": 750, "successRate": 0.30 }, { "disruptId": "D3", "deltaX": 8, "fireAtStep": 1200, "successRate": 0.45 } ],
+    "A2": [ { "disruptId": "D1", "deltaX": 16, "fireAtStep": 500, "successRate": 0.25 } ],
+    "A3": [ { "disruptId": "D2", "deltaX": 20, "fireAtStep": 900, "successRate": 0.55 } ]
   },
   "escortTable": {
-    "A1": { "D5": [ { "interceptDeltaX": 12, "interceptFireAtStep": 750, "escortDisruptId": "D2", "escortDeltaX": 4, "fireAtStep": 300 } ] }
+    "A1": { "D2": [ { "interceptDeltaX": 12, "interceptFireAtStep": 750, "escortDisruptId": "D1", "escortDeltaX": 4, "fireAtStep": 300 } ] },
+    "A2": { "D1": [ { "interceptDeltaX": 16, "interceptFireAtStep": 500, "escortDisruptId": "D2", "escortDeltaX": 6, "fireAtStep": 200 } ] },
+    "A3": { "D2": [ { "interceptDeltaX": 20, "interceptFireAtStep": 900, "escortDisruptId": "D3", "escortDeltaX": 10, "fireAtStep": 400 } ] }
   }
 }
 ```
@@ -490,19 +562,19 @@ MAP-Elites 探索アーカイブのデバッグ・再現性確保用ダンプ。
 | 種類 | 特徴軸1 | 特徴軸2 |
 |---|---|---|
 | 攻撃 (`attack`) | `costTier` = cost の値(6..21程度の段階) | `featureTier` = **敵陣への進入位置(x座標)のビン**(0..5 の6段階) |
-| 妨害 (`disrupt`) | `costTier` = cost の値(4..19程度の段階) | `featureTier` = 縦方向の到達距離(`reachRows`)のビン(0..5 の6段階) |
+| 妨害 (`disrupt`) | `costTier` = cost の値(**v5.5で3..10程度に変更**。非対称コスト) | `featureTier` = 縦方向の到達距離(`reachRows`)のビン(0..5 の6段階) |
 
 > ⚠️ 攻撃の特徴軸に**到達時間は使わない**(v3.1の実測。詳細は [spec.md](spec.md) 参照)。代わりに**敵陣への進入位置**を使う。どの妨害が届くかを決めるので実質的な意味がある。
 
 ## 事前計算テーブル(`data/templates.json` に同梱)
 
-9種ずつしか無いので、全ペアの勝敗を事前に総当たりで計算して持てる。CPU と UI の両方が参照する。上の `data/templates.json` のサンプルを参照。
+**v5.5で3×3に削減**。全ペア(攻撃3×妨害3=9)の勝敗を事前に総当たりで計算して持つ。CPU と UI の両方が参照する。上の `data/templates.json` のサンプルを参照。
 
 | テーブル | キー | 値 |
 |---|---|---|
-| `identifyTable` | `"antY,antDir"`(発射行・向き。side1ローカル座標。**v5でキーが変わった**) | 攻撃ID。**9種は `antY`・向きがすべて異なる**ので1ステップで一意に決まる(選抜基準の必須項目) |
-| `counterTable` | 攻撃ID | その攻撃を止められる `{disruptId, deltaX, fireAtStep, successRate}` の一覧 |
-| `escortTable` | 攻撃ID → 迎撃妨害ID | その迎撃を無効化できる `{interceptDeltaX, interceptFireAtStep, escortDisruptId, escortDeltaX, fireAtStep}` の一覧 |
+| `identifyTable` | `"antY,antDir"`(発射行・向き。side1ローカル座標。**v5でキーが変わった**) | 攻撃ID(A1/A2/A3)。**v5.5で3種に削減**(Speed/Economy/Robust)。3種は `antY`・向き・役割がすべて異なるので1ステップで一意に決まる(選抜基準の必須項目) |
+| `counterTable` | 攻撃ID(A1/A2/A3) | その攻撃を止められる `{disruptId, deltaX, fireAtStep, successRate}` の一覧 |
+| `escortTable` | 攻撃ID(A1/A2/A3) → 迎撃妨害ID(D1/D2/D3) | その迎撃を無効化できる `{interceptDeltaX, interceptFireAtStep, escortDisruptId, escortDeltaX, fireAtStep}` の一覧 |
 
 `deltaX` は「妨害の発射列 − 攻撃の発射列」を `WIDTH` で割った余り(v5で追加)。攻撃は常に `antX=0` で評価されているので、実プレイでは「攻撃を撃った列 + deltaX (mod WIDTH)」が妨害/護衛の発射列になる。
 
@@ -526,7 +598,7 @@ MAP-Elites 探索アーカイブのデバッグ・再現性確保用ダンプ。
     "reserveTokens": 6,
     "defendBias": 0.7,
     "escortBias": 0.5,
-    "attackPref": [1.0, 0.8, 1.2, 0.6, 1.1, 0.9, 1.3, 0.7, 1.0],
+    "attackPref": [1.0, 0.8, 1.2],
     "selfDestructBias": 0.2,
     "selfDestructRemainingTicks": 5,
     "pollutionDestructWeight": 0.5,
@@ -542,7 +614,7 @@ MAP-Elites 探索アーカイブのデバッグ・再現性確保用ダンプ。
 | `reserveTokens` | 迎撃用に温存するトークン量。これを下回る攻撃はしない |
 | `defendBias` | 敵の攻撃が飛来中に、攻撃ではなく迎撃を選ぶ確率 |
 | `escortBias` | 自分の攻撃に敵の迎撃が来たとき、護衛を撃つ確率 |
-| `attackPref[9]` | 攻撃テンプレート9種(`TEMPLATE_COUNT_ATTACK`)の選好重み(softmaxで選択)。相手の防御傾向への適応がここに現れる |
+| `attackPref[3]` | **v5.5で変更**。攻撃テンプレート3種(`TEMPLATE_COUNT_ATTACK`。Speed/Economy/Robust)の選好重み(softmaxで選択)。配列順は役割順で固定。相手の防御傾向への適応がここに現れる |
 | `selfDestructBias` | 自爆を試みる基礎確率(v5.2) |
 | `selfDestructRemainingTicks` | 寿命までの残りCPU判断tick数がこの値以下のアリだけ自爆対象。整数1..10 |
 | `pollutionDestructWeight` | `boardPollution` に比例して自爆確率を上げる重み(v5.2) |
@@ -552,7 +624,7 @@ MAP-Elites 探索アーカイブのデバッグ・再現性確保用ダンプ。
 > **`selfDestructTicksTrajectory`**(v5.4・`policy` の外側のトップレベル): CEM の各世代における `selfDestructRemainingTicks` 次元の平均(丸めない生の浮動小数)を世代順に並べた配列。
 > ⚠️ これは学習結果ではなく**学習の診断用**。この次元は値域 1〜10 に対して `MIN_STD` が 0.18、方策へのデコード時の丸め粒度が 1 なので、エリートが一度ある整数に揃うと隣の整数へ移るのに約2.8σを要し、**序盤で凍結したまま一度も探索されずに終わる**ことがあり得る。その場合「自爆にゲーム上の価値が無い」と「そもそも探索されていない」が区別できなくなるため、軌跡を残す。
 
-学習は CEM法(交差エントロピー法)による自己対戦。パラメータは17個(v5.2で13→16、v5.3で18、v5.4で17に縮小)。実測(v3.1) 362試合/秒 で、集団60 × 各40試合 × 40世代 = **約4分**(v5.3盤面・寿命20,000・670ステップ/秒での再計測は未実施)。CPU の意思決定周期は `DECISION_INTERVAL_STEPS`(=`STEPS_PER_SECOND`=670)ステップに1回(v4までは120、v5は300)。
+学習は CEM法(交差エントロピー法)による自己対戦。パラメータは**11個**(v5.2で13→16、v5.3で18、v5.4で17、**v5.5で11に縮小**)。実測(v3.1) 362試合/秒 で、集団60 × 各40試合 × 40世代 = **約4分**(v5.3盤面・寿命20,000・670ステップ/秒での再計測は未実施)。CPU の意思決定周期は `DECISION_INTERVAL_STEPS`(=`STEPS_PER_SECOND`=670)ステップに1回(v4までは120、v5は300)。
 
 > ⚠️ 上の値は**形式を示す例**であり実在の学習結果ではない。`node scripts/train-policy.mjs` を実行して実際の値で上書きすること。
 >

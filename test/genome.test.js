@@ -12,6 +12,7 @@ import {
   canonicalRule,
 } from '../src/search/genome.js';
 import { ZONE_DEPTH } from '../src/config.js';
+import * as C from '../src/config.js';
 
 // engine.js に依存しない、テスト専用の決定論的 xorshift32 RNG。
 function makeRng(seed) {
@@ -92,7 +93,7 @@ test('toTemplateCells は [dx,dy,state] の3要素配列の配列を返す', () 
   }
 });
 
-test('costOfGenome は baseCost + cells.length で、ルール長は無関係', () => {
+test('costOfGenome は kind から costOf に委譲する(攻撃/妨害で式が異なる)。ルール長は無関係', () => {
   const g1 = {
     rule: 'RL',
     antX: 0,
@@ -107,8 +108,13 @@ test('costOfGenome は baseCost + cells.length で、ルール長は無関係', 
     antDir: 0,
     cells: [{ x: 0, y: 0, state: 0 }],
   };
-  assert.equal(costOfGenome(g1, 5), 6);
-  assert.equal(costOfGenome(g2, 5), 6); // ルール長が違っても同じコスト
+  // 攻撃: ATTACK_COST(5) + マス数(1) = 6
+  assert.equal(costOfGenome(g1, 'attack'), C.costOf('attack', g1.cells.length));
+  assert.equal(costOfGenome(g2, 'attack'), C.costOf('attack', g2.cells.length)); // ルール長が違っても同じコスト
+
+  // 妨害: DISRUPT_BASE_COST(2) + ceil(マス数/2) で、攻撃とは式が異なる
+  assert.equal(costOfGenome(g1, 'disrupt'), C.costOf('disrupt', g1.cells.length));
+  assert.notEqual(costOfGenome(g1, 'disrupt'), costOfGenome(g1, 'attack'));
 });
 
 test('validateGenome は不変条件違反を個別に検出する', () => {
