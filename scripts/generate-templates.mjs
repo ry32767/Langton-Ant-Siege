@@ -24,7 +24,7 @@ import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import * as C from '../src/config.js';
-import { createRng, simulateSolo, instantiateTemplate } from '../src/engine.js';
+import { createRng } from '../src/engine.js';
 import {
   createRandomGenome,
   genomeKey,
@@ -130,9 +130,13 @@ const PARAMS = QUICK
       archive1Iterations: 20_000_000, // 実質は BUDGET_MIN で打ち切る
       attackPoolSize: 40,
       disruptPoolSize: 48,
-      coevoRounds: 4,
-      coevoAttackIters: 1200,
-      coevoDisruptIters: 1200,
+      // ⚠️ v5.1: 攻撃側の共進化は実測で効いていない(archive2Attack が 36セル中4セルしか
+      // 埋まらず、平均 robustness 0.999 = ほぼ誰も止められない)。1回の相互作用が27倍高く
+      // なった以上、ここに予算を置く根拠がないので攻撃側を大きく削る。妨害側(coverage 駆動)は
+      // 機能しているので残す。
+      coevoRounds: 3,
+      coevoAttackIters: 300,
+      coevoDisruptIters: 900,
       localSearchIters: 120000,
       maxPipelineAttempts: 2,
       // 共進化中の robustness/coverage 評価で使う妨害/攻撃のサンプル数。
@@ -165,8 +169,19 @@ const COEVO_BATCH = 64;
 const COEVO_DELTA_XS = Object.freeze(
   Array.from({ length: Math.floor(C.WIDTH / C.COEVO_DELTA_X_STRIDE) }, (_, i) => i * C.COEVO_DELTA_X_STRIDE),
 );
-/** 最終テーブル計算で掃引する deltaX。発射列が自由なので全列を見る(選抜した9×9のみ)。 */
-const FULL_DELTA_XS = Object.freeze(Array.from({ length: C.WIDTH }, (_, i) => i));
+/**
+ * 最終テーブル計算(選抜した9×9のみ)で掃引する deltaX。
+ *
+ * ⚠️ v5.1: ATTACK_LIFE を 20,000 にしたことで1回の相互作用シミュレーションが
+ * 0.23ms → **6.23ms(27倍)** になった(妨害で崩された弾が寿命いっぱい飛ぶため)。
+ * 全256列の掃引は 9×9×256×14 = 29万回 ≒ 30分(この計算はメインスレッド)になるので
+ * 2列刻みに落とす。**段階⑤の選抜(4列刻み)より必ず細かい**ので、
+ * 「選抜で見つかったカウンターは最終テーブルにも必ず載る」という包含関係は保たれる。
+ */
+const FINAL_DELTA_X_STRIDE = 2;
+const FULL_DELTA_XS = Object.freeze(
+  Array.from({ length: Math.floor(C.WIDTH / FINAL_DELTA_X_STRIDE) }, (_, i) => i * FINAL_DELTA_X_STRIDE),
+);
 /**
  * 段階⑤(9×9選抜)のカウンター行列で掃引する deltaX の刻み。
  *
@@ -177,7 +192,7 @@ const FULL_DELTA_XS = Object.freeze(Array.from({ length: C.WIDTH }, (_, i) => i)
  * 逆に見落としがありうるので、**最終9×9のテーブル計算は全列を掃引する**(段階⑤の
  * 判定より最終テーブルの方が必ず広い)。
  */
-const SELECT_DELTA_X_STRIDE = 2;
+const SELECT_DELTA_X_STRIDE = 4;
 const SELECT_DELTA_XS = Object.freeze(
   Array.from({ length: Math.floor(C.WIDTH / SELECT_DELTA_X_STRIDE) }, (_, i) => i * SELECT_DELTA_X_STRIDE),
 );
@@ -887,7 +902,7 @@ async function selectNineByNine(pool, attackPool, disruptPool) {
 // counterTable の間引き
 // ---------------------------------------------------------------------------
 /** (攻撃, 妨害) の組ごとに残すカウンター候補の上限。 */
-const COUNTER_ENTRIES_PER_PAIR = 4;
+const COUNTER_ENTRIES_PER_PAIR = 3;
 /** 残す候補どうしの deltaX の最小間隔。近い列ばかり残しても迎撃の選択肢が増えない。 */
 const COUNTER_DELTA_X_SPACING = 16;
 
@@ -973,7 +988,9 @@ async function buildOutput(pool, attackPool, disruptPool, ai, di) {
   log(`  counterTable の間引き: ${rawEntryCount.toLocaleString()}件 → ${trimmedEntryCount.toLocaleString()}件`);
 
   const escortTable = buildEscortTable(attackTpls, disruptTpls, counterTable, {
-    escortDeltaXs: FULL_DELTA_XS.filter((_, i) => i % C.COEVO_DELTA_X_STRIDE === 0),
+    // 護衛の列も掃引するが、counterTable のエントリ数 × 護衛 × 列 × タイミング の
+    // 直積になるので粗いグリッドにする(6.23ms/回 なので細かくすると数十分かかる)。
+    escortDeltaXs: FULL_DELTA_XS.filter((_, i) => i % 16 === 0),
   });
 
   // 識別表: v5 で発射列が可変になったのでキーは "antY,antDir"。

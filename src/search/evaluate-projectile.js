@@ -229,15 +229,10 @@ export function evaluateProjectile(genome, options = {}) {
   return { highway, game, descriptor, quality, viable };
 }
 
-/**
- * 既に評価済みの結果(evaluateProjectile の戻り値)を、別の ATTACK_LIFE で再射影する。
- * 再シミュレーションを行わないので、寿命の掃引(scripts/tune-attack-life.mjs)が安い。
- */
-export function isViableAtLife(result, attackLife) {
-  return (
-    result.highway.trajectoryPeriodic === true &&
-    result.game.reached === true &&
-    result.game.arrivalStep != null &&
-    result.game.arrivalStep <= attackLife
-  );
-}
+// ⚠️ かつてここに isViableAtLife(保存済みの arrivalStep に閾値を当て直すだけの再射影)が
+// あったが削除した。**保存済みの arrivalStep は当時の GAME_LIFE_SEARCH_CAP までしか
+// 記録されておらず、キャップより長い寿命へは再射影できない**(キャップの外で到達した
+// 個体が「未到達」として保存されているため)。実際に ATTACK_LIFE を 6,000 → 20,000 に
+// 上げたとき、閾値の当て直しでは 311件の判定漏れが出た。
+// 正しいやり方は genome を評価し直すことで、scripts/generate-templates.mjs の
+// --resume-archive がそれを行う(elite は数千件なので数秒で終わる)。
