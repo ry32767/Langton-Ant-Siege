@@ -1,46 +1,90 @@
 {
   "generatedAt": "2026-08-07T00:00:00.000Z",
   "seed": 1,
-  "sampledRecords": 2560,
-  "sampleStride": 1,
+  "sampledRecords": 94319,
+  "sampleStride": 64,
   "report": {
-    "totalEvaluations": 1121400,
-    "trajectoryPeriodicCount": 1800,
-    "fingerprintVerifiedCount": 53,
+    "totalEvaluations": 10146552,
+    "trajectoryPeriodicCount": 52468,
+    "fingerprintVerifiedCount": 100,
     "highwayVectorHistogram": {
-      "2,-2": 330,
-      "2,2": 308,
-      "-2,2": 306,
-      "-2,-2": 302,
-      "1,-1": 130,
-      "-1,1": 127,
-      "1,1": 112,
-      "-1,-1": 110,
-      "-4,0": 13,
-      "-2,0": 13,
-      "2,0": 11,
-      "0,-2": 10,
-      "-4,-4": 8,
-      "4,0": 8,
-      "4,4": 4,
-      "0,4": 4,
-      "0,-4": 3,
-      "4,-4": 1
+      "2,2": 4327,
+      "-2,2": 4173,
+      "-2,-2": 3684,
+      "2,-2": 3477,
+      "0,-2": 3339,
+      "0,2": 3048,
+      "3,1": 3001,
+      "-1,1": 2898,
+      "1,-1": 2733,
+      "1,1": 2629,
+      "-3,1": 2515,
+      "-1,-1": 2253,
+      "-2,0": 1278,
+      "2,0": 1053,
+      "-4,-6": 1040,
+      "3,-5": 1006,
+      "-1,3": 985,
+      "4,0": 743,
+      "-4,0": 702,
+      "0,4": 693,
+      "0,-4": 690,
+      "-7,-7": 598,
+      "-7,7": 510,
+      "-3,-1": 510,
+      "1,-3": 492,
+      "-2,-4": 472,
+      "3,-1": 383,
+      "4,-2": 376,
+      "2,4": 352,
+      "-4,2": 348,
+      "1,3": 324,
+      "7,7": 286,
+      "-1,-3": 243,
+      "0,-8": 213,
+      "7,-7": 204,
+      "0,8": 138,
+      "5,-5": 132,
+      "-5,-5": 85,
+      "5,5": 80,
+      "-6,4": 64,
+      "-4,-4": 53,
+      "-5,5": 52,
+      "4,4": 51,
+      "6,-4": 50,
+      "4,6": 47,
+      "-4,4": 38,
+      "4,-4": 35,
+      "-8,0": 15,
+      "-3,5": 13,
+      "8,0": 6,
+      "-5,-3": 5,
+      "5,3": 5,
+      "-9,-9": 4,
+      "9,9": 3,
+      "9,-9": 3,
+      "-8,-8": 3,
+      "8,-8": 2,
+      "6,6": 2,
+      "-8,8": 1,
+      "12,-4": 1,
+      "-3,3": 1,
+      "-4,-12": 1
     },
     "slopeHistogram": {
-      "vertical": 17,
+      "vertical": 8121,
       "nearVertical": 0,
-      "shallow": 0,
-      "steep": 0,
-      "diagonal": 1738,
-      "lateral": 45
+      "shallow": 2869,
+      "steep": 2106,
+      "diagonal": 28317,
+      "lateral": 11055
     },
     "ruleLengthBySlope": {
       "vertical": {
-        "median": 13,
+        "median": 14,
         "min": 3,
         "max": 16,
-        "count": 17
+        "count": 8121
       },
       "nearVertical": {
         "median": null,
@@ -49,36 +93,36 @@
         "count": 0
       },
       "shallow": {
-        "median": null,
-        "min": null,
-        "max": null,
-        "count": 0
+        "median": 12,
+        "min": 8,
+        "max": 16,
+        "count": 2869
       },
       "steep": {
-        "median": null,
-        "min": null,
-        "max": null,
-        "count": 0
+        "median": 15,
+        "min": 11,
+        "max": 16,
+        "count": 2106
       },
       "diagonal": {
-        "median": 3,
+        "median": 11,
         "min": 2,
         "max": 16,
-        "count": 1738
+        "count": 28317
       },
       "lateral": {
         "median": 12,
         "min": 3,
-        "max": 14,
-        "count": 45
+        "max": 16,
+        "count": 11055
       }
     },
     "periodBySlope": {
       "vertical": {
-        "median": 4,
+        "median": 116,
         "min": 4,
-        "max": 24,
-        "count": 17
+        "max": 544,
+        "count": 8121
       },
       "nearVertical": {
         "median": null,
@@ -87,36 +131,36 @@
         "count": 0
       },
       "shallow": {
-        "median": null,
-        "min": null,
-        "max": null,
-        "count": 0
+        "median": 12,
+        "min": 6,
+        "max": 1080,
+        "count": 2869
       },
       "steep": {
-        "median": null,
-        "min": null,
-        "max": null,
-        "count": 0
+        "median": 556,
+        "min": 490,
+        "max": 556,
+        "count": 2106
       },
       "diagonal": {
-        "median": 104,
+        "median": 52,
         "min": 2,
-        "max": 884,
-        "count": 1738
+        "max": 1948,
+        "count": 28317
       },
       "lateral": {
-        "median": 16,
+        "median": 138,
         "min": 4,
-        "max": 60,
-        "count": 45
+        "max": 1080,
+        "count": 11055
       }
     },
     "formationBySlope": {
       "vertical": {
-        "median": 19952,
-        "min": 19855,
-        "max": 19972,
-        "count": 17
+        "median": 2050,
+        "min": 118,
+        "max": 19980,
+        "count": 8121
       },
       "nearVertical": {
         "median": null,
@@ -125,34 +169,34 @@
         "count": 0
       },
       "shallow": {
-        "median": null,
-        "min": null,
-        "max": null,
-        "count": 0
+        "median": 19828,
+        "min": 213,
+        "max": 19968,
+        "count": 2869
       },
       "steep": {
-        "median": null,
-        "min": null,
-        "max": null,
-        "count": 0
+        "median": 1025,
+        "min": 281,
+        "max": 17495,
+        "count": 2106
       },
       "diagonal": {
-        "median": 313,
+        "median": 513,
         "min": 0,
         "max": 19990,
-        "count": 1738
+        "count": 28317
       },
       "lateral": {
-        "median": 19767,
-        "min": 19071,
-        "max": 19974,
-        "count": 45
+        "median": 6710,
+        "min": 108,
+        "max": 19980,
+        "count": 11055
       }
     },
     "gameViabilityBySlope": {
       "vertical": {
         "viable": 0,
-        "total": 17,
+        "total": 8121,
         "rate": 0
       },
       "nearVertical": {
@@ -162,36 +206,36 @@
       },
       "shallow": {
         "viable": 0,
-        "total": 0,
-        "rate": null
+        "total": 2869,
+        "rate": 0
       },
       "steep": {
         "viable": 0,
-        "total": 0,
-        "rate": null
+        "total": 2106,
+        "rate": 0
       },
       "diagonal": {
-        "viable": 214,
-        "total": 1738,
-        "rate": 0.12313003452243959
+        "viable": 3382,
+        "total": 28317,
+        "rate": 0.11943355581452837
       },
       "lateral": {
         "viable": 0,
-        "total": 45,
+        "total": 11055,
         "rate": 0
       }
     },
-    "distillationAttemptCount": 1800,
-    "distillationSuccessCount": 1751,
-    "distillationSuccessRate": 0.9727777777777777,
-    "medianOriginalFormationStep": 335,
-    "medianDistilledFormationStep": 217,
-    "medianFormationReduction": 178,
-    "medianOriginalCellCount": 8,
-    "medianDistilledCellCount": 8,
-    "gameViableBeforeDistillation": 214,
-    "gameViableAfterDistillation": 233,
-    "distillationViabilityGain": 19,
-    "fingerprintCheckedCount": 56
+    "distillationAttemptCount": 52468,
+    "distillationSuccessCount": 42189,
+    "distillationSuccessRate": 0.8040901120683083,
+    "medianOriginalFormationStep": 1061,
+    "medianDistilledFormationStep": 213,
+    "medianFormationReduction": 286,
+    "medianOriginalCellCount": 9,
+    "medianDistilledCellCount": 11,
+    "gameViableBeforeDistillation": 3382,
+    "gameViableAfterDistillation": 3419,
+    "distillationViabilityGain": 37,
+    "fingerprintCheckedCount": 104
   }
 }

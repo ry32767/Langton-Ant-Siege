@@ -1255,14 +1255,27 @@ async function main() {
     mkdirSync(path.dirname(TEMPLATES_OUT_PATH), { recursive: true });
     writeFileSync(TEMPLATES_OUT_PATH, JSON.stringify(templatesOutput, null, 2) + '\n', 'utf8');
     writeFileSync(ARCHIVE_OUT_PATH, JSON.stringify(archiveOutput, null, 2) + '\n', 'utf8');
-    writeFileSync(
-      REPORT_OUT_PATH,
-      JSON.stringify({ generatedAt, seed: SEED, sampledRecords: sampler.records.length, sampleStride: sampler.stride, report }, null, 2) + '\n',
-      'utf8',
-    );
+    // ⚠️ --resume-archive では段階①を飛ばすのでサンプラが空になる。そのまま書き出すと
+    // 「探索の分布レポート」が全ゼロで上書きされ、本探索(1,014万評価)の一次資料が消える。
+    // サンプルが無いときは既存のレポートを残す(実際にこれを踏んで復元する羽目になった)。
+    if (sampler.records.length > 0) {
+      writeFileSync(
+        REPORT_OUT_PATH,
+        JSON.stringify(
+          { generatedAt, seed: SEED, sampledRecords: sampler.records.length, sampleStride: sampler.stride, report },
+          null,
+          2,
+        ) + '\n',
+        'utf8',
+      );
+    }
     log(`書き出し完了: ${TEMPLATES_OUT_PATH}`);
     log(`書き出し完了: ${ARCHIVE_OUT_PATH}`);
-    log(`書き出し完了: ${REPORT_OUT_PATH}`);
+    log(
+      sampler.records.length > 0
+        ? `書き出し完了: ${REPORT_OUT_PATH}`
+        : `探索レポートは更新しない(段階①を飛ばしたのでサンプルが無い。既存の ${REPORT_OUT_PATH} を保持)`,
+    );
     log(`累計評価回数 ${evalCount.toLocaleString()} 回 / 合計所要時間 ${(elapsedSec() / 60).toFixed(1)}分`);
   } finally {
     await pool.destroy();

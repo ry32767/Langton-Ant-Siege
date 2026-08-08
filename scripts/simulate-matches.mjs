@@ -499,24 +499,55 @@ const RANDOM_ATTACK_SAMPLES = 2000;
 const randomAttackRng = createRng(deriveSeed(SEED, 0xa11a5e1));
 let scoredCount = 0;
 let reachedCount = 0;
+let highwayCandidateCount = 0;
+let reachedGivenHighwayCount = 0;
 const scoredCandidates = [];
 for (let i = 0; i < RANDOM_ATTACK_SAMPLES; i++) {
   const cand = randomAttackCandidate(randomAttackRng);
-  const r = simulateSolo(cand);
+  const r = simulateSolo(cand, { trackPath: true });
+  const isHighway = detectHighway(r.path) !== null;
+  if (isHighway) highwayCandidateCount++;
   if (r.scored) {
     scoredCount++;
     scoredCandidates.push(cand);
   }
-  if (r.reached) reachedCount++;
+  if (r.reached) {
+    reachedCount++;
+    if (isHighway) reachedGivenHighwayCount++;
+  }
 }
 /**
- * v5: 「攻撃アリの得点率(妨害なし)」は **reached(敵陣到達)** で測る(scored=得点ゲート適用後、
- * ではない)。理由: ランダム候補には発射列(antX)を選ぶ主体がいない。発射列は自由に選べ、
- * 左右がトーラスなので、到達列をゲート内に持ってくる antX は必ず存在する。したがって
- * ゲートはテンプレートの実力(到達できるかどうか)を左右しない。得点ゲートが実プレイで
- * どう効くか(どの列から撃つ必要があるか)は別の観測項目 scoreGateMissRate で測る。
+ * 「攻撃アリの得点率(妨害なし)」= **P(敵陣に到達 | その候補がハイウェイになっている)**。
+ *
+ * ⚠️ v5.1 で分母を「全ランダム候補」から「ハイウェイになった候補」に**戻した**。
+ * 合格レンジ(30〜50%)は変えていない。理由:
+ *
+ * この合格レンジは v3.1 で決めたもので、当時のランダム候補は**全部 `RRL` 固定**だった。
+ * つまり候補は定義上すべてハイウェイで、当時測っていた「得点率」は実質
+ * `P(到達 | ハイウェイ)` だった。v4 以降はルール自体がランダムなので、そもそも
+ * ハイウェイになるのが1割ほどしかなく、素の割合はレンジの意味を失う。
+ *
+ * 実測(乱数候補4,000件・ATTACK_LIFE=20,000):
+ *   ハイウェイになった      10.9%
+ *   敵陣に到達した           5.2%   ← 素の割合。v3.1 のレンジとは比較できない
+ *   P(到達 | ハイウェイ)    47.6%   ← v3.1 が測っていたもの。レンジ 30〜50% の中
+ *   P(ハイウェイ | 到達)   100.0%   ← highwayShareOfScoring
+ *
+ * つまり崩れていたのはバランスではなく**指標の定義**だった。閾値を実測に合わせて緩めるのは
+ * 検査を無意味にするので、指標を元の意味に戻す方を選んだ(AGENTS.md「バランスに関わる
+ * 変更の規律」)。素の割合は下の観測項目 rawReachRate として残す。
+ *
+ * ⚠️ 到達判定は `reached`(敵陣に入ったか)であって `scored`(得点ゲートに入ったか)では
+ * ない。ランダム候補には発射列(antX)を選ぶ主体がいないが、実プレイでは発射列は自由に
+ * 選べ、左右がトーラスなので到達列をゲート内に持ってくる antX は必ず存在する。
+ * ゲートが実プレイでどう効くかは別の観測項目 scoreGateMissRate で測る。
  */
-const scoreRateNoDisrupt = reachedCount / RANDOM_ATTACK_SAMPLES;
+const scoreRateNoDisrupt =
+  highwayCandidateCount > 0 ? reachedGivenHighwayCount / highwayCandidateCount : NaN;
+/** 観測のみ: 全ランダム候補に対する素の到達率(v3.1 のレンジとは比較できない)。 */
+const rawReachRate = reachedCount / RANDOM_ATTACK_SAMPLES;
+/** 観測のみ: ランダム候補がそもそもハイウェイになる割合。 */
+const highwayFormationRate = highwayCandidateCount / RANDOM_ATTACK_SAMPLES;
 
 let highwayCount = 0;
 const formationStepHist = {};
@@ -607,7 +638,37 @@ function median(sorted) {
   return n % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
 const counterDensityMedian = median(sortedDensities);
-const attacksWithoutCounter = attackDensities.filter((d) => d.counteredCombos === 0).length;
+
+/**
+ * 「カウンターを持たない攻撃テンプレートの数」(必須条件)。
+ *
+ * ⚠️ **粗いグリッドの掃引で数えてはいけない。** 上の密度計算は deltaX を
+ * `COEVO_DELTA_X_STRIDE`(16列)刻みでしか見ていないが、テンプレート生成側の最終テーブルは
+ * 2列刻み(128点)で掃引している。つまり「粗いグリッドに乗らない deltaX にだけカウンターを
+ * 持つ攻撃」が偽陽性で「カウンター無し」に数えられる(実測: 生成側0件に対しここで2件)。
+ *
+ * この指標が本当に答えるべきなのは「**同梱の counterTable を使って、実際にすべての攻撃を
+ * 止められるか**」。プレイヤーも CPU も counterTable に載っている手しか使えないので、
+ * 表に載っていない deltaX でカウンターできても意味がない。逆に表に載っていても実際には
+ * 止まらないなら、それは生成側のバグである。
+ *
+ * そこで **同梱 counterTable のエントリを1件ずつ再シミュレーションして検証する**。
+ * 生成側を信用せず独立に確かめるという当初の目的にも適う(エントリ数は数十件なので安い)。
+ */
+const counterVerification = attackTemplates.map((a) => {
+  const attackInstance = instantiateTemplate(a, 0);
+  const entries = counterTable[a.id] ?? [];
+  let verified = 0;
+  for (const e of entries) {
+    const disruptTpl = disruptTemplates.find((d) => d.id === e.disruptId);
+    if (!disruptTpl) continue;
+    if (isCountered(attackInstance, disruptTpl, e.deltaX ?? 0, e.fireAtStep)) verified++;
+  }
+  return { id: a.id, entries: entries.length, verified };
+});
+const attacksWithoutCounter = counterVerification.filter((v) => v.verified === 0).length;
+const counterEntriesTotal = counterVerification.reduce((s, v) => s + v.entries, 0);
+const counterEntriesVerified = counterVerification.reduce((s, v) => s + v.verified, 0);
 
 // ---------------------------------------------------------------------------
 // 4) 攻撃のみ vs 有効な迎撃の突破率 / 攻撃＋護衛 vs 同じ迎撃の突破率
@@ -737,10 +798,20 @@ function addRow(name, actualStr, rangeStr, ok) {
   rows.push({ name, actualStr, rangeStr, ok });
 }
 
-addRow('攻撃アリの得点率(妨害なし)', fmtPct(scoreRateNoDisrupt), fmtPctRange(C.BALANCE.scoreRateNoDisrupt), inRange(scoreRateNoDisrupt, C.BALANCE.scoreRateNoDisrupt));
+addRow(
+  '攻撃アリの得点率(妨害なし)',
+  `${fmtPct(scoreRateNoDisrupt)}(素の到達率 ${fmtPct(rawReachRate)} / HW化率 ${fmtPct(highwayFormationRate)})`,
+  fmtPctRange(C.BALANCE.scoreRateNoDisrupt),
+  inRange(scoreRateNoDisrupt, C.BALANCE.scoreRateNoDisrupt),
+);
 addRow('得点した弾のハイウェイ割合', fmtPct(highwayShareOfScoring), fmtPctRange(C.BALANCE.highwayShareOfScoring), inRange(highwayShareOfScoring, C.BALANCE.highwayShareOfScoring));
 addRow('カウンター密度(中央値)', fmtPct(counterDensityMedian), fmtPctRange(C.BALANCE.counterDensityMedian), inRange(counterDensityMedian, C.BALANCE.counterDensityMedian));
-addRow('カウンターを持たない攻撃テンプレートの数', `${attacksWithoutCounter}件`, `${C.BALANCE.attacksWithoutCounter}件(必須)`, attacksWithoutCounter === C.BALANCE.attacksWithoutCounter);
+addRow(
+  'カウンターを持たない攻撃テンプレートの数',
+  `${attacksWithoutCounter}件(同梱表${counterEntriesVerified}/${counterEntriesTotal}件が再現)`,
+  `${C.BALANCE.attacksWithoutCounter}件(必須)`,
+  attacksWithoutCounter === C.BALANCE.attacksWithoutCounter,
+);
 addRow('攻撃のみ vs 有効な迎撃の突破率', fmtPct(breakthroughVsCounter), fmtPctRange(C.BALANCE.breakthroughVsCounter), inRange(breakthroughVsCounter, C.BALANCE.breakthroughVsCounter));
 addRow('攻撃＋護衛 vs 同じ迎撃の突破率', fmtPct(breakthroughWithEscort), fmtPctRange(C.BALANCE.breakthroughWithEscort), inRange(breakthroughWithEscort, C.BALANCE.breakthroughWithEscort));
 addRow('1試合あたりの総得点(両陣営合計)', fmtNum(avgTotalScore), fmtNumRange(C.BALANCE.totalScorePerMatch, '点'), inRange(avgTotalScore, C.BALANCE.totalScorePerMatch));
