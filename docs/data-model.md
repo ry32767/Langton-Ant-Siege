@@ -6,7 +6,11 @@
 > 16→32、寿命が攻撃3,600→6,000(暫定)・妨害400→1,000になった。**発射列(`antX`)がテンプレートから
 > 消え、発射時にプレイヤー/CPU が自由に選ぶ値になった。** これに伴い配置マス(`cells`)は絶対座標では
 > なく**アリからの相対座標** `[dx, dy, state]` になり、`identifyTable` のキーも `"antX,antY,antDir"` から
-> `"antY,antDir"` に変わった。数値は必ず [`src/config.js`](../src/config.js) の実際の値を参照すること。
+> `"antY,antDir"` に変わった。
+>
+> v5.1 で `ATTACK_LIFE` が暫定値6,000から**確定値20,000**になり、`STEPS_PER_SECOND` が300→**670**に、
+> `TOTAL_STEPS` が72,000→**160,800**になった(`DISRUPT_LIFE`=1,000は据え置き)。数値は必ず
+> [`src/config.js`](../src/config.js) の実際の値を参照すること。
 
 ```mermaid
 erDiagram
@@ -16,9 +20,9 @@ erDiagram
     ANT ||--o{ PLACEDCELL : placed
     TEMPLATE ||--o{ TEMPLATECELL : contains
     MATCH {
-        int stepsPerSecond "既定300"
+        int stepsPerSecond "既定670"
         int timeLimitSec "既定240"
-        int totalSteps "= stepsPerSecond * timeLimitSec = 72000"
+        int totalSteps "= stepsPerSecond * timeLimitSec = 160800"
         int winScore "既定5"
         int elapsedStep
         string phase "playing または finished"
@@ -58,7 +62,7 @@ erDiagram
         int spawnY "発射時の位置(identifyTable の引き用)"
         int spawnDir "発射時の向き(identifyTable の引き用)"
         int steps
-        int life "kind で決まる: attack=6000(暫定) / disrupt=1000(rule/colorCountには依存しない)"
+        int life "kind で決まる: attack=20000(確定) / disrupt=1000(rule/colorCountには依存しない)"
     }
     PLACEDCELL {
         int antId FK
@@ -93,10 +97,10 @@ erDiagram
 
 | エンティティ | 主なフィールド | 補足 |
 |---|---|---|
-| Match(試合) | `stepsPerSecond`, `timeLimitSec`, `totalSteps`, `winScore`, `elapsedStep`, `phase`, `result`, `seed` | 先に `winScore` 到達で勝ち。`totalSteps`(=72,000)経過で得点比較、同点なら `draw` |
+| Match(試合) | `stepsPerSecond`, `timeLimitSec`, `totalSteps`, `winScore`, `elapsedStep`, `phase`, `result`, `seed` | 先に `winScore` 到達で勝ち。`totalSteps`(=160,800)経過で得点比較、同点なら `draw` |
 | Board(盤面) | `width`(256), `height`(256), `zoneDepth`(32), `wrapHorizontal`(true), `wrapVertical`(false), `scoreLineY`(224), `scoreGateXMin`(32), `scoreGateXMax`(224) | side1 の配置可能帯は `y=0..31`、side2 は `y=224..255`。左右はトーラス、上下端でアリ消滅/得点。得点ゲートは下記参照 |
-| Side(陣営) | `id`, `controller`, `mirrored`, `score`, `tokens`, `tokenCap`, `maxFlying` | `tokens` は1秒(=300ステップ)ごとに+1(上限30)。アリ飛行中も蓄積。同時飛行は攻撃・妨害あわせて最大4匹 |
-| Ant(アリ) | `id`, `sideId`, `kind`, `rule`, `colorCount`, `templateId`, `x`, `y`, `direction`, `spawnX`, `spawnY`, `spawnDir`, `steps`, `life` | 現在位置 `x` / `y` / `direction` は毎ステップ動く。発射位置 `spawnX` / `spawnY` / `spawnDir` は発射時に保存される。`identifyTable` を引くのに使うのは `spawnY`/`spawnDir` の組だけ(`spawnX` は発射時に選べる自由度なので識別には使わない)。`rule` / `colorCount` は発射時に固定され消滅まで変わらない。`kind` で寿命が決まる(attack=6000(暫定) / disrupt=1000。ルールの長さでは変わらない)。`steps >= life` で消滅。内部実装は `ant.touched`(踏んだマスの添字列)も持つが、これはクリーンアップ専用の実装詳細で試合の外部モデルには出さない(下記「盤面の内部表現」参照) |
+| Side(陣営) | `id`, `controller`, `mirrored`, `score`, `tokens`, `tokenCap`, `maxFlying` | `tokens` は1秒(=670ステップ)ごとに+1(上限30)。アリ飛行中も蓄積。同時飛行は攻撃・妨害あわせて最大4匹 |
+| Ant(アリ) | `id`, `sideId`, `kind`, `rule`, `colorCount`, `templateId`, `x`, `y`, `direction`, `spawnX`, `spawnY`, `spawnDir`, `steps`, `life` | 現在位置 `x` / `y` / `direction` は毎ステップ動く。発射位置 `spawnX` / `spawnY` / `spawnDir` は発射時に保存される。`identifyTable` を引くのに使うのは `spawnY`/`spawnDir` の組だけ(`spawnX` は発射時に選べる自由度なので識別には使わない)。`rule` / `colorCount` は発射時に固定され消滅まで変わらない。`kind` で寿命が決まる(attack=20000(確定) / disrupt=1000。ルールの長さでは変わらない)。`steps >= life` で消滅。内部実装は `ant.touched`(踏んだマスの添字列)も持つが、これはクリーンアップ専用の実装詳細で試合の外部モデルには出さない(下記「盤面の内部表現」参照) |
 | PlacedCell(配置マス) | `antId`, `x`, `y`, `state` | **アリ単位**で持つ(陣営単位ではない)。盤面上は**絶対座標**(発射時に `src/template.js` の `instantiateTemplate` が相対テンプレートを絶対座標へ変換してから書き込む)。そのアリの消滅時にクリーンアップ対象になる。`state` は `0 <= state < colorCount` |
 | Template(テンプレート) | `id`, `kind`, `rule`, `colorCount`, `cost`, `antY`, `antDir`, `arrivalStep` / `entryXAt0` / `robustness`(攻撃)、`reachRows` / `endDirection` / `coverage`(妨害), `costTier`, `featureTier` | **`antX` を持たない**(発射列は発射時にプレイヤー/CPUが自由に選ぶ)。攻撃用と妨害用で特徴軸が異なる。`robustness` / `coverage` は共進化生成の結果 |
 | TemplateCell | `templateId`, `dx`, `dy`, `state` | 配置マスの**アリからの相対座標**と状態。アリの初期行・向きは Template に `antY` / `antDir` として持つ(`antX` は無い) |
@@ -239,11 +243,11 @@ genome = {
 |---|---|---|
 | 第1アーカイブ(ハイウェイ発見) | `direction` | `ARCHIVE1.directions` = 8方向(`N,NE,E,SE,S,SW,W,NW`) |
 | | `speedBin` | `ARCHIVE1.speedBins` = 10(0.0..1.0 を10等分) |
-| | `formationBin` | `ARCHIVE1.formationBins` = `[64,128,256,512,1024,2048,4096,SEARCH_LIFE(20000)]` の8段階(対数的な区切り) |
+| | `formationBin` | `ARCHIVE1.formationBins` = `[64,128,256,512,1024,2048,4096,SEARCH_LIFE(30000)]` の8段階(対数的な区切り) |
 | | `cost` | `MAX_CELLS + ATTACK_COST + 1` = 22 段階(v5 で追加。コスト値をそのままビン番号として使う) |
 | 第2アーカイブ(攻撃) | `entryPositionTier` | `ARCHIVE2.entryPositionBins` = 6(敵陣へ侵入した **x座標**を `WIDTH/6` 幅で等分するビン) |
 | | `robustnessTier` | `ARCHIVE2.robustnessBins` = `[0.5, 1.0]` |
-| | `speedClassTier` | `ARCHIVE2.speedClassBins` = `[0.04, 0.048, 1.0]`(ハイウェイ署名から実効的な縦方向速度 `v_y = |driftY| / period` を出し、境界値でビン分けする3段階) |
+| | `speedClassTier` | `ARCHIVE2.speedClassBins` = `[0.025, 0.040, 1.0]`(ハイウェイ署名から実効的な縦方向速度 `v_y = |driftY| / period` を出し、境界値でビン分けする3段階。v5.1で `ATTACK_LIFE`=20,000確定に伴い到達可能な下限0.0097〜上限0.0556をほぼ3等分する位置に更新) |
 | 第2アーカイブ(妨害) | `reachTier` | `ARCHIVE2.reachBins` = 6(縦方向の到達距離 `reachRows` を `ARCHIVE2.reachScale/6` 幅で等分するビン) |
 | | `endDirTier` | `C.DIRS.length` = 4(妨害が寿命を使い切った時点の向き) |
 
@@ -291,7 +295,7 @@ highway: {
 ```ts
 game: {
   reached: boolean,       // 敵陣(SCORE_LINE_Y以上)に到達したか(得点ゲートは見ない)
-  arrivalStep: number|null, // 到達したステップ数。GAME_LIFE_SEARCH_CAP(=12,000)を寿命として評価する
+  arrivalStep: number|null, // 到達したステップ数。GAME_LIFE_SEARCH_CAP(=ATTACK_LIFEに連動。現在20,000)を寿命として評価する
   steps: number,
   entryXAt0: number|null, // antX=0で撃ったときの到達列。実プレイの到達列は (antX+entryXAt0) mod WIDTH
   endY: number,
@@ -400,8 +404,8 @@ MAP-Elites 探索アーカイブのデバッグ・再現性確保用ダンプ。
     "width": 256, "height": 256, "zoneDepth": 32,
     "scoreGateXMin": 32, "scoreGateXMax": 224,
     "minColors": 2, "maxColors": 16,
-    "searchLife": 20000, "gameProjectileLife": 6000,
-    "attackCost": 5, "attackLife": 6000,
+    "searchLife": 30000, "gameProjectileLife": 20000,
+    "attackCost": 5, "attackLife": 20000,
     "disruptCost": 3, "disruptLife": 1000,
     "maxCells": 16, "templateCellRadius": 8
   },
@@ -511,7 +515,7 @@ MAP-Elites 探索アーカイブのデバッグ・再現性確保用ダンプ。
 | `attackPref[9]` | 攻撃テンプレート9種(`TEMPLATE_COUNT_ATTACK`)の選好重み(softmaxで選択)。相手の防御傾向への適応がここに現れる |
 | `winRateVsRandom` | 学習の効果を示す記録値。再学習したら更新する |
 
-学習は CEM法(交差エントロピー法)による自己対戦。パラメータは13個。実測(v3.1) 362試合/秒 で、集団60 × 各40試合 × 40世代 = **約4分**(v5盤面での再計測は未実施)。CPU の意思決定周期は `DECISION_INTERVAL_STEPS`(=`STEPS_PER_SECOND`=300)ステップに1回(v4までは120)。
+学習は CEM法(交差エントロピー法)による自己対戦。パラメータは13個。実測(v3.1) 362試合/秒 で、集団60 × 各40試合 × 40世代 = **約4分**(v5.1盤面・寿命20,000・670ステップ/秒での再計測は未実施)。CPU の意思決定周期は `DECISION_INTERVAL_STEPS`(=`STEPS_PER_SECOND`=670)ステップに1回(v4までは120、v5は300)。
 
 > ⚠️ 上の値は**形式を示す例**であり実在の学習結果ではない。`node scripts/train-policy.mjs` を実行して実際の値で上書きすること。
 >
