@@ -105,7 +105,7 @@ test('コストがトークン上限の範囲に収まる', () => {
 
 test('試合の時間定数が整合する', () => {
   assert.equal(C.TOTAL_STEPS, C.TIME_LIMIT_SEC * C.STEPS_PER_SECOND);
-  assert.equal(C.TOTAL_STEPS, 72000);
+  assert.equal(C.TOTAL_STEPS, 160800);
   assert.equal(C.TOKEN_TICK_STEPS, C.STEPS_PER_SECOND);
   // 上限まで貯めるのに30秒。試合時間に対して十分短い
   assert.ok(C.TOKEN_CAP / C.TOKEN_PER_TICK < C.TIME_LIMIT_SEC);
