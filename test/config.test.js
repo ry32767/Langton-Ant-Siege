@@ -286,9 +286,11 @@ test('v6: Action 候補の上限が正の整数で、得点ゲート外のサン
   assert.ok(C.ACTION_ATTACK_OFFGATE_SAMPLES > 0);
 });
 
-test('v6: Action 評価器の次元は24で、OWNED_SPREAD_SCALE が正の有限値', () => {
-  assert.equal(C.ACTION_FEATURE_COUNT, 24);
-  assert.equal(C.FEATURE_SCHEMA_VERSION, 1);
+test('v6.2: Action 評価器の次元は26で、OWNED_SPREAD_SCALE が正の有限値', () => {
+  assert.equal(C.ACTION_FEATURE_COUNT, 26);
+  assert.equal(C.FEATURE_SCHEMA_VERSION, 2);
   assert.ok(Number.isFinite(C.OWNED_SPREAD_SCALE) && C.OWNED_SPREAD_SCALE > 0);
   assert.ok(C.BURST_THRESHOLD > 0 && C.BURST_THRESHOLD <= C.TOKEN_CAP);
+  assert.ok(Number.isFinite(C.OWNED_TRAIL_SCALE_CELLS) && C.OWNED_TRAIL_SCALE_CELLS > 0);
+  assert.ok(Number.isFinite(C.OFFTRACK_SCALE_ROWS) && C.OFFTRACK_SCALE_ROWS > 0);
 });

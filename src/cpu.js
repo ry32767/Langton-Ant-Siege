@@ -269,6 +269,8 @@ export const FEATURE_NAMES = [
   'ownedTrailAmount', // 21
   'ownedTrailCentroidY', // 22
   'ownedTrailSpread', // 23
+  'destructTargetWillScore', // 24(v6.2)
+  'destructTargetOffTrack', // 25(v6.2)
 ];
 
 /**
@@ -388,7 +390,10 @@ function computeTrailFromCoarse(view, m) {
   }
   if (owned <= 0) return { amount: 0, centroidY: 0, spread: 0 };
 
-  const amount = owned / C.CELL_COUNT;
+  // ⚠️ v6.2: 差分仕様 §21 の `ownedCellCount / CELL_COUNT` から変更した。
+  // 65,536 で割ると実測最大が 0.0346 にしかならず実質的な死に次元だったため
+  // (config.js の OWNED_TRAIL_SCALE_CELLS のコメント参照)。
+  const amount = clamp(owned / C.OWNED_TRAIL_SCALE_CELLS, 0, 1);
   const centroidYLocal = sumCyLocal / owned;
   const centroidY = clamp(centroidYLocal / (C.HEIGHT - 1), 0, 1);
   const meanTheta = Math.atan2(sumSin, sumCos);
@@ -412,6 +417,53 @@ function computeTrailFromCoarse(view, m) {
   return { amount, centroidY, spread };
 }
 
+/**
+ * 特徴24〜25(v6.2 で追加)。**飛行中の自軍アリ1匹について「得点しそうか」を観測に出す。**
+ *
+ * ⚠️ なぜ足したか(docs/spec.md 未決定事項 (i) の実測):
+ * v6.1 までの自爆特徴(#20〜23)は「軌跡の年齢・量・重心・広がり」しか見ておらず、
+ * どれも古いアリほど大きくなる。学習された重みはそれらを減点する向きだったため、
+ * **自爆スコアの argmax が常にいちばん新しいアリ**になっていた。強制的に自爆させると
+ * 480件すべてが「撃った直後の自軍攻撃アリ」を対象にし、1試合の合計得点が 8.00 → 0.00 になる。
+ * 評価器が「もう詰んだアリ」と「あと少しで得点するアリ」を区別できないのが原因。
+ *
+ * ⚠️ これは戦術の教示ではない(差分仕様 §41 が人間の担当としている「何を観測できるか」)。
+ * 「得点しそうなら自爆するな」という規則はどこにも書かない。2つの観測を並べて渡すだけで、
+ * どう使うかは重みが決める(実際 willScore に正の重みを付ければ「得点しそうな弾を消す」
+ * 方策も表現できる。良し悪しは学習が決める)。
+ *
+ * ⚠️ **実行時シミュレーションは一切しない**(cpu.js が engine.js を import できない理由そのもの)。
+ * どちらも O(1) で、事前計算済みのテンプレート情報だけから求める。
+ *
+ * - `willScore` … 発射列が得点ゲートに届く列だったか(`launchColumnScores`)。#6
+ *   `scoreReachability` の飛行中アリ版。左右がトーラスなので、発射列と `entryXAt0` だけで
+ *   「乱されなければ得点する」かどうかが決まる
+ * - `offTrack` … ハイウェイの予測軌道からの乖離。テンプレートは `highway`
+ *   (`formationStep` / `period` / `driftX` / `driftY`)を持つので、経過ステップから
+ *   「乱されていなければ今どこに居るはず」が線形に出る。実位置との距離が大きいほど
+ *   「別の弾に軌道を壊された」ことを意味する
+ *
+ * この2つの**論理積**が今まで表現できなかった情報にあたる:
+ * 「得点する列から撃った」かつ「もう軌道を外れた」＝ 回収してよいアリ。
+ * 妨害テンプレートは `highway` を持たないので `offTrack` は 0(＝不明)を返す。
+ */
+function targetOutcomeFeatures(ant, ctx) {
+  // ⚠️ ctx.templateById が無い呼び出し(移行期のテスト等)でも壊れないように防御する。
+  // この関数の他のフィールド参照はすべて防御済みなので、ここだけ例外にしない。
+  const tpl = ant.templateId ? ctx.templateById?.get(ant.templateId) : null;
+  if (!tpl) return { willScore: 0, offTrack: 0 };
+  const willScore = launchColumnScores(tpl, ant.spawnX) ? 1 : 0;
+  const hw = tpl.highway;
+  if (!hw || !(hw.period > 0)) return { willScore, offTrack: 0 };
+  // ハイウェイが定常になってからの周期数。形成前は spawn 位置のままとみなす。
+  const cycles = Math.max(0, ant.steps - (hw.formationStep ?? 0)) / hw.period;
+  const predY = ant.spawnY + (hw.driftY ?? 0) * cycles;
+  const predX = ant.spawnX + (hw.driftX ?? 0) * cycles;
+  const dy = Math.abs(ant.y - predY);
+  const dx = toroidalDistance(wrapX(predX), ant.x, C.WIDTH);
+  return { willScore, offTrack: clamp(Math.hypot(dx, dy) / C.OFFTRACK_SCALE_ROWS, 0, 1) };
+}
+
 /** スロットごとに1判断1回計算してキャッシュする(契約 §5.4)。 */
 function getOwnedTrailFeatures(view, ctx, slot) {
   if (slot == null) return { amount: 0, centroidY: 0, spread: 0 };
@@ -429,6 +481,8 @@ function getOwnedTrailFeatures(view, ctx, slot) {
  * `ctx` は最低限 `{ avail, committed, bandArrays, bandCache, trailCache }` を持つプレーン
  * オブジェクトであればよい(decide() が組み立てる ctx と同じ形。単体テストは
  * `bandArrays: null, bandCache: new Map(), trailCache: new Map()` を渡せば独立に呼べる)。
+ * ⚠️ v6.2 から SELF_DESTRUCT の特徴24〜25 が **`ctx.templateById`**(全テンプレートの
+ * id → template の Map)を使う。渡さないと特徴24〜25 が 0 のままになる(例外にはならない)。
  * `out` を渡すとバッファを使い回せる(渡さなければ新しい Float64Array を確保する)。
  */
 export function encodeFeatures(view, action, ctx, out = new Float64Array(C.ACTION_FEATURE_COUNT)) {
@@ -492,14 +546,19 @@ export function encodeFeatures(view, action, ctx, out = new Float64Array(C.ACTIO
   out[18] = rel.allyNearAnchor;
   out[19] = rel.allyForwardPresence;
 
-  // #20〜23 所有軌跡(SELF_DESTRUCT のみ)
+  // #20〜25 自爆対象の性質(SELF_DESTRUCT のみ)
   if (isSelfDestruct) {
-    const life = action.ant.life > 0 ? action.ant.life : 1;
-    out[20] = clamp(action.ant.steps / life, 0, 1);
+    const ant = action.ant;
+    const life = ant.life > 0 ? ant.life : 1;
+    out[20] = clamp(ant.steps / life, 0, 1);
     const trail = getOwnedTrailFeatures(view, ctx, action.slot);
     out[21] = trail.amount;
     out[22] = trail.centroidY;
     out[23] = trail.spread;
+    // v6.2 で追加。詳細は下の targetOutcomeFeatures のコメント。
+    const outcome = targetOutcomeFeatures(ant, ctx);
+    out[24] = outcome.willScore;
+    out[25] = outcome.offTrack;
   }
 
   return out;
@@ -589,6 +648,8 @@ export function createCpuAgent(options) {
   const attackTemplates = templates.attack ?? [];
   const disruptTemplates = templates.disrupt ?? [];
   const disruptById = buildTemplateIndex(disruptTemplates);
+  // 飛行中アリの templateId から引くための全種インデックス(v6.2 の特徴24〜25 が使う)。
+  const templateById = buildTemplateIndex([...attackTemplates, ...disruptTemplates]);
   const identifyTable = templates.identifyTable ?? {};
   const counterTable = templates.counterTable ?? {};
   const escortTable = templates.escortTable ?? {};
@@ -631,6 +692,7 @@ export function createCpuAgent(options) {
         attackTemplates,
         disruptTemplates,
         disruptById,
+        templateById,
         identifyTable,
         counterTable,
         escortTable,

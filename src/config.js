@@ -444,10 +444,37 @@ export const ACTION_COUNTER_MAX = 8;
 /** escortTable 由来の候補の上限(全自軍攻撃アリ合計)。 */
 export const ACTION_ESCORT_MAX = 4;
 
-/** Action 評価器(線形)の次元数。data/policy.json の weights の長さと必ず一致する。 */
-export const ACTION_FEATURE_COUNT = 24;
-/** data/policy.json の featureSchemaVersion。特徴の定義を変えたら必ず上げる。 */
-export const FEATURE_SCHEMA_VERSION = 1;
+/**
+ * Action 評価器(線形)の次元数。data/policy.json の weights の長さと必ず一致する。
+ *
+ * ⚠️ **v6.2 で 24 → 26 にした。** 差分仕様 §18 は 24 で凍結していたが、実測で
+ * 「自爆が構造的に有害にしかならない」ことが判明したため、観測を2つ足した
+ * (`destructTargetWillScore` / `destructTargetOffTrack`)。docs/spec.md 未決定事項 (i) 参照。
+ * 追加したのは**観測**であって戦術の教示ではない(§41 が人間の担当としている
+ * 「何を観測できるか」の範囲)。定義は docs/action-centric-contract.md §5 が唯一の正。
+ */
+export const ACTION_FEATURE_COUNT = 26;
+/** data/policy.json の featureSchemaVersion。特徴の定義を変えたら必ず上げる。v6.2 で 1 → 2。 */
+export const FEATURE_SCHEMA_VERSION = 2;
+
+/**
+ * 特徴21 `ownedTrailAmount` の正規化スケール(セル数)。
+ *
+ * ⚠️ **v6.2 で `CELL_COUNT`(65,536)から変更した。** 差分仕様 §21 は
+ * `ownedCellCount / CELL_COUNT` と書いているが、実測(217,061候補)では**最大 0.0346**
+ * (=2,268セル)にしかならず、`|重み|×std` が 0.002 と実質的な死に次元だった。
+ * アリが所有しうるセル数は寿命(踏んだ回数)で上に抑えられ、踏み直しと他アリの上書きで
+ * 実際はその 1/8 程度に落ち着く。その実測に合わせてスケールを取り直す。
+ * 2,500 なら実測最大が 0.91 になり [0,1] をほぼ使い切る。
+ */
+export const OWNED_TRAIL_SCALE_CELLS = Math.round(ATTACK_LIFE / 8); // 2,500
+
+/**
+ * 特徴25 `destructTargetOffTrack` の正規化スケール(行)。
+ * ハイウェイの予測軌道からの乖離をこの行数で割って [0,1] に落とす。
+ * 盤面の 1/4(=64行)ずれていれば「完全に別の軌道になった」とみなす、という基準。
+ */
+export const OFFTRACK_SCALE_ROWS = HEIGHT / 4; // 64
 
 /**
  * Reference League の `SAVE_AND_BURST` が撃ち始めるトークン閾値(§19.3)。

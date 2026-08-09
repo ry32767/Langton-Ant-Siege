@@ -52,7 +52,7 @@ test('§32 A を自爆させても、B が最後に踏んだそのセルは消�
   assert.notEqual(match.board[j], 0, 'B の配置マスが白紙に戻ってしまった');
 });
 
-test('§32 ownedTrailAmount × CELL_COUNT が、実際に cleanup されるセル数(lastToucher===antId)と一致する', () => {
+test('§32 ownedTrailAmount × OWNED_TRAIL_SCALE_CELLS が、実際に cleanup されるセル数(lastToucher===antId)と一致する', () => {
   const match = createMatch({ seed: 5 });
   match.sides[0].tokens = C.TOKEN_CAP;
 
@@ -77,9 +77,15 @@ test('§32 ownedTrailAmount × CELL_COUNT が、実際に cleanup されるセ�
   const myAnt = view.myAnts.find((a) => a.id === antId);
   assert.ok(myAnt, 'view に自軍アリが見えていない');
   const action = { type: 'SELF_DESTRUCT', antId, slot: myAnt.slot, ant: myAnt };
-  const ctx = { avail: 0, committed: 0, bandArrays: null, bandCache: new Map(), trailCache: new Map() };
+  // templateId が未設定('T' は templateById に無い)なので #24/#25 は 0 のまま計算される。
+  const ctx = { avail: 0, committed: 0, templateById: new Map(), bandArrays: null, bandCache: new Map(), trailCache: new Map() };
   const out = encodeFeatures(view, action, ctx);
-  const predictedOwned = Math.round(out[21] * C.CELL_COUNT);
+  // ⚠️ v6.2: #21(ownedTrailAmount)は `clamp(owned / OWNED_TRAIL_SCALE_CELLS, 0, 1)` になった
+  // (契約 §5.0)。所有セル数がスケール未満のときだけ「× スケール = 実セル数」の等式が成り立つ
+  // (スケール以上ではクランプで潰れて一致しなくなる)。このテストは少数セルしか配置しない
+  // ケースなので、まずスケール未満であることを前提として assert してから等式を検査する。
+  assert.ok(actualOwned < C.OWNED_TRAIL_SCALE_CELLS, 'テストの前提が壊れている(所有セル数がクランプ域に入っている)');
+  const predictedOwned = Math.round(out[21] * C.OWNED_TRAIL_SCALE_CELLS);
   assert.equal(predictedOwned, actualOwned);
 
   // 実際に自爆させて、cleanup されたセル数(lastToucher===antId だったセル)が一致することを確認する。

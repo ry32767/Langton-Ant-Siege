@@ -13,7 +13,7 @@
 - **寿命によるフィルタ** — アリには最大ステップ数があり、ハイウェイに乗った弾しか敵陣まで届かない
 - **妨害アリ** — 安くて寿命の短いアリ。相手のハイウェイの上を踏み荒らして軌道を崩す。自分の攻撃を守る**護衛**にも使える。アリは攻撃・妨害あわせて1陣営4匹まで同時に飛ばせる
 - **テンプレート選択(攻撃3種 + 妨害3種)** — 事前生成・事前検証されたテンプレートを攻撃/妨害のタブから役割別(Speed/Economy/Robust、Cheap/General/Complement)に選ぶ。飛来中の敵の弾がどれかを**発射した行と向きで識別できる**
-- **CPU AI(Action-Centric)** — 合法な行動(待機/発射/自爆)をすべて列挙し、24次元の線形評価器で最良の1つを選ぶ2段構成。事前計算テーブル(どの札がどの札に勝つか)は行動候補を作る材料に使い、「いつ何を選ぶか」はCPU同士の自己対戦(CEM法)+固定の参照方策4種との対戦で学習する。実行時は学習済みの重みで採点するだけで、シミュレーション探索はしない
+- **CPU AI(Action-Centric)** — 合法な行動(待機/発射/自爆)をすべて列挙し、26次元の線形評価器で最良の1つを選ぶ2段構成。事前計算テーブル(どの札がどの札に勝つか)は行動候補を作る材料に使い、「いつ何を選ぶか」はCPU同士の自己対戦(CEM法)+固定の参照方策4種との対戦で学習する。実行時は学習済みの重みで採点するだけで、シミュレーション探索はしない
 - **対戦モード選択** — 「プレイヤー vs CPU」「CPU vs CPU」を選んで開始
 
 > ゲームルールの詳細と各機能の受け入れ条件は [docs/spec.md](docs/spec.md)。自由入力(テンプレート以外の配置)は MVP では実装しません(理由は spec.md 機能3)。
@@ -42,7 +42,7 @@ Langton-Ant-Siege/
 │   ├── spec.md       #   ゲームルール・機能・受け入れ条件(契約書)
 │   ├── data-model.md #   盤面/アリ/テンプレート/genome/探索アーカイブ/Action/方策のデータ構造
 │   ├── architecture.md #  構成と設計判断
-│   └── action-centric-contract.md # v6 CPU(Action-Centric)の実装契約。view/Action/24次元特徴/policy.jsonの凍結仕様
+│   └── action-centric-contract.md # v6 CPU(Action-Centric)の実装契約。view/Action/26次元特徴/policy.jsonの凍結仕様
 ├── src/
 │   ├── config.js     # 盤面サイズ・寿命・コスト・トークン・速度・CPU観測/Action関連の数値定数(一元管理)
 │   ├── engine.js     # アリ・盤面・得点判定・トークン・勝敗などの試合ルール(Node/ブラウザ共通)。32×32粗視化盤面とownership mapも持つ
@@ -60,7 +60,7 @@ Langton-Ant-Siege/
 │   │   ├── seed-compression.js     #   種セルの貪欲圧縮
 │   │   └── search-report.js        #   探索結果の集計レポート
 │   ├── app.js        # 画面制御・入力・描画・ゲームループ
-│   ├── cpu.js         # v6: Action-Centric CPU。generateActions(候補生成)→selectAction(24次元線形評価器)。engine.jsには依存しない
+│   ├── cpu.js         # v6: Action-Centric CPU。generateActions(候補生成)→selectAction(26次元線形評価器)。engine.jsには依存しない
 │   ├── cpu-legacy.js  # v5.5のCPU実装を凍結したコピー(旧11次元方策)。evaluate-policy.mjs --mode final の対戦相手専用
 │   ├── reference-policies.js # v6: 学習しない固定4方策(ATTACK_ONLY/CHEAP_SPAM/SAVE_AND_BURST/DEFEND_HEAVY)
 │   ├── tokens.css    # 配色・書体・余白のデザイントークン(DESIGN.md が唯一の正)
@@ -80,13 +80,13 @@ Langton-Ant-Siege/
 │   ├── templates-schema.test.js
 │   ├── coarse-board.test.js     # v6: 32×32粗視化盤面(band集計・水平カーネル・X wrap)の単体テスト
 │   ├── ownership.test.js        # v6: ownership map(coarseOwnedByAnt)の増分更新・不変条件
-│   ├── action-features.test.js  # v6: 24次元 Feature Encoder(死に次元が無いこと・範囲・決定論)
+│   ├── action-features.test.js  # v6: 26次元 Feature Encoder(死に次元が無いこと・範囲・決定論)
 │   ├── action-generation.test.js # v6: generateActions の候補生成規則(事前フィルタ無し・重複除去など)
 │   ├── reference-league.test.js # v6: Reference League 4方策の規則とfitness配分
 │   └── integration.test.js
 ├── scripts/          # 開発時のみ実行する Node スクリプト
 │   ├── generate-templates.mjs   # 攻撃/妨害テンプレートを共進化+選抜で生成(worker_threadsで並列化)
-│   ├── train-policy.mjs         # v6: 24次元 対角ガウス CEM + Reference League で方策(weights)を学習
+│   ├── train-policy.mjs         # v6: 26次元 対角ガウス CEM + Reference League で方策(weights)を学習
 │   ├── evaluate-policy.mjs      # v6: --mode bench(学習前の性能計測)/ --mode final(リーグ+旧CPUとの最終評価)
 │   ├── simulate-matches.mjs     # バランス検証(得点率・HW割合・盤面汚染度など)
 │   ├── tune-attack-life.mjs     # 探索アーカイブからATTACK_LIFE(攻撃アリの寿命)候補を掃引
@@ -97,7 +97,7 @@ Langton-Ant-Siege/
 │       └── match-worker.mjs     #   v6: match-runner.mjs の対戦をワーカースレッド上で実行するエントリポイント
 ├── data/             # 生成物(コミット対象・手で編集しない)
 │   ├── templates.json           # 生成済みテンプレート 3+3 と事前計算テーブル(counterTable/escortTable/identifyTable)
-│   ├── policy.json              # v6: 学習済み方策(24要素のweights配列。旧スキーマのpolicyオブジェクトは廃止)
+│   ├── policy.json              # v6: 学習済み方策(26要素のweights配列。旧スキーマのpolicyオブジェクトは廃止)
 │   ├── policy-v55.json          # v6: 旧スキーマ(v5.5・11次元)の凍結スナップショット。cpu-legacy.js と対
 │   ├── benchmark.json           # v6: evaluate-policy.mjs --mode bench の出力(学習前の性能計測)
 │   ├── evaluation.json          # v6: evaluate-policy.mjs --mode final の出力(リーグ+旧CPUとの最終評価・戦術使用ログ)
@@ -129,7 +129,7 @@ node scripts/generate-templates.mjs           # 既定は本探索(--budget-min 
 node scripts/generate-templates.mjs --quick   # 小さな予算(数分)で通しの動作確認
 node scripts/train-policy.mjs --quick --out /tmp/quick-policy.json  # ベンチ用に軽く学習した重みを用意する
 node scripts/evaluate-policy.mjs --mode bench --policy /tmp/quick-policy.json  # 本学習の前に必ず実行(性能計測)
-node scripts/train-policy.mjs                 # 本学習(24次元CEM + Reference League)。data/policy.json を書き出す
+node scripts/train-policy.mjs                 # 本学習(26次元CEM + Reference League)。data/policy.json を書き出す
 node scripts/evaluate-policy.mjs --mode final # 学習後の最終評価(参照方策4種+旧CPUとの対戦)。data/policy.json / data/evaluation.json を更新
 node scripts/tune-attack-life.mjs             # 探索アーカイブからATTACK_LIFE(攻撃アリの寿命)候補を掃引して表示する
 ```

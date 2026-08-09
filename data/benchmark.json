@@ -1,33 +1,33 @@
 {
-  "measuredAt": "2026-08-09T02:55:26.409Z",
+  "measuredAt": "2026-08-09T05:58:15.867Z",
   "seed": 1,
   "games": 20,
   "policySource": "data\\policy.json",
   "newCpu": {
-    "matchesPerSec": 16.955602856035654,
-    "decisionsPerSec": 24266.85880755823,
-    "avgCandidatesPerDecision": 15.434173272933183,
+    "matchesPerSec": 14.758762129488655,
+    "decisionsPerSec": 22929.212844373575,
+    "avgCandidatesPerDecision": 15.152420977861963,
     "p95CandidatesPerDecision": 24,
-    "featureEncodeUsPerDecision": 25.237061155152904,
-    "actionScoreUsPerDecision": 0.7732800113214863
+    "featureEncodeUsPerDecision": 26.59230496034124,
+    "actionScoreUsPerDecision": 0.8093287557699504
   },
   "oldCpu": {
-    "matchesPerSec": 56.00877545493828,
-    "decisionsPerSec": 109261.9191574936
+    "matchesPerSec": 51.454569217201055,
+    "decisionsPerSec": 100377.57362891582
   },
   "boardHooks": {
-    "boardWritesPerMatch": 164183,
-    "coarseUpdateNsPerWrite": 1.49154,
-    "ownershipUpdateNsPerWrite": 3.12226,
-    "coarseUpdateMsPerMatchEstimate": 0.24488551182,
-    "ownershipUpdateMsPerMatchEstimate": 0.5126220135799999,
+    "boardWritesPerMatch": 158470,
+    "coarseUpdateNsPerWrite": 1.5091,
+    "ownershipUpdateNsPerWrite": 2.9956,
+    "coarseUpdateMsPerMatchEstimate": 0.239147077,
+    "ownershipUpdateMsPerMatchEstimate": 0.474712732,
     "note": "推定値。1試合の盤面書き込み回数(実測)× フック相当演算の単価(マイクロベンチ)"
   },
   "tacticsSample": {
-    "wait": 13898,
-    "attackFire": 230,
+    "wait": 16621,
+    "attackFire": 273,
     "disruptFire": 0,
     "selfDestruct": 0,
-    "decisions": 14128
+    "decisions": 16894
   }
 }

@@ -64,16 +64,16 @@
 > - **CEM方策が17次元から11次元に削減**。減った6次元は**すべて `attackPref[9]` → `attackPref[3]`** によるもので、他のパラメータの増減は無い(配列要素と攻撃3種の役割が `C.ATTACK_ROLES` の順で対応する)。⚠️ 探索予算(集団60・各40試合・エリート12・40世代)は**据え置く**。次元が減ったことを理由に予算まで同時に削ると、収束の改善が「次元削減の効果」なのか「予算変更の効果」なのか切り分けられなくなるため(差分仕様 §19)
 >
 > **v6 の変更点**(Action-Centric CPU・盤面観測・CEM学習基盤刷新)
-> - **CPUの意思決定を「固定優先順位のヒューリスティック」から「候補生成 + 24次元線形評価器」の2段構成に全面刷新した**。唯一の実装契約は [action-centric-contract.md](action-centric-contract.md)(以下「契約書」)。本書はそれと矛盾しない範囲でゲームルール・受け入れ条件・検証戦略・決定事項を同期する。詳細な式・スキーマは重複させず契約書を参照する
-> - **旧 `tryDefend() ?? tryEscort() ?? tryAttack()` という人間が決めた固定優先順位を廃止**。`generateActions(view, ctx)`(合法な Action を列挙するだけ・戦術判断はしない)→ `selectAction(view, actions, ctx)`(`score = Σ weights[i]*features[i]` の24次元線形評価器で最大スコアを選ぶ。同点は候補添字が小さい方)の2段構成にした
+> - **CPUの意思決定を「固定優先順位のヒューリスティック」から「候補生成 + 26次元線形評価器(v6.0 は24次元。v6.2 で2つ追加)」の2段構成に全面刷新した**。唯一の実装契約は [action-centric-contract.md](action-centric-contract.md)(以下「契約書」)。本書はそれと矛盾しない範囲でゲームルール・受け入れ条件・検証戦略・決定事項を同期する。詳細な式・スキーマは重複させず契約書を参照する
+> - **旧 `tryDefend() ?? tryEscort() ?? tryAttack()` という人間が決めた固定優先順位を廃止**。`generateActions(view, ctx)`(合法な Action を列挙するだけ・戦術判断はしない)→ `selectAction(view, actions, ctx)`(`score = Σ weights[i]*features[i]` の26次元線形評価器で最大スコアを選ぶ。同点は候補添字が小さい方)の2段構成にした
 > - **Action 型は WAIT / FIRE / SELF_DESTRUCT の3種のみ**。ATTACK / DEFEND / ESCORT という Action 型は存在しない。`score(WAIT) = 0` 固定で、実行可能な Action がすべて0点未満なら WAIT が勝つ
-> - **旧11次元の方策パラメータ**(`fireThreshold` / `reserveTokens` / `defendBias` / `escortBias` / `attackPref[3]` / `selfDestructBias` / `selfDestructRemainingTicks` / `pollutionDestructWeight` / `attackAvoidBias`)を**全廃**し、`data/policy.json` の `weights`(24要素の線形評価器の重み)ひとつに統合した
+> - **旧11次元の方策パラメータ**(`fireThreshold` / `reserveTokens` / `defendBias` / `escortBias` / `attackPref[3]` / `selfDestructBias` / `selfDestructRemainingTicks` / `pollutionDestructWeight` / `attackAvoidBias`)を**全廃**し、`data/policy.json` の `weights`(26要素の線形評価器の重み)ひとつに統合した
 > - **飛行中の自軍アリは全部が SELF_DESTRUCT 候補**になった。年齢・残寿命・盤面汚染度による事前フィルタ(旧 `selfDestructRemainingTicks`)は廃止。年齢は特徴(#20 `destructAge`)として評価器に渡るだけで、候補生成の条件にはしない
 > - **攻撃 FIRE を得点ゲート内だけに限定しない**。得点ゲート外(`scoreReachability=0`)の発射列も候補に残す。攻撃アリを妨害・護衛・囮・盤面操作として使う戦略を方策表現から排除しないため
-> - **`counterTable` / `escortTable` / `identifyTable` を「候補生成情報」へ降格**した。「その表由来だから優先する」という選択規則は無い。`counterTable.successRate` は24特徴に含まれない(候補の列挙順を決めるためだけに使う)
+> - **`counterTable` / `escortTable` / `identifyTable` を「候補生成情報」へ降格**した。「その表由来だから優先する」という選択規則は無い。`counterTable.successRate` は26特徴に含まれない(候補の列挙順を決めるためだけに使う)
 > - **1判断=1アクション**にした。旧実装の「自爆してから攻撃」「攻撃と同時に護衛を予約」という抱き合わせは廃止
 > - `src/engine.js` に **32×32 粗視化盤面**(`coarseNonWhite` / `coarseOwnedBySide`)と、**自軍飛行アリ最大4匹ぶんの ownership map**(`coarseOwnedByAnt` / `antSlotOccupant` / `lastToucherSlot`)を追加し、`createSideView` が参照渡しで公開するようにした。CPU は局所ではなく32×32全体を毎判断観測できる
-> - `scripts/train-policy.mjs` を**24次元 対角ガウス CEM**に刷新した。fitness は **self-play 50% + 固定 Reference League 4種(`src/reference-policies.js` の `ATTACK_ONLY`/`CHEAP_SPAM`/`SAVE_AND_BURST`/`DEFEND_HEAVY`)50%**。5世代ごとの held-out validation と、20世代以降の plateau による early stop を導入し、最終世代の mean を無条件採用せず複数候補を固定シードで再評価して選ぶ
+> - `scripts/train-policy.mjs` を**対角ガウス CEM**に刷新した(v6.0 は24次元、v6.2 で26次元)。fitness は **self-play 50% + 固定 Reference League 4種(`src/reference-policies.js` の `ATTACK_ONLY`/`CHEAP_SPAM`/`SAVE_AND_BURST`/`DEFEND_HEAVY`)50%**。5世代ごとの held-out validation と、20世代以降の plateau による early stop を導入し、最終世代の mean を無条件採用せず複数候補を固定シードで再評価して選ぶ
 > - `scripts/evaluate-policy.mjs` を新設。`--mode bench`(学習前の性能計測。契約書 §9)と `--mode final`(リーグ4種×500試合+旧CPU 1,000試合の最終評価)
 > - 旧CPU(v5.5)を `src/cpu-legacy.js` + `data/policy-v55.json` として凍結保存し、`evaluate-policy.mjs --mode final` が対戦相手として使う
 > - `scripts/verify-v54.mjs` を退役させ `archive/verify-v54.mjs` へ移した。「迎撃/護衛/攻撃/自爆」という戦術カテゴリの集計は v6 の Action 型(WAIT/FIRE/SELF_DESTRUCT)と噛み合わないため。後継は `evaluate-policy.mjs --mode final` の戦術使用ログ(`tacticsLog`。fitness には使わない観測専用)
@@ -217,7 +217,7 @@ v5.3 で導入した `disruptAimOffsetFrac` による「対象アリの現在列
 
 #### v6 で撤回: 攻撃発射列のヒューリスティック選択(`attackAvoidBias`)
 
-v5.3〜v5.5 の `attackAvoidBias` / `ATTACK_COLUMN_SAMPLES`(=8列のトーナメント選択で `columnNonWhite` 最小の列を選ぶ確率)は、CPU が「汚れていない列を選ぶ」という戦術を直接教示する実装だった。**v6 の `generateActions` はこれを移植しない**(契約書 §3・§11-1)。得点ゲート内から `ACTION_ATTACK_GATE_SAMPLES`(=4列)・ゲート外から `ACTION_ATTACK_OFFGATE_SAMPLES`(=2列)を `rng.int()` で**一様に**サンプルするだけで、列ごとの良し悪しは24特徴のうち盤面band特徴(#8〜15 `boardOccupancyBandN`/`boardOwnershipBandN`)が表現し、重みが学習する。`ATTACK_COLUMN_SAMPLES` / `attackAvoidBias` / `columnNonWhite` は `src/cpu-legacy.js`(凍結した v5.5 の旧CPU)からのみ参照される、**現行CPUでは使われない過去の定数**になった。
+v5.3〜v5.5 の `attackAvoidBias` / `ATTACK_COLUMN_SAMPLES`(=8列のトーナメント選択で `columnNonWhite` 最小の列を選ぶ確率)は、CPU が「汚れていない列を選ぶ」という戦術を直接教示する実装だった。**v6 の `generateActions` はこれを移植しない**(契約書 §3・§11-1)。得点ゲート内から `ACTION_ATTACK_GATE_SAMPLES`(=4列)・ゲート外から `ACTION_ATTACK_OFFGATE_SAMPLES`(=2列)を `rng.int()` で**一様に**サンプルするだけで、列ごとの良し悪しは26特徴のうち盤面band特徴(#8〜15 `boardOccupancyBandN`/`boardOwnershipBandN`)が表現し、重みが学習する。`ATTACK_COLUMN_SAMPLES` / `attackAvoidBias` / `columnNonWhite` は `src/cpu-legacy.js`(凍結した v5.5 の旧CPU)からのみ参照される、**現行CPUでは使われない過去の定数**になった。
 
 ### ハイウェイについて(実測)
 
@@ -278,7 +278,7 @@ v5.3〜v5.5 の `attackAvoidBias` / `ATTACK_COLUMN_SAMPLES`(=8列のトーナメ
 | 跡の処理 | 配置マス・踏んだマスは**通常の消滅と同じ `cleanupAnt` で消す**(新しい経路を作らない)。結果、自爆は「自陣の汚染を自分で掃除する手」にもなる |
 | 得点 | **しない**。`score` / `scoredAnts` は増えない |
 | プレイヤー操作 | UI の「自爆」パネルから飛行中の自分のアリを選んで消す |
-| CPU による採否判定(v6) | **飛行中の自軍アリは全部が SELF_DESTRUCT 候補**になる。年齢・残寿命・盤面汚染度による事前フィルタは無い(旧 `selfDestructRemainingTicks` は廃止)。候補それぞれに `SELF_DESTRUCT` の Action として24次元の特徴(寿命消化割合=特徴20 `destructAge`、所有軌跡=特徴21〜23)を計算し、`generateActions`/`selectAction` の共通ロジックで他の FIRE / WAIT 候補と一緒にスコア比較する。年齢・所有量が大きいほど選ばれやすい**傾向を持つかどうかは学習結果次第**であり、規則としては強制しない。詳細は[CPUの盤面観測](#cpuの盤面観測v6)と契約書 §2/§5/§6を参照 |
+| CPU による採否判定(v6) | **飛行中の自軍アリは全部が SELF_DESTRUCT 候補**になる。年齢・残寿命・盤面汚染度による事前フィルタは無い(旧 `selfDestructRemainingTicks` は廃止)。候補それぞれに `SELF_DESTRUCT` の Action として26次元の特徴(寿命消化割合=特徴20 `destructAge`、所有軌跡=特徴21〜23、得点見込みと軌道乖離=特徴24〜25)を計算し、`generateActions`/`selectAction` の共通ロジックで他の FIRE / WAIT 候補と一緒にスコア比較する。年齢・所有量が大きいほど選ばれやすい**傾向を持つかどうかは学習結果次第**であり、規則としては強制しない。詳細は[CPUの盤面観測](#cpuの盤面観測v6)と契約書 §2/§5/§6を参照 |
 
 ### 配置マスの書き込み(発射時の盤面操作)
 
@@ -334,7 +334,7 @@ v5.3〜v5.5 の `attackAvoidBias` / `ATTACK_COLUMN_SAMPLES`(=8列のトーナメ
 
 **攻撃 → 迎撃 → 護衛 → 再迎撃** と重ねるほどトークンを消費するので、どこで降りるかの読み合いになる。
 
-> ⚠️ **v6 での位置づけ**: `escortTable` は「先回りで護衛の候補を生成する情報」に降格した(契約書 §3-5)。CPU に「護衛」という戦術カテゴリは存在しない。護衛由来の FIRE 候補も、通常の攻撃・妨害候補と同じ24次元評価器で他候補と比較され、スコアが勝てば選ばれるだけである。**護衛の候補を生成しても、学習の結果として一度も選ばれない(=使わない)ことは正当な結果として許容する**(旧 `escortBias` のような「使用確率」パラメータは存在しない)。旧実装固有だった「自分の攻撃を撃ったその場で予測予約する」という抱き合わせ処理も、v6 は1判断=1アクションの原則により廃止した(護衛候補が選ばれるのは、それ単独が最高スコアの判断として選ばれたときだけ)。
+> ⚠️ **v6 での位置づけ**: `escortTable` は「先回りで護衛の候補を生成する情報」に降格した(契約書 §3-5)。CPU に「護衛」という戦術カテゴリは存在しない。護衛由来の FIRE 候補も、通常の攻撃・妨害候補と同じ26次元評価器で他候補と比較され、スコアが勝てば選ばれるだけである。**護衛の候補を生成しても、学習の結果として一度も選ばれない(=使わない)ことは正当な結果として許容する**(旧 `escortBias` のような「使用確率」パラメータは存在しない)。旧実装固有だった「自分の攻撃を撃ったその場で予測予約する」という抱き合わせ処理も、v6 は1判断=1アクションの原則により廃止した(護衛候補が選ばれるのは、それ単独が最高スコアの判断として選ばれたときだけ)。
 
 ### 共有盤面とステップ順序
 
@@ -412,10 +412,10 @@ CPU(機能6)は256×256の実盤面を毎判断走査すると学習が終わら
 | `ACTION_COUNTER_MAX` | 8 | `counterTable` 由来の候補上限(全敵アリ合計) |
 | `ACTION_ESCORT_MAX` | 4 | `escortTable` 由来の候補上限(全自軍攻撃アリ合計) |
 | `ACTION_FEATURE_COUNT` | 24 | Action 評価器(線形)の次元数。`data/policy.json` の `weights` の長さと一致 |
-| `FEATURE_SCHEMA_VERSION` | 1 | 24特徴の定義バージョン。定義を変えたら必ず上げる |
+| `FEATURE_SCHEMA_VERSION` | 2 | 26特徴の定義バージョン。定義を変えたら必ず上げる |
 | `BURST_THRESHOLD` | 20 | Reference League `SAVE_AND_BURST` が撃ち始めるトークン閾値。CEM の学習対象ではない |
 
-24次元 Feature Encoder(`encodeFeatures(view, action, ctx)`)の各特徴の定義・範囲は**契約書 §5 が唯一の定義**(本書では二重管理しない)。
+26次元 Feature Encoder(`encodeFeatures(view, action, ctx)`)の各特徴の定義・範囲は**契約書 §5 が唯一の定義**(本書では二重管理しない)。
 
 ## 3. 機能一覧
 
@@ -476,7 +476,7 @@ CPU(機能6)は256×256の実盤面を毎判断走査すると学習が終わら
 
 > **唯一の実装契約は [action-centric-contract.md](action-centric-contract.md)**(以下「契約書」)。engine / cpu / 学習 / 評価 / テストの各実装はこの文書だけを見て書ける。本節はゲームルール文書として矛盾しない範囲で要約し、式・スキーマは契約書へのリンクで済ませる(二重管理しない)。
 
-CPUは**「戦術(どの札がどの札に勝つか)を事前計算テーブルで持ち、戦略(いつ何にトークンを使うか)を自己対戦で学習する」という大枠は維持しつつ**、v5.5までの「固定優先順位のヒューリスティック + カテゴリ別パラメータ」から、**「合法な Action を列挙する `generateActions` → 24次元の線形評価器で選ぶ `selectAction` 」の2段構成**へ全面刷新した(差分仕様 §1〜§20)。実行時の探索はしない(この制約は不変)。
+CPUは**「戦術(どの札がどの札に勝つか)を事前計算テーブルで持ち、戦略(いつ何にトークンを使うか)を自己対戦で学習する」という大枠は維持しつつ**、v5.5までの「固定優先順位のヒューリスティック + カテゴリ別パラメータ」から、**「合法な Action を列挙する `generateActions` → 26次元の線形評価器で選ぶ `selectAction` 」の2段構成**へ全面刷新した(差分仕様 §1〜§20)。実行時の探索はしない(この制約は不変)。
 
 **Action の形**(契約書 §2)。**WAIT / FIRE / SELF_DESTRUCT の3種類のみ**存在する。ATTACK / DEFEND / ESCORT という Action 型は無い(「迎撃」「護衛」は妨害 FIRE の由来を示すログ用ラベルにすぎず、選択規則には使わない)。
 
@@ -490,7 +490,7 @@ CPUは**「戦術(どの札がどの札に勝つか)を事前計算テーブル�
 
 | テーブル | 内容 | v6での位置づけ |
 |---|---|---|
-| `counterTable[攻撃ID]` | その攻撃を止められる `{disruptId, deltaX, fireAtStep, successRate}` の一覧。`deltaX` は「妨害の発射列−攻撃の発射列」の余り | `generateActions` が迎撃由来のFIRE候補を作るための材料。`successRate` は候補の列挙順(降順)にのみ使い、**24特徴には含めない** |
+| `counterTable[攻撃ID]` | その攻撃を止められる `{disruptId, deltaX, fireAtStep, successRate}` の一覧。`deltaX` は「妨害の発射列−攻撃の発射列」の余り | `generateActions` が迎撃由来のFIRE候補を作るための材料。`successRate` は候補の列挙順(降順)にのみ使い、**26特徴には含めない** |
 | `escortTable[攻撃ID][迎撃妨害ID]` | その迎撃を無効化できる `{interceptDeltaX, interceptFireAtStep, escortDisruptId, escortDeltaX, fireAtStep}` の一覧 | `generateActions` が護衛由来のFIRE候補を作るための材料(先回りの予測。敵の迎撃を実際に観測する必要はない) |
 | `identifyTable` | 発射行(`antY`)・向き → 攻撃ID(キーは `"antY,antDir"`。3種は `antY`・向き・役割の組がすべて異なるので1ステップで一意に決まる) | 迎撃候補の起点(`enemyAnt.spawnY,spawnDir` から攻撃IDを特定する)としてのみ使う |
 
@@ -499,8 +499,8 @@ CPUは**「戦術(どの札がどの札に勝つか)を事前計算テーブル�
 - [ ] `data/templates.json` と `data/policy.json` を試合開始前に読み込む。`src/app.js` は `weights: policyData.weights` を CPU へ渡す(旧 `policy` オブジェクトは存在しない)
 - [ ] `src/cpu.js` は `src/engine.js` のシミュレーション関数を一切呼ばない(実行時探索をしないことをコード上の依存関係で担保する)。テンプレートの座標変換(相対→絶対)は `src/template.js` を使う(`engine.js` を経由しない)
 - [ ] `generateActions(view, ctx)` に**固定の戦術優先順位が存在しない**(「敵が来たら迎撃を優先する」等の分岐を持たない。候補を列挙するだけ)
-- [ ] `selectAction` は `score = Σ weights[i]*features[i]` の**24次元線形評価器**で最大スコアの Action を選ぶ。同点は候補配列の添字が小さい方
-- [ ] **24特徴すべてが死に次元ではない**(各特徴について、その次元の重みだけを大きく振ると選ばれる Action の順位が変わる。契約書 §5の凍結表と一致)
+- [ ] `selectAction` は `score = Σ weights[i]*features[i]` の**26次元線形評価器**で最大スコアの Action を選ぶ。同点は候補配列の添字が小さい方
+- [ ] **26特徴すべてが死に次元ではない**(各特徴について、その次元の重みだけを大きく振ると選ばれる Action の順位が変わる。契約書 §5の凍結表と一致)
 - [ ] **飛行中の自軍アリは全部が SELF_DESTRUCT 候補になる**(年齢・残寿命・盤面汚染度による事前フィルタをしない)
 - [ ] CPU は 32×32 の粗視化盤面(`coarseNonWhite`)と自軍アリ別 ownership map(`coarseAntOwned`)を通じて**盤面全体を毎判断観測できる**(局所ではない)
 - [ ] `coarseOwnedByAnt` から求めた `ownedTrailAmount` が、そのアリの消滅時に実際にクリーンアップされるセル数と一致する
@@ -513,7 +513,7 @@ CPUは**「戦術(どの札がどの札に勝つか)を事前計算テーブル�
 
 **学習する方策パラメータ**(`data/policy.json`)
 
-旧11次元の方策パラメータ(`fireThreshold`/`reserveTokens`/`defendBias`/`escortBias`/`attackPref[3]`/`selfDestructBias`/`selfDestructRemainingTicks`/`pollutionDestructWeight`/`attackAvoidBias`)は**すべて廃止**され、**24要素の `weights`(線形評価器の重み)ひとつ**に統合された。24特徴それぞれの名前・範囲・定義は契約書 §5 の凍結表が唯一の定義(本書では複製しない)。
+旧11次元の方策パラメータ(`fireThreshold`/`reserveTokens`/`defendBias`/`escortBias`/`attackPref[3]`/`selfDestructBias`/`selfDestructRemainingTicks`/`pollutionDestructWeight`/`attackAvoidBias`)は**すべて廃止**され、**26要素の `weights`(線形評価器の重み)ひとつ**に統合された。26特徴それぞれの名前・範囲・定義は契約書 §5 の凍結表が唯一の定義(本書では複製しない)。
 
 **Reference League**(`src/reference-policies.js`。契約書 §6)。学習しない固定4方策で、`generateActions` を共有しスコア関数だけ差し替える。CEM の fitness の半分(各12.5%)と、`evaluate-policy.mjs --mode final` の対戦相手に使う。
 
@@ -524,7 +524,7 @@ CPUは**「戦術(どの札がどの札に勝つか)を事前計算テーブル�
 | `SAVE_AND_BURST` | 保有トークンが `BURST_THRESHOLD`(=20)未満なら WAIT。以上なら `ATTACK_ONLY` と同じ |
 | `DEFEND_HEAVY` | `source === 'counter'` の FIRE(迎撃由来)があればそれを採用。無ければ `ATTACK_ONLY` と同じ |
 
-**学習方法**: CPU同士の自己対戦 + CEM法(交差エントロピー法。**24次元 対角ガウス**)。`population=80` / `elite=16` / 1個体40試合(self-play 20 + Reference League 4種×5) / `minGenerations=20` / `maxGenerations=60`。fitness = self-play勝率50% + Reference League平均勝率50%(**特定戦術の使用回数は fitness に入れない**。分析ログとしてのみ記録する)。5世代ごとに held-out validation(400試合/候補)を行い、20世代以降 plateau(直近2checkpointの改善が1ポイント未満)で early stop できる。最終世代の mean を無条件採用せず、`mean`/`bestValidation`/直近世代ベストの複数候補を固定シードで再評価して採用する。`worker_threads` で並列化し、乱数はメインスレッドだけが持ち結果は投入した添字順に集約するので、ワーカー数を変えても出力は一致する。
+**学習方法**: CPU同士の自己対戦 + CEM法(交差エントロピー法。**26次元 対角ガウス**)。`population=80` / `elite=16` / 1個体40試合(self-play 20 + Reference League 4種×5) / `minGenerations=20` / `maxGenerations=60`。fitness = self-play勝率50% + Reference League平均勝率50%(**特定戦術の使用回数は fitness に入れない**。分析ログとしてのみ記録する)。5世代ごとに held-out validation(400試合/候補)を行い、20世代以降 plateau(直近2checkpointの改善が1ポイント未満)で early stop できる。最終世代の mean を無条件採用せず、`mean`/`bestValidation`/直近世代ベストの複数候補を固定シードで再評価して採用する。`worker_threads` で並列化し、乱数はメインスレッドだけが持ち結果は投入した添字順に集約するので、ワーカー数を変えても出力は一致する。
 
 **実測値は「v6 の学習後検証・バランス実測」節**(第8章のあと)にある。
 
@@ -643,7 +643,7 @@ CPUは**「戦術(どの札がどの札に勝つか)を事前計算テーブル�
 | 発射列(`antX`)を選ぶと相対テンプレートが正しく絶対座標へ変換される | `test/template.test.js` の `instantiateTemplate` 単体テスト | 自動 |
 | 32×32粗視化盤面(`coarseNonWhite`)が全体を見られ、band集計・水平カーネルが仕様どおり(§0/§5.2) | `test/coarse-board.test.js` | 自動 |
 | ownership map(`coarseOwnedByAnt`)が踏み直し・自爆・スロット解放で正しく増分更新され、`ownedTrailAmount` が実 cleanup セル数と一致する不変条件(§13/§14/§32) | `test/ownership.test.js` | 自動 |
-| 24次元それぞれの特徴が規定範囲内・死に次元が無い(各次元の重みを振ると選択が変わる)・`encodeFeatures` が決定論 | `test/action-features.test.js` | 自動 |
+| 26次元それぞれの特徴が規定範囲内・死に次元が無い(各次元の重みを振ると選択が変わる)・`encodeFeatures` が決定論 | `test/action-features.test.js` | 自動 |
 | `generateActions` が固定優先順位を持たず、自爆候補に事前フィルタが無く、`scoreReachability=0` の攻撃も候補に残り、`MAX_FLYING` 到達時は FIRE だけ止まる。重複候補が畳まれる(§3・§5・§29・§33) | `test/action-generation.test.js` | 自動 |
 | Reference League 4方策(`ATTACK_ONLY`/`CHEAP_SPAM`/`SAVE_AND_BURST`/`DEFEND_HEAVY`)がそれぞれの規則どおりに選ぶ。fitness配分が self-play 50% + リーグ12.5%×4 = 100% | `test/reference-league.test.js` | 自動 |
 | CPUが戦術を固定順位で選ばず、`weights[i]=1` でその次元に対応する Action(attack/disrupt/self-destruct)が選ばれ、全 `weights=0` で WAIT が選ばれる。同一seed・同一viewで決定が完全に再現する。旧方策パラメータ名がソースに1つも出現しない | `test/cpu.test.js` | 自動 |
@@ -1052,11 +1052,11 @@ CPUは**「戦術(どの札がどの札に勝つか)を事前計算テーブル�
 
 すべて [action-centric-contract.md](action-centric-contract.md) が確定契約。ここでは設計判断の要旨と、契約書 §11 が明記する「仕様書に書かれていない判断」5点をまとめる。
 
-- **CPU に与えるのは「何が合法か・何を観測できるか」までで、「何を選ぶべきか」は与えない**。`generateActions` は合法性・トークン会計・`MAX_FLYING`・候補圧縮だけを行い、「敵が来たから迎撃を優先する」「汚れていない列を選ぶ」といった戦術判断を一切埋め込まない。判断の善し悪しは24次元の特徴が表現し、線形評価器の重みが学習する
+- **CPU に与えるのは「何が合法か・何を観測できるか」までで、「何を選ぶべきか」は与えない**。`generateActions` は合法性・トークン会計・`MAX_FLYING`・候補圧縮だけを行い、「敵が来たから迎撃を優先する」「汚れていない列を選ぶ」といった戦術判断を一切埋め込まない。判断の善し悪しは26次元の特徴が表現し、線形評価器の重みが学習する
 - **Action 型を WAIT / FIRE / SELF_DESTRUCT の3種に絞った**。ATTACK / DEFEND / ESCORT という型を作らないことで、「迎撃」「護衛」は人間が事後的に解釈するラベル(`source` フィールド。ログ専用)に過ぎなくなり、CPU の選択規則からカテゴリの概念そのものを除去した
 - **自爆候補の事前フィルタ(年齢・残寿命・盤面汚染度)を廃止した**。飛行中の自軍アリは全部が候補になり、年齢は特徴(#20 `destructAge`)として評価器に渡るだけにした。「若いアリを自爆させない」という判断も学習結果として許容する
 - **攻撃 FIRE を得点ゲート内だけに限定しない**。得点ゲート外(`scoreReachability=0`)の発射列も候補に残すことで、攻撃アリを妨害・護衛・囮・盤面操作として使う戦略を方策表現から締め出さないようにした
-- **`counterTable`/`escortTable`/`identifyTable` を「候補生成情報」へ降格した**。「その表由来だから優先する」という選択規則を廃止し、`counterTable.successRate` を24特徴から外した(候補の列挙順を決めるためだけに使う)
+- **`counterTable`/`escortTable`/`identifyTable` を「候補生成情報」へ降格した**。「その表由来だから優先する」という選択規則を廃止し、`counterTable.successRate` を26特徴から外した(候補の列挙順を決めるためだけに使う)
 - **1判断=1アクションにした**。旧実装の「自爆してから攻撃」「攻撃と同時に護衛を予約」という抱き合わせ処理は、単一 Action を選ぶという設計に反するため廃止した
 
 契約書 §11 が明記する、仕様書に書かれていない実装判断5点:
@@ -1074,16 +1074,16 @@ CPUは**「戦術(どの札がどの札に勝つか)を事前計算テーブル�
 
 #### §28 性能ベンチマーク(`node scripts/evaluate-policy.mjs --mode bench`)
 
-| 指標 | 新CPU(v6.1) | 旧CPU(v5.5) |
+| 指標 | 新CPU(v6.2) | 旧CPU(v5.5) |
 |---|---:|---:|
-| 試合/秒(自己対戦) | 16.96 | 56.01 |
-| 判断/秒 | 24,267 | 109,262 |
-| 候補 Action 数 平均 / p95 | 15.4 / 24 | – |
-| 特徴生成 / 採点(1判断) | 25.2 µs / 0.8 µs | – |
-| 盤面書き込み | 164,183 回/試合 | – |
-| coarse 更新 / ownership 更新 | 1.49 / 3.12 ns/書き込み(約 0.2 / 0.5 ms/試合) | – |
+| 試合/秒(自己対戦) | 14.76 | 51.45 |
+| 判断/秒 | 22,929 | 100,378 |
+| 候補 Action 数 平均 / p95 | 15.2 / 24 | – |
+| 特徴生成 / 採点(1判断) | 26.6 µs / 0.8 µs | – |
+| 盤面書き込み | 158,470 回/試合 | – |
+| coarse 更新 / ownership 更新 | 1.51 / 3.00 ns/書き込み(約 0.2 / 0.5 ms/試合) | – |
 
-新CPUは旧比 **0.30倍**。差分仕様 §29 の最適化(世代数の削減を含む)は、この速度でも
+新CPUは旧比 **0.29倍**。差分仕様 §29 の最適化(世代数の削減を含む)は、この速度でも
 20世代の学習が**8.6分**で終わるため **不要と判断した**。
 ⚠️ 本学習の**前**に測るのが §28 の要件なので、そのときは `--quick` で軽く学習した仮の重みで
 測った(12.11 試合/秒 / 判断 54,518)。コミットしてある `data/benchmark.json` は、
@@ -1093,8 +1093,8 @@ CPUは**「戦術(どの札がどの札に勝つか)を事前計算テーブル�
 #### 学習(`node scripts/train-policy.mjs`。既定設定・seed=1・22ワーカー)
 
 - **20世代で early stop**(held-out validation plateau)。累計 **69,400試合 / 8.6分**
-- 再現コマンドは**引数なしの既定** `node scripts/train-policy.mjs`(`--seed` の既定が 1)。
-  `--workers` は結果に影響しない(下の再現性の項)
+- ⚠️ **出荷方策の再現コマンドは `node scripts/train-policy.mjs --seed 3`**(既定の seed 1 ではない)。
+  理由は下の「1シードで比較してはいけない」と v6.2 の節。`--workers` は結果に影響しない
 - 最終候補5件を固定シードで再評価し `finalMean` を採用(リーグ平均勝率 0.690)
 - **再現性(差分仕様 §36)**: `--workers` を変えて `--quick --seed 7` を実行し、成果物が
   (実時間と `workers` フィールドを除いて)**バイト単位で一致**することを確認した
@@ -1111,6 +1111,24 @@ CPUは**「戦術(どの札がどの札に勝つか)を事前計算テーブル�
 **60世代まで回しても改善は測定限界以下**で、直接対戦では点推定でむしろ20世代版がわずかに上。
 したがって成果物は「既定コマンドで再現できる20世代版」を採用した
 (この比較は判断周期 670 のときに実施。67 でも early stop は同じく20世代で発火した)。
+
+#### ⚠️ 前提: **1シードの学習結果で方策どうしを比較してはいけない**(v6.2 実測)
+
+同じ設定・シードだけを変えた学習を3本回すと、成果物の強さは次のようにばらつく:
+
+| 26次元・学習シード | リーグ平均勝率 | vs 旧CPU |
+|---|---:|---:|
+| seed 1 | 63.7% | 70.4% |
+| seed 2 | 68.3% | 69.9% |
+| seed 3 | 68.7% | 74.2% |
+
+**シード間の幅がリーグ平均で 5.0pt** あり、評価そのものの標準誤差(500試合×4で約1.1pt)を
+大きく超える。つまり「設定Aと設定Bのどちらが強いか」を各1回の学習で比べると、
+**測っているのは主に CEM の試行差**になる。設定の比較をするときは複数シードの分布で見ること。
+
+⚠️ この前提を踏まえても、下の**判断周期 670 → 67 の改善は本物**と言える:
+67ステップで回した学習4本(24次元 seed1・26次元 seed1/2/3)は旧CPU比が
+**すべて 69.3% 以上**で、670ステップの 63.7% を全本が 5.6pt 以上上回っている。
 
 #### v6.1 判断周期の引き上げ(670 → 67 ステップ ＝ 1秒に1回 → 10回)
 
@@ -1135,27 +1153,44 @@ CPUは**「戦術(どの札がどの札に勝つか)を事前計算テーブル�
 つまりこの変更で増えるのは「発射の機会」ではなく**反応の解像度**であり、
 実際に効いたのも(旧CPU比の伸びが示すとおり)そちらの側面。
 
+#### v6.2 自爆特徴の再設計(24 → 26次元)
+
+`docs/action-centric-contract.md` §5.0 のとおり、`destructTargetWillScore` /
+`destructTargetOffTrack` を追加し、`ownedTrailAmount` の正規化を取り直した。
+
+- **特徴は正しく動いている**: `destructTargetOffTrack` は予測軌道どおりの弾で **0.0156**、
+  人為的にずらした弾で **0.8950**。`ownedTrailAmount` の `|重み|×std` は **0.002 → 0.050**(25倍)。
+  学習も狙いどおり `destructTargetWillScore = −2.14`(＝得点する弾は消すな)を獲得した
+- **ただし自爆の使用回数は依然0**。理由は未決定事項 (k)(自爆が解放するのは飛行枠だが、
+  実際に発射を止めているのはトークン。さらに自分の軌跡は敵弾の盾として働いている)
+- **特徴セットとしての 24次元 vs 26次元は区別できない**(3シード平均でリーグ 66.9% 対
+  24次元1シードの 67.0%)。上の「1シードで比較してはいけない」の実例そのもの
+- 出荷したのは **26次元 seed 3**(2つの独立したシード集合で一貫して最良だった)。
+  再現コマンドは `node scripts/train-policy.mjs --seed 3`(既定の seed 1 ではない)
+
 #### §26 最終評価(`node scripts/evaluate-policy.mjs --mode final`)
+
+出荷方策 = 26次元・`--seed 3`。
 
 | 対戦相手 | 試合数 | 勝率 |
 |---|---:|---:|
-| `ATTACK_ONLY` | 500 | 47.2% |
-| `CHEAP_SPAM` | 500 | 41.6% |
-| `SAVE_AND_BURST` | 500 | 77.4% |
+| `ATTACK_ONLY` | 500 | 50.2% |
+| `CHEAP_SPAM` | 500 | 49.8% |
+| `SAVE_AND_BURST` | 500 | 76.8% |
 | `DEFEND_HEAVY` | 500 | 100.0% |
-| **Reference League 平均** | 2,000 | **66.5%** |
-| **旧CPU(v5.5)** | 1,000 | **70.7%** |
-| 平均得点差 | – | +1.222 |
+| **Reference League 平均** | 2,000 | **69.2%** |
+| **旧CPU(v5.5)** | 1,000 | **71.2%** |
+| 平均得点差 | – | +1.387 |
 
 #### §27 戦術使用ログ(100試合・**fitness には未使用**)
 
-判断 83,470回: WAIT 82,125 / 攻撃FIRE 1,345 / **妨害FIRE 0 / 自爆 0**。テンプレート別 A2=1,337・A1=8・A3=0。
+判断 86,390回: WAIT 85,001 / 攻撃FIRE 1,389 / **妨害FIRE 0 / 自爆 0**。テンプレート別 A2=1,378・A1=11・A3=0。
 
-学習された重みは `isDisruptFire = -0.95` / `isSelfDestruct = -1.47` と明確に負で、
-**妨害も自爆も「使わない方が強い」と学習した**(判断周期 670 のときも同じ符号だった)。
-差分仕様 §27 はこれを「Reference League 勝率が高ければ正当な学習結果」と明記しており、
-リーグ平均 66.5%・旧CPU比 70.7% がその条件を満たす。v5.5 で `defendBias` が 0.012 に収束し
-「迎撃は依然として net で不利」と実測されたことと**独立に一致する**。
+**妨害も自爆も「使わない方が強い」と学習した**(24次元でも26次元でも、判断周期 670 でも 67 でも
+同じ結論に収束する)。差分仕様 §27 はこれを「Reference League 勝率が高ければ正当な学習結果」と
+明記しており、リーグ平均 69.2%・旧CPU比 71.2% がその条件を満たす。v5.5 で `defendBias` が
+0.012 に収束し「迎撃は依然として net で不利」と実測されたことと**独立に一致する**。
+使わない理由の内訳は未決定事項 (h)(妨害)と (k)(自爆)に実測で記録した。
 
 ⚠️ **候補が無いのではなく、選ばれていない**(v6.1・12試合17,052判断で実測):
 
@@ -1181,10 +1216,10 @@ FIRE の由来は generic 6.02件/判断・counter **6.50件/判断**・escort *
 カウンターを持たない攻撃テンプレートの数 0件(同梱表18/18件が再現)        0件(必須)      OK
 攻撃のみ vs 有効な迎撃の突破率 0.0%                            10.0% 以下     OK
 攻撃＋護衛 vs 同じ迎撃の突破率 100.0%                          60.0% 以上     OK
-1試合あたりの総得点(両陣営合計) 7.83                            3点 〜 10点    OK
-平均試合時間          76.4秒                          60秒 〜 200秒  OK
+1試合あたりの総得点(両陣営合計) 7.77                            3点 〜 10点    OK
+平均試合時間          75.8秒                          60秒 〜 200秒  OK
 時間切れ引き分け率    0.0%                            10.0% 以下     OK
-先手勝率(side1)       50.3%                           45.0% 〜 55.0% OK
+先手勝率(side1)       49.6%                           45.0% 〜 55.0% OK
 試合終了時の盤面汚染度 4.5%                            15.0% 以下     OK
 
 合格 10件 / 不合格 1件
@@ -1209,7 +1244,7 @@ FIRE の由来は generic 6.02件/判断・counter **6.50件/判断**・escort *
 
 ### v6 で新たに洗い出した未決定事項
 
-- [ ] **(a) `counterTable.successRate` と実試合の阻止率の乖離**。事前計算した `successRate` は候補の列挙順(降順)にのみ使い24特徴には含めていないが、値自体が実戦条件(盤面の汚れ・他の弾の干渉)を含まないので、表の値が実戦で再現しない可能性は解消していない。差分仕様 §40.1 が「本差分では解決しない」と明記している既知の積み残し
+- [ ] **(a) `counterTable.successRate` と実試合の阻止率の乖離**。事前計算した `successRate` は候補の列挙順(降順)にのみ使い26特徴には含めていないが、値自体が実戦条件(盤面の汚れ・他の弾の干渉)を含まないので、表の値が実戦で再現しない可能性は解消していない。差分仕様 §40.1 が「本差分では解決しない」と明記している既知の積み残し
 - [ ] **(b) optimizer の高度化は別差分**。現行の CEM は対角ガウス(次元間の相関を見ない)。full covariance や CMA-ES、Hall of Fame(過去世代の強い個体をアンカーに混ぜる)といった高度化は差分仕様 §40.2 が別差分としており、本差分では着手しない
 - [ ] **(c) coarse 解像度の比較は未着手**。32×32(`COARSE_SIZE`)と、より高解像度な64×64との比較は差分仕様 §40.3 が「第一版は32×32固定」としており、学習品質・計算コストのトレードオフは未測定
 - [ ] **(d) 特徴7 `robustness` の学習信号が弱い**。実データの範囲が 0.9970〜0.9976 とほぼ定数(攻撃3種の値がここに集まっている)ため、この次元の重みが実際の判断にどれだけ寄与しているかは未測定。テンプレートの役割構成(Speed/Economy/Robust)を変えない限りこの次元は狭いレンジのまま動かない可能性がある
@@ -1263,8 +1298,40 @@ FIRE の由来は generic 6.02件/判断・counter **6.50件/判断**・escort *
          FIRE 候補にしか値を持たず、飛行中のアリの絶対的な前進度は `ownedTrailCentroidY` から
          間接的に漏れるだけ。評価器は「もう詰んだアリ」と「あと少しで得点するアリ」を区別できない
 
-      直すには特徴側の追加(飛行中アリの得点見込み)か、20〜23 の向きの再設計が要る。
-      いずれも**バランスに関わる変更**なので、再学習(約9分)＋5,000試合の再検証がセットで必要
+      **v6.2 で特徴を追加して対処を試みた**(`destructTargetWillScore` / `destructTargetOffTrack`。
+      契約書 §5.0)。学習は狙いどおり `destructTargetWillScore = −2.14`(＝得点する弾は消すな)を
+      獲得したが、**自爆の使用回数は依然0**だった。理由は下の (k)。
+
+- [ ] **(k) 自爆には「使う価値のある局面」がゲーム経済の側にほぼ存在しない**(実測)。
+      自爆が解放するのは**飛行枠**だが、実際に発射を止めているのは**トークン**である。
+      判断15,894回の内訳:
+
+      | 状態 | 割合 |
+      |---|---:|
+      | トークン不足で攻撃を出せない(**自爆しても解決しない**) | **86.5%** |
+      | 飛行枠が満杯で FIRE 不可 | 11.9% |
+      | └ うち**自爆すれば実際に撃てる**(トークンも足りている) | **1.2%** |
+      | 攻撃を出せる状態 | 1.6% |
+
+      さらに、**「相手の得点を防ぐための自爆」は機構としては存在するが、実測では逆効果**。
+      自爆は自分の軌跡(`lastToucher` が自分のセル)を白に戻すので、盤面共有の性質上、
+      敵弾の以後の軌道を変えうる。同じ試合を「自爆する/しない」だけで分岐させて比較した結果
+      (敵攻撃3種 × 自分の攻撃3種 × 相対発射列 dx=−32..32 の33点 × 自爆タイミング5点 = 1,485通り。
+      ベースラインでは敵が 92.6% 得点する条件):
+
+      | 自爆の因果効果 | 件数 |
+      |---|---:|
+      | 敵の得点が変わらない | 1,406(94.7%) |
+      | **得点を防げた** | **1** |
+      | **逆に通してしまった** | **78** |
+
+      つまり**自分の軌跡そのものが敵弾を止める盾になっており**、自爆でそれを消すと敵を通す。
+      防御目的の自爆は**敵を助ける方向に約78倍傾いている**。
+      ⚠️ したがって「自爆を使わない」は、攻撃の自己破壊を避けるためだけでなく
+      **盤面上の盾を残すためにも正しい**。⚠️ この結論は自爆機能を削ってよいという意味では
+      **ない**(候補は無条件で全飛行アリに出続けており、経済やルールが変われば同じ評価器が
+      使い始められる)。自爆を意味のある選択肢にしたいなら、特徴ではなく
+      **飛行枠とトークンのどちらを希少資源にするか**というゲーム設計側の問題になる
 
 - [ ] **(j) 特徴の「正規化レンジ」と「実戦での実効レンジ」が大きく食い違う**(217,061候補で実測)。
       契約書 §5 はすべての特徴を [0,1] または [−1,1] に正規化しているが、実戦で実際に動く幅は

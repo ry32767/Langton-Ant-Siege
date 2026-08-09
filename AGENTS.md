@@ -7,7 +7,7 @@
 - **AGENTS.md**(このファイル)：作業規約・コマンド・検証ループ・ドキュメント同期規約。
 - **CLAUDE.md**(直下)：Claude Code 固有の補足のみ(このファイルを読み込む薄いラッパ)。
 - **docs/**：`spec.md`(ゲームルール・受け入れ条件=合格ライン)、`README.md`(索引)、`data-model.md`、`architecture.md`。
-- **docs/action-centric-contract.md**：v6 の CPU 実装契約。view の追加フィールド・Action の形・**24次元 Feature Encoder の凍結表**・Reference League・`data/policy.json` の新スキーマ。**CPU/学習/評価に触るなら spec.md より先にこれを読む**(名前と式が一字一句ここで決まっている)。
+- **docs/action-centric-contract.md**：v6 の CPU 実装契約。view の追加フィールド・Action の形・**26次元 Feature Encoder の凍結表**・Reference League・`data/policy.json` の新スキーマ。**CPU/学習/評価に触るなら spec.md より先にこれを読む**(名前と式が一字一句ここで決まっている)。
 - **REVIEW.md**(直下)：実測レビュー(v1本編 + 付録B/C/D/E)。現仕様の制約の根拠。**ルールを変えたくなったら先にこれを読む。**
 - **verify-v3/ verify-highway/**：REVIEW.md の数値を出した検証スクリプト。**仕様の曖昧な箇所は、まずここを読んで挙動を確認する**(REVIEW.md の全数値はこのコードの出力なので、これが事実上の実行可能な仕様書になっている)。
 
@@ -33,7 +33,7 @@ node scripts/generate-templates.mjs --seed 1 --iterations 4200000   # 上の成�
 node scripts/tune-attack-life.mjs            # 探索アーカイブから ATTACK_LIFE の候補を掃引して比較
 node scripts/generate-templates.mjs --resume-archive data/search-archive.json  # ①を省略して②〜⑤だけ再実行
 node scripts/evaluate-policy.mjs --mode bench              # ★学習の**前**に必須。性能ベンチ(v6 §28)→ data/benchmark.json
-node scripts/train-policy.mjs                # 24次元 Action 評価器を CEM で学習 → data/policy.json(数十分)
+node scripts/train-policy.mjs                # 26次元 Action 評価器を CEM で学習 → data/policy.json(数十分)
 node scripts/train-policy.mjs --quick --out /tmp/policy-check.json  # 学習の通し確認(数分。本番設定ではない)
 node scripts/evaluate-policy.mjs --mode final             # ★学習の**後**。リーグ2,000試合＋旧CPU1,000試合(v6 §26)
 node scripts/simulate-matches.mjs --games 5000            # バランス検証(得点率・HW割合・盤面汚染度・先手勝率)

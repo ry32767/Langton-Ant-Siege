@@ -25,7 +25,7 @@
 > 最終選抜が役割別(Speed/Economy/Robust × Cheap/General/Complement)に変更。
 >
 > v6 で **CPU のデータモデルが全面刷新**された。旧11次元の方策ベクトル(`policy` オブジェクト)は廃止され、
-> `data/policy.json` は **24要素の `weights` 配列(線形評価器の重み)ひとつ**を唯一の方策として持つ。
+> `data/policy.json` は **26要素の `weights` 配列(線形評価器の重み)ひとつ**を唯一の方策として持つ。
 > `src/engine.js` に **32×32粗視化盤面**(`coarseNonWhite`/`coarseOwnedBySide`)と**自軍アリ別 ownership map**
 > (`coarseOwnedByAnt`/`antSlotOccupant`/`lastToucherSlot`)が増分更新で追加され、Ant に `slot` が加わった。
 > CPU の Action は **WAIT / FIRE / SELF_DESTRUCT** の3種のみになった。全スキーマの唯一の正は
@@ -165,7 +165,7 @@ CPU が盤面を観測できるようにするため、`createMatch` の内部�
 
 ⚠️ **重要**: view は学習1回で約4,600万回作られるので、(a)コピーを1回でも挟むと学習が終わらない、(b)利用側が毎判断で全65,536セルを走査しても同様に破綻する。「どの列が汚れているか」を知りたいだけなら **`columnNonWhite` を使うこと**。参照渡しなので読み取り専用として扱う。engine 側は `createMatch` が `nonWhiteColumn`(長さ WIDTH の `Int32Array`)を持ち、`fire()` / `stepAnt()` / `cleanupAnt()` がセル値の「0 ↔ 0以外」の跨ぎだけで増分更新する。
 
-> ⚠️ **v6 での位置づけ**: `boardPollution` / `myZonePollution` / `enemyZonePollution` / `columnNonWhite` は `src/engine.js` の `createSideView` から**引き続き公開されている**(削除していない)が、v6 の `src/cpu.js`(24次元 Action 評価器)はこれらを**一切参照しない**。現在これらを読むのは `src/cpu-legacy.js`(凍結した v5.5 の旧CPU。`scripts/evaluate-policy.mjs --mode final` が対戦相手として使う)だけである。v6 の盤面認識は次の「32×32粗視化盤面とownershipマップ」に置き換わった。
+> ⚠️ **v6 での位置づけ**: `boardPollution` / `myZonePollution` / `enemyZonePollution` / `columnNonWhite` は `src/engine.js` の `createSideView` から**引き続き公開されている**(削除していない)が、v6 の `src/cpu.js`(26次元 Action 評価器)はこれらを**一切参照しない**。現在これらを読むのは `src/cpu-legacy.js`(凍結した v5.5 の旧CPU。`scripts/evaluate-policy.mjs --mode final` が対戦相手として使う)だけである。v6 の盤面認識は次の「32×32粗視化盤面とownershipマップ」に置き換わった。
 
 ### 32×32粗視化盤面とownershipマップ(v6)
 
@@ -637,7 +637,7 @@ MAP-Elites 探索アーカイブのデバッグ・再現性確保用ダンプ。
 >
 > `escortTable` の `fireAtStep` も同じく「**自分の**攻撃アリが発射されたステップ」からの相対。`interceptDeltaX`/`interceptFireAtStep` は「その護衛が対応する迎撃」がどの deltaX・タイミングで来た場合かを表す。
 
-> ⚠️ **v6 での位置づけ**: これらのテーブルは `generateActions`(下記「Action」参照)が候補を作るための材料に降格した(契約書 §9)。「テーブル由来だから優先する」という選択規則は無い。`counterTable.successRate` は候補の列挙順(降順)を決めるためだけに使い、24次元の特徴には含めない。
+> ⚠️ **v6 での位置づけ**: これらのテーブルは `generateActions`(下記「Action」参照)が候補を作るための材料に降格した(契約書 §9)。「テーブル由来だから優先する」という選択規則は無い。`counterTable.successRate` は候補の列挙順(降順)を決めるためだけに使い、26次元の特徴には含めない。
 
 ## Action(v6)
 
@@ -663,11 +663,11 @@ CPU(機能6)の意思決定単位。**唯一の実装契約は [action-centric-c
 { type: 'SELF_DESTRUCT', antId: number, slot: number, ant: object }
 ```
 
-`type` に `ATTACK`/`DEFEND`/`ESCORT` は存在しない。`generateActions(view, ctx)` が合法な Action を列挙し(戦術判断はしない)、`selectAction(view, actions, ctx)` が `score = Σ weights[i]*features[i]` の24次元線形評価器で最大スコアを選ぶ(同点は候補配列の添字が小さい方)。24特徴それぞれの名前・範囲・定義は契約書 §5 の凍結表が唯一の定義(本書では複製しない)。
+`type` に `ATTACK`/`DEFEND`/`ESCORT` は存在しない。`generateActions(view, ctx)` が合法な Action を列挙し(戦術判断はしない)、`selectAction(view, actions, ctx)` が `score = Σ weights[i]*features[i]` の26次元線形評価器で最大スコアを選ぶ(同点は候補配列の添字が小さい方)。26特徴それぞれの名前・範囲・定義は契約書 §5 の凍結表が唯一の定義(本書では複製しない)。
 
 ## data/policy.json(v6で全面差し替え)
 
-**唯一の実装契約は [action-centric-contract.md](action-centric-contract.md) §7**。旧11次元の `policy` オブジェクト(`fireThreshold`/`reserveTokens`/`defendBias`/`escortBias`/`attackPref`/`selfDestructBias`/`selfDestructRemainingTicks`/`pollutionDestructWeight`/`attackAvoidBias`)は**廃止**され、トップレベルの `weights`(24要素の配列)だけが方策の実体になった。旧スキーマと新スキーマを**混在させない**。
+**唯一の実装契約は [action-centric-contract.md](action-centric-contract.md) §7**。旧11次元の `policy` オブジェクト(`fireThreshold`/`reserveTokens`/`defendBias`/`escortBias`/`attackPref`/`selfDestructBias`/`selfDestructRemainingTicks`/`pollutionDestructWeight`/`attackAvoidBias`)は**廃止**され、トップレベルの `weights`(26要素の配列)だけが方策の実体になった。旧スキーマと新スキーマを**混在させない**。
 
 ```json
 {
@@ -680,7 +680,7 @@ CPU(機能6)の意思決定単位。**唯一の実装契約は [action-centric-c
   "earlyStopReason": null,
   "seed": 1, "workers": 22, "matches": 0,
   "selectedCandidate": "mean|bestValidation|gen<N>Best",
-  "weights": [ 0, 0, "…(24要素)…", 0 ],
+  "weights": [ 0, 0, "…(26要素)…", 0 ],
   "evaluation": {
     "referenceLeagueAverageWinRate": 0, "winRateVsAttackOnly": 0,
     "winRateVsCheapSpam": 0, "winRateVsSaveAndBurst": 0,
@@ -700,7 +700,7 @@ CPU(機能6)の意思決定単位。**唯一の実装契約は [action-centric-c
 
 | フィールド | 意味 |
 |---|---|
-| `weights[24]` | **方策の実体**。24次元線形評価器の重み。`score(action) = Σ weights[i]*features[i]`。特徴の名前・範囲・定義は契約書 §5 が唯一の定義 |
+| `weights[26]` | **方策の実体**。26次元線形評価器の重み。`score(action) = Σ weights[i]*features[i]`。特徴の名前・範囲・定義は契約書 §5 が唯一の定義 |
 | `method` | 常に `"CEM_ACTION_CENTRIC"`(旧スキーマと区別するための識別子) |
 | `featureSchemaVersion` | 契約書 §5 の特徴定義のバージョン。定義を変えたら上げる(`C.FEATURE_SCHEMA_VERSION`) |
 | `population`/`elite`/`gamesPerIndividual`/`minGenerations`/`maxGenerations`/`actualGenerations`/`earlyStopReason` | CEM の学習設定と実際の打ち切り理由(契約書 §8) |
@@ -714,7 +714,7 @@ CPU(機能6)の意思決定単位。**唯一の実装契約は [action-centric-c
 
 `src/cpu.js` の `createCpuAgent({ templates, weights, rng, scheduleFire, selfDestruct, observe })` は `weights` を受け取る(`policy` という引数名は使わない。旧スキーマとの取り違え防止)。`src/app.js` は `weights: policyData.weights` を渡す。
 
-学習は CEM法(交差エントロピー法。**24次元 対角ガウス**)による自己対戦 + 固定 Reference League(`src/reference-policies.js` の4方策)。詳細な予算・fitness配分・early stop条件は契約書 §8、[spec.md](spec.md) 機能6を参照(本書では複製しない)。
+学習は CEM法(交差エントロピー法。**26次元 対角ガウス**)による自己対戦 + 固定 Reference League(`src/reference-policies.js` の4方策)。詳細な予算・fitness配分・early stop条件は契約書 §8、[spec.md](spec.md) 機能6を参照(本書では複製しない)。
 
 > ⚠️ 上のJSON中の `0`/`null` は**形式を示すプレースホルダ**であり実在の学習結果ではない。実際に入っている値は
 > `node scripts/train-policy.mjs` → `node scripts/evaluate-policy.mjs --mode final` の実行結果で、

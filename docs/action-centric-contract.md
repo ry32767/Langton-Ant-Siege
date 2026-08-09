@@ -204,9 +204,9 @@ WAIT が勝つ(§4)。`rng` は特徴計算・スコア計算に**一切使わ�
 
 ---
 
-## 5. 24次元 Feature Encoder(凍結)
+## 5. 26次元 Feature Encoder(凍結)
 
-`encodeFeatures(view, action, ctx) -> Float64Array(24)`。**完全決定論・乱数不使用**。
+`encodeFeatures(view, action, ctx) -> Float64Array(26)`。**完全決定論・乱数不使用**。
 `WAIT` には呼ばない。すべて下表の範囲に収まること(テストで検査)。
 
 | # | 名前 | 範囲 | 定義 |
@@ -227,9 +227,49 @@ WAIT が勝つ(§4)。`rng` は特徴計算・スコア計算に**一切使わ�
 | 18 | `allyNearAnchor` | [0,1] | 下記 |
 | 19 | `allyForwardPresence` | [0,1] | 下記 |
 | 20 | `destructAge` | [0,1] | SELF_DESTRUCT のみ。`clamp(ant.steps / ant.life, 0, 1)` |
-| 21 | `ownedTrailAmount` | [0,1] | SELF_DESTRUCT のみ。`ownedCellCount / C.CELL_COUNT` |
+| 21 | `ownedTrailAmount` | [0,1] | SELF_DESTRUCT のみ。`clamp(ownedCellCount / C.OWNED_TRAIL_SCALE_CELLS, 0, 1)`。**v6.2 で `CELL_COUNT` 割りから変更**(下記) |
 | 22 | `ownedTrailCentroidY` | [0,1] | SELF_DESTRUCT のみ。所有セルのローカルY重心 /(HEIGHT-1)。0=自陣側。所有0なら 0 |
 | 23 | `ownedTrailSpread` | [0,1] | SELF_DESTRUCT のみ。下記。所有0なら 0 |
+| 24 | `destructTargetWillScore` | {0,1} | **v6.2 で追加**。SELF_DESTRUCT のみ。対象アリの発射列が得点ゲートに届く列か(`launchColumnScores(tpl, ant.spawnX)`)。#6 の飛行中アリ版 |
+| 25 | `destructTargetOffTrack` | [0,1] | **v6.2 で追加**。SELF_DESTRUCT のみ。ハイウェイ予測軌道からの乖離。下記 |
+
+### 5.0 v6.2 で 24 → 26 次元にした理由(差分仕様 §18 からの意図的な逸脱)
+
+v6.1 までの自爆特徴(#20〜23)は「軌跡の年齢・量・重心・広がり」しか見ておらず、
+どれも古いアリほど大きくなる量ばかりだった。学習された重みはそれらを減点する向きになり、
+**自爆スコアの argmax が常にいちばん新しいアリ**になっていた。強制的に自爆させると
+480件すべてが「撃った直後の自軍攻撃アリ」を対象にし、1試合の合計得点が 8.00 → 0.00 になる
+(`docs/spec.md` 未決定事項 (i) の実測)。評価器が「もう詰んだアリ」と
+「あと少しで得点するアリ」を区別する材料を持っていないのが原因。
+
+そこで**観測を2つ足す**。⚠️ 足したのは観測であって戦術の教示ではない
+(差分仕様 §41 が人間の担当としている「何を観測できるか」の範囲)。
+「得点しそうなら自爆するな」という規則はコードのどこにも書かない — 2つの値を並べて渡すだけで、
+どう使うかは重みが決める(`willScore` に正の重みが乗れば「得点しそうな弾を消す」方策も
+表現できる。良し悪しは学習が決める)。
+
+⚠️ **どちらも実行時シミュレーションをしない**。事前計算済みのテンプレート情報だけを使う O(1)。
+
+```
+willScore = launchColumnScores(template, ant.spawnX) ? 1 : 0
+
+// ハイウェイの予測位置(template.highway が無い妨害テンプレートは offTrack = 0)
+cycles = max(0, ant.steps - highway.formationStep) / highway.period
+predY  = ant.spawnY + highway.driftY * cycles
+predX  = ant.spawnX + highway.driftX * cycles
+offTrack = clamp(hypot(toroidalDistance(wrapX(predX), ant.x), |ant.y - predY|)
+                 / C.OFFTRACK_SCALE_ROWS, 0, 1)
+```
+
+この2つの**論理積**が今まで表現できなかった情報にあたる:
+「得点する列から撃った」かつ「もう軌道を外れた」＝ 回収してよいアリ。
+
+**`ownedTrailAmount`(#21)の正規化も同時に取り直した。** 差分仕様 §21 は
+`ownedCellCount / CELL_COUNT` としているが、実測(217,061候補)では**最大 0.0346**にしか
+ならず `|重み|×std` が 0.002 と実質的な死に次元だった。`C.OWNED_TRAIL_SCALE_CELLS`
+(= `ATTACK_LIFE / 8` = 2,500)で割ると実測最大が 0.91 になり [0,1] をほぼ使い切る。
+⚠️ **§32 のテスト(「`ownedTrailAmount` は実 cleanup セル数と一致する」)はこのスケールに
+追随させること**(`ownedTrailAmount × OWNED_TRAIL_SCALE_CELLS` が cleanup セル数)。
 
 ### 5.1 anchor(§17.2 / §17.3 共通)
 
@@ -345,12 +385,12 @@ export const BURST_THRESHOLD = 20; // SAVE_AND_BURST 専用の固定値。CEM �
 {
   "trainedAt": "...",
   "method": "CEM_ACTION_CENTRIC",
-  "featureSchemaVersion": 1,
-  "dimensions": 24,
+  "featureSchemaVersion": 2,
+  "dimensions": 26,
   "population": 80, "elite": 16, "gamesPerIndividual": 40,
   "minGenerations": 20, "maxGenerations": 60, "actualGenerations": 0,
   "seed": 1,
-  "weights": [ /* 24要素。これが唯一の方策 */ ],
+  "weights": [ /* 26要素。これが唯一の方策 */ ],
   "evaluation": {
     "referenceLeagueAverageWinRate": 0, "winRateVsAttackOnly": 0,
     "winRateVsCheapSpam": 0, "winRateVsSaveAndBurst": 0,
@@ -379,9 +419,9 @@ export const BURST_THRESHOLD = 20; // SAVE_AND_BURST 専用の固定値。CEM �
 
 ## 8. 学習(`scripts/train-policy.mjs`)
 
-- 24次元 対角ガウス CEM。`population=80` / `elite=16` / `gamesPerIndividual=40` /
+- 26次元 対角ガウス CEM。`population=80` / `elite=16` / `gamesPerIndividual=40` /
   `minGenerations=20` / `maxGenerations=60`。
-- 初期分布: `mean = 0`(24次元すべて)、`std = 1`。重みはクランプしない(スケール自由)。
+- 初期分布: `mean = 0`(26次元すべて)、`std = 1`。重みはクランプしない(スケール自由)。
   ただし `MIN_STD = 0.05` を下限にする。
 - 1個体40試合の配分(§22): self-play 20 + 各リーグ 5×4。
 - fitness = `0.5 * selfPlayWinRate + 0.5 * mean(4リーグの winRate) + 0.01 * avgScoreDiff`。
@@ -415,7 +455,7 @@ export const BURST_THRESHOLD = 20; // SAVE_AND_BURST 専用の固定値。CEM �
 |---|---|
 | `test/coarse-board.test.js` | §31。全32×32が見える / band 変化 / anchorX でカーネルが変わる / X wrap 連続 / side1 のローカルY向きが side0 と一致 |
 | `test/ownership.test.js` | §32。A→B の踏み直しで所有が移る / A自爆でそのセルは消えない / `ownedTrailAmount` = 実 cleanup セル数 / スロット解放 / 不変条件 |
-| `test/action-features.test.js` | §30 死に次元(24次元すべてで `weight=±W` が順位を変える) / 全特徴が規定範囲内 |
+| `test/action-features.test.js` | §30 死に次元(26次元すべてで `weight=±W` が順位を変える) / 全特徴が規定範囲内 |
 | `test/action-generation.test.js` | §33 自爆候補(若いアリも候補・`destructAge` は候補生成に影響しない・ownership 0 でも候補) / §5(`scoreReachability=0` の攻撃も候補に残る) |
 | `test/cpu.test.js` | §34 戦術非固定(4種すべてが weights 次第で選ばれる)/ 固定優先順位が無い / engine を import していない / 再現性 |
 | `test/reference-league.test.js` | §35。4方策が決定論・世代非依存・CEM非参照 / fitness 配分 50 + 12.5×4 = 100% |
@@ -427,7 +467,7 @@ export const BURST_THRESHOLD = 20; // SAVE_AND_BURST 専用の固定値。CEM �
 ## 11. この契約で明示的に決めた「仕様書に書かれていない」判断
 
 1. **発射列のサンプリング**(§5 の「候補数制御上の上限内」の解釈): 得点ゲート内から4列・
-   ゲート外から2列を **match RNG で一様に**引く。順位付けは24特徴に任せる。
+   ゲート外から2列を **match RNG で一様に**引く。順位付けは26特徴に任せる。
    旧 `chooseAttackColumn` の汚染回避ヒューリスティクスは戦術の直接教示なので移植しない(§41)。
 2. **1判断=1アクション**。旧実装の「自爆してから攻撃」「攻撃と同時に護衛を予約」という
    抱き合わせは廃止する(§3 の単一 Action 選択に反するため)。

@@ -7,8 +7,8 @@
 > `src/search/*` の一部が未配線だったが、v5で解消した)。探索は `worker_threads` で並列化されている。
 >
 > v6 で **CPU の意思決定部分を Action-Centric に全面刷新**した(下記「v6 CPU の Action-Centric 化」参照)。
-> `src/cpu.js` が「固定優先順位のヒューリスティック」から「候補生成(`generateActions`) + 24次元線形評価器
-> (`selectAction`)」の2段構成になり、`scripts/train-policy.mjs` は24次元 CEM + 固定 Reference League
+> `src/cpu.js` が「固定優先順位のヒューリスティック」から「候補生成(`generateActions`) + 26次元線形評価器
+> (`selectAction`)」の2段構成になり、`scripts/train-policy.mjs` は26次元 CEM + 固定 Reference League
 > (`src/reference-policies.js`)で学習するようになった。`scripts/evaluate-policy.mjs` を新設し、
 > 学習前の性能計測(`--mode bench`)と学習後の最終評価(`--mode final`。旧CPU `src/cpu-legacy.js` +
 > `data/policy-v55.json` との対戦を含む)を担う。唯一の実装契約は
@@ -33,7 +33,7 @@ flowchart TB
         Archive --> Tune["scripts/tune-attack-life.mjs<br/>ATTACK_LIFE候補の掃引"]
         Tpl --> Bench["scripts/evaluate-policy.mjs --mode bench<br/>(v6。CEM本学習前の性能計測)"]
         Bench --> BenchJson["data/benchmark.json"]
-        Tpl --> Train["scripts/train-policy.mjs<br/>24次元CEM + Reference League(v6)"]
+        Tpl --> Train["scripts/train-policy.mjs<br/>26次元CEM + Reference League(v6)"]
         BenchJson --> Train
         Ref["src/reference-policies.js<br/>ATTACK_ONLY/CHEAP_SPAM/<br/>SAVE_AND_BURST/DEFEND_HEAVY"] --> Train
         Train --> Pol["data/policy.json"]
@@ -48,7 +48,7 @@ flowchart TB
     subgraph runtime["実行時ブラウザ"]
         App -->|攻撃/妨害タブで3種ずつ役割別表示(v5.5)| UI["プレイヤーの選択"]
         UI -->|発射列antXを選ぶ| Tmpl["src/template.js<br/>instantiateTemplate"]
-        App -->|weights(24次元)を適用(v6)| CPU["src/cpu.js<br/>generateActions→selectAction"]
+        App -->|weights(26次元)を適用(v6)| CPU["src/cpu.js<br/>generateActions→selectAction"]
         CPU --> Tmpl
         App --> Engine["src/engine.js<br/>(32×32粗視化盤面+ownership map)"]
         Tmpl --> Engine
@@ -109,8 +109,8 @@ MAP-Elites 探索用の型・変異・アーカイブ・評価・検出・蒸留
 | 盤面のクリーンアップ | `lastToucher` が一致するマスと自分の配置マスだけを白に戻す。**v5: 全盤面走査ではなく `ant.touched`(踏んだマスのインデックス列)だけを走査する(結果は同値)** | 複数アリが同じマスを踏み合うため、単純な一括クリアだと他のアリの軌跡を壊す。盤面が65,536マスになったため全盤面走査は性能上ボトルネックになった | 一括クリア(他のアリの状態が壊れる) / クリアしない(汚れが蓄積し予測値が無意味になる) / 全盤面走査のまま(v5では性能不足) |
 | 陣営の座標系 | side1 ローカル座標に正規化し、side2 は `yGlobal = HEIGHT - 1 - yLocal`(v5: `255 - yLocal`)で鏡像変換(x は共有トーラス軸なので変換しない、向きは up⇄down を入れ替え) | テンプレート集を1つだけ持てばよく、エンジンも片側分のロジックで済む | 陣営ごとに別生成(生成時間もファイルサイズも倍) |
 | テンプレートの座標変換の置き場所 | **v5: `src/template.js` に独立させた(`instantiateTemplate`)** | `src/cpu.js` は `src/engine.js` を import してはいけない(実行時オンライン探索をしないことを依存関係で担保するため)。発射列可変化に伴い CPU/UI/オフラインスクリプトすべてが「相対テンプレート→絶対座標」の変換を必要とするようになったので、これを engine から独立させて共有した | `engine.js` に置く(cpu.js が engine.js を import せざるを得なくなる) / cpu.js と app.js で別々に実装(ズレのリスク) |
-| CPUの構成 | **v6: 候補生成(`generateActions`)/選択(24次元線形評価器 `selectAction`)の2段構成**。事前計算テーブル(カウンター表・護衛表・識別表)は「候補生成の材料」に降格し、選択規則には使わない | v5.5までの「戦術=テーブル固定 / 戦略=カテゴリ別パラメータ」構成は、固定優先順位(`tryDefend ?? tryEscort ?? tryAttack`)を人間が決めていた。v6はこれを廃し、「何が合法か・何を観測できるか」だけを人間が与え、「何を選ぶべきか」は24次元の重みに学習させる(差分仕様 §41)。詳細は [action-centric-contract.md](action-centric-contract.md) | 全部を学習させる(状態空間が無駄に大きい) / 全部を手書きヒューリスティックにする(調整が終わらない) / 固定優先順位のヒューリスティック(v5.5までの構成。人間が戦術を教示してしまう) |
-| CPUの学習手法 | **v6: 24次元 対角ガウス CEM**による自己対戦 + 固定 Reference League(4方策) | 24次元は線形評価器の重みなので勾配不要。fitness は self-play 50% + Reference League平均50%(単一固定アンカーは廃止)。1世代の中は共通乱数(CRN)で揃え、5世代ごとの held-out validation で収束を判定する(固定世代数での打ち切りをやめた)。詳細は spec.md 機能6・決定事項、契約書 §8 参照。実測(seed=1・22ワーカー): **20世代で early stop・69,400試合・4.2分**(旧CPUは v5.2 時点で約115試合/秒・96,200試合で約14分だった)。early stop 無効で60世代まで回した比較版とはリーグ平均勝率で有意差が出なかった(spec.md「v6 の学習後検証・バランス実測」) | 強化学習(この規模では過剰。Phase 2) / 単一固定アンカーとの勝率のみをfitnessにする(v5.5までの構成。アンカーの性質にfitnessが歪む問題があった) |
+| CPUの構成 | **v6: 候補生成(`generateActions`)/選択(26次元線形評価器 `selectAction`)の2段構成**。事前計算テーブル(カウンター表・護衛表・識別表)は「候補生成の材料」に降格し、選択規則には使わない | v5.5までの「戦術=テーブル固定 / 戦略=カテゴリ別パラメータ」構成は、固定優先順位(`tryDefend ?? tryEscort ?? tryAttack`)を人間が決めていた。v6はこれを廃し、「何が合法か・何を観測できるか」だけを人間が与え、「何を選ぶべきか」は26次元の重みに学習させる(差分仕様 §41)。詳細は [action-centric-contract.md](action-centric-contract.md) | 全部を学習させる(状態空間が無駄に大きい) / 全部を手書きヒューリスティックにする(調整が終わらない) / 固定優先順位のヒューリスティック(v5.5までの構成。人間が戦術を教示してしまう) |
+| CPUの学習手法 | **v6: 26次元 対角ガウス CEM**(v6.0 は24次元、v6.2 で自爆特徴を2つ追加)による自己対戦 + 固定 Reference League(4方策) | 重みは線形評価器の係数なので勾配不要。fitness は self-play 50% + Reference League平均50%(単一固定アンカーは廃止)。1世代の中は共通乱数(CRN)で揃え、5世代ごとの held-out validation で収束を判定する(固定世代数での打ち切りをやめた)。詳細は spec.md 機能6・決定事項、契約書 §8 参照。実測(22ワーカー): **20世代で early stop・69,400試合**(判断周期670で4.2分 / 67で8.6分)(旧CPUは v5.2 時点で約115試合/秒・96,200試合で約14分だった)。early stop 無効で60世代まで回した比較版とはリーグ平均勝率で有意差が出なかった(spec.md「v6 の学習後検証・バランス実測」) | 強化学習(この規模では過剰。Phase 2) / 単一固定アンカーとの勝率のみをfitnessにする(v5.5までの構成。アンカーの性質にfitnessが歪む問題があった) |
 | 探索の並列化 | **v5: `worker_threads` によるバッチ並列**(`scripts/lib/worker-pool.mjs`)。乱数はメインスレッドのみ、結果は投入順に挿入し決定論を保つ | オフライン探索(数百万〜数千万評価)は評価が独立なので並列化の効果が大きい。ブラウザ実行時のマルチスレッド(下記 Web Worker)とは別の話 | シングルスレッドのまま(v4以前。探索時間が線形に伸びる) |
 | ランタイムの Web Worker | **不採用**(実行時ブラウザは単一スレッド) | 実行時はテーブル参照のみで軽量。v4実測で1アリ1ステップあたり0.001ms未満(v5盤面での再計測は未実施)。⚠️ これは**ブラウザ実行時**の話であり、上記「探索の並列化」(開発時オフラインの `worker_threads`)とは別レイヤーの判断 | 採用(実行時にオンライン探索する設計を選んだ場合は必要) |
 | ホスティング | GitHub Pages(静的配信) | ビルド不要・無料・要件を満たす | サーバーサイド構成(この規模では過剰) |
@@ -128,8 +128,8 @@ MAP-Elites 探索用の型・変異・アーカイブ・評価・検出・蒸留
 具体的には:
 
 - `generateActions(view, ctx)` が担当するのは**合法性・トークン会計・`MAX_FLYING` の空き・候補圧縮(サンプリング本数の上限)**だけ。「敵が来たから迎撃を優先する」「汚れていない列を選ぶ」といった戦術判断は一切書かない
-- `counterTable`/`escortTable`/`identifyTable` は**候補を作るための物理情報**(この攻撃はこの妨害・この deltaX・この fireAtStep で止められる、という事前計算)としてのみ使う。「その情報源だから優先する」という規則は無い(`counterTable.successRate` は候補の列挙順にのみ使い、24特徴には含めない)
-- `selectAction(view, actions, ctx)` が**唯一の選択規則**。`score = Σ weights[i]*features[i]` の24次元線形評価器で最大スコアの Action を選ぶ。24特徴(盤面band占有・所有権・アリ近接・トークン/飛行数の変化・所要時間など)がすべての判断材料であり、これ以外の分岐は無い
+- `counterTable`/`escortTable`/`identifyTable` は**候補を作るための物理情報**(この攻撃はこの妨害・この deltaX・この fireAtStep で止められる、という事前計算)としてのみ使う。「その情報源だから優先する」という規則は無い(`counterTable.successRate` は候補の列挙順にのみ使い、26特徴には含めない)
+- `selectAction(view, actions, ctx)` が**唯一の選択規則**。`score = Σ weights[i]*features[i]` の26次元線形評価器で最大スコアの Action を選ぶ。26特徴(盤面band占有・所有権・アリ近接・トークン/飛行数の変化・所要時間など)がすべての判断材料であり、これ以外の分岐は無い
 - 妨害の正確な照準(`deltaX`)は今も学習対象にしない(候補生成側の事前計算のまま)。**変わったのは「候補をどう選ぶか」を人間が決めるのをやめたこと**であって、「候補をどう作るか」の設計思想(有限手札の総当たり計算を実行時に再学習させない)はv5.5から不変
 
 **旧構成(v5.4まで。歴史として記録)**: 事前計算テーブルが「攻撃IDの識別・使用する迎撃妨害・迎撃/護衛の相対発射列と時刻」を担当し、学習方策(カテゴリ別パラメータ)が「いつ攻撃するか・迎撃/護衛を採用するか・どの攻撃テンプレートを選ぶか・いつ自爆するか・攻撃発射列で盤面汚染を避けるか」を担当していた。v6ではこの「戦術/戦略」という区分自体を、Action型(WAIT/FIRE/SELF_DESTRUCT)の統一された選択問題へ解消した。
@@ -197,7 +197,7 @@ data/search-report.json へ書き出す
 **方策学習・検証(v6)**
 
 7. `scripts/evaluate-policy.mjs --mode bench` を **CEM本学習の前に**実行し、`templates.json` を使って新CPU(`src/cpu.js`)と旧CPU(`src/cpu-legacy.js`。存在すれば)のスループット・候補数・特徴生成/採点の所要時間を計測して `data/benchmark.json` に出力する
-8. `scripts/train-policy.mjs` が `templates.json` と `data/benchmark.json` を使い、CPU同士(24次元 Action 評価器)を自己対戦させつつ、学習しない固定 Reference League(`src/reference-policies.js` の4方策)とも対戦させ、**24次元線形評価器の重み `weights`** を CEM法(対角ガウス)で学習して `data/policy.json` に出力する
+8. `scripts/train-policy.mjs` が `templates.json` と `data/benchmark.json` を使い、CPU同士(26次元 Action 評価器)を自己対戦させつつ、学習しない固定 Reference League(`src/reference-policies.js` の4方策)とも対戦させ、**26次元線形評価器の重み `weights`** を CEM法(対角ガウス)で学習して `data/policy.json` に出力する
 9. `scripts/evaluate-policy.mjs --mode final` が学習済み方策を Reference League 4種(各500試合)と旧CPU(`src/cpu-legacy.js` + `data/policy-v55.json`。1,000試合)に対戦させ、`data/policy.json` の `evaluation`/`tacticsLog` を上書きし `data/evaluation.json` にも書き出す
 10. `scripts/tune-attack-life.mjs` が `data/search-archive.json` の `arrivalStep` を掃引し、`ATTACK_LIFE` 候補ごとの viable件数・署名多様性・速度クラス被覆・到達時間の幅を表示する。ここから実測で `ATTACK_LIFE` を確定し、`src/config.js` と `docs/spec.md` を同じコミットで更新する
 11. `scripts/simulate-matches.mjs` が学習済み方策同士を大量に対戦させ、バランス指標(得点率・HW割合・盤面汚染度など)を出力する
@@ -244,7 +244,7 @@ v2 では両陣営が干渉しない設計だったが、v3 では**干渉こそ
 | 妨害込みの1件評価(妨害100種 × タイミング10通り) | 約 12ms |
 | カウンター行列の計算(攻撃60 × 妨害80 × タイミング10) | 約 1秒 |
 | **1試合のシミュレーション(120×60・240秒・最大8匹)** | **約 2.8ms(362試合/秒)** |
-| 方策学習(CEM・集団60 × 40試合 × 40世代) | 約 4分(⚠️ **v3.1・旧11次元方策の実測**。v6は24次元 対角ガウス CEM + Reference League + held-out validationに刷新されており、アルゴリズムが別物のため単純比較できない。🚧 v6の所要時間は実測待ち) |
+| 方策学習(CEM・集団60 × 40試合 × 40世代) | 約 4分(⚠️ **v3.1・旧11次元方策の実測**。v6は26次元 対角ガウス CEM + Reference League + held-out validationに刷新されており、アルゴリズムが別物のため単純比較できない。v6.2 の実測は 20世代・69,400試合・8.6分(22ワーカー)) |
 | バランス検証 5,000試合 | 約 14秒 |
 | 共進化4ラウンド(攻撃16件 × 妨害100種) | 約 108秒 |
 
