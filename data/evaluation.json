@@ -1,30 +1,30 @@
 {
-  "evaluatedAt": "2026-08-08T18:24:30.414Z",
+  "evaluatedAt": "2026-08-09T02:55:01.285Z",
   "seed": 1,
   "leagueGames": 500,
   "oldGames": 1000,
   "evaluation": {
-    "winRateVsAttackOnly": 0.422,
-    "winRateVsCheapSpam": 0.392,
-    "winRateVsSaveAndBurst": 0.779,
+    "winRateVsAttackOnly": 0.472,
+    "winRateVsCheapSpam": 0.416,
+    "winRateVsSaveAndBurst": 0.774,
     "winRateVsDefendHeavy": 1,
-    "referenceLeagueAverageWinRate": 0.64825,
-    "winRateVsOldCPU": 0.637,
-    "averageScoreDiff": 1.0476666666666667
+    "referenceLeagueAverageWinRate": 0.6655,
+    "winRateVsOldCPU": 0.707,
+    "averageScoreDiff": 1.222
   },
   "tacticsLog": {
     "games": 100,
-    "wait": 6956,
-    "attackFire": 1317,
+    "wait": 82125,
+    "attackFire": 1345,
     "disruptFire": 0,
     "selfDestruct": 0,
-    "decisions": 8273,
+    "decisions": 83470,
     "byTemplate": {
-      "A2": 1282,
-      "A1": 35
+      "A2": 1337,
+      "A1": 8
     },
-    "avgCandidatesPerDecision": 15.150731294572706,
-    "p95CandidatesPerDecision": 28,
+    "avgCandidatesPerDecision": 12.242074997004911,
+    "p95CandidatesPerDecision": 23,
     "note": "解釈用の観測のみ。fitness には一切入れていない(差分仕様 §20・§27)"
   }
 }
